@@ -12,7 +12,9 @@ High Performance Computing (HPC) project (University of Trento): parallel Expect
 .
 ├── src/             # Source files (.c / .cpp)
 ├── include/         # Header files
-├── data/            # Input datasets
+├── data/
+│   ├── real/        # Real (medical) datasets
+│   └── synthetic/   # Synthetically generated datasets
 ├── results/
 │   ├── logs/        # Raw execution logs
 │   ├── tables/      # Benchmark tables
