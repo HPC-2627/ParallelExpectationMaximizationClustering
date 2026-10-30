@@ -10,7 +10,12 @@ High Performance Computing (HPC) project (University of Trento): parallel Expect
 
 ```
 .
-├── src/             # Source files (.c / .cpp)
+├── src/
+│   ├── PEMC-baseline-sequential.c    # Sequential version (correctness reference and serial time)
+│   ├── PEMC-baseline-MPI-OpenMP.c    # Hybrid MPI + OpenMP baseline
+│   ├── PEMC-opt1-MPI-OpenMP.c        # Optimization 1 of the baseline
+│   ├── PEMC-opt2-MPI-OpenMP.c        # Optimization 2 of the baseline
+│   └── PEMC-opt3-MPI-OpenMP.c        # Optimization 3 of the baseline
 ├── include/         # Header files
 ├── data/
 │   ├── real/        # Real (medical) datasets
@@ -19,12 +24,21 @@ High Performance Computing (HPC) project (University of Trento): parallel Expect
 │   ├── logs/        # Raw execution logs
 │   ├── tables/      # Benchmark tables
 │   ├── plots/       # Generated plots
-│   └── plots.py     # Script producing the plots from the results
+│   ├── plots-performance.py  # Performance plots (time, speedup, efficiency, scaling, ...)
+│   └── plots-cluster.py      # Clustering plots (PCA, centroids, cluster sizes, ...)
 ├── doc/
 │   ├── latex/       # IEEE-style report (Group6-Report.tex)
-│   ├── project-guide.md  # Project requirements, report outline, EM background, experiment plan
+│   ├── project-guide.md  # Project requirements, report outline, evaluation criteria, data tips
 │   ├── question.md       # Open questions for the instructors
-│   └── todo.md           # Task list
+│   └── todo.md           # Task list and workflow
 ├── makefile         # Build rules
 └── README.md
 ```
+
+## Documentation
+
+- [doc/todo.md](doc/todo.md): task list and workflow
+- [doc/question.md](doc/question.md): open questions for the instructors
+- [doc/project-guide.md](doc/project-guide.md): project requirements, report outline, evaluation criteria, data tips
+- [doc/latex/Group6-Report.tex](doc/latex/Group6-Report.tex): IEEE-style report
+- [Presentation](https://docs.google.com/presentation/d/1l7ILCvZXghAu3dWThhwGMnl88dtGswZexhwFpSisl7U/edit?slide=id.p#slide=id.p): project presentation slides (Google Slides)
