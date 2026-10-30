@@ -1,0 +1,366 @@
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[italian]{babel}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{algorithm}
+\usepackage[noend]{algpseudocode}
+\usepackage{booktabs}
+\usepackage{geometry}
+\usepackage{hyperref}
+\geometry{margin=2.5cm}
+
+\newcommand{\bx}{\mathbf{x}}
+\newcommand{\bmu}{\boldsymbol{\mu}}
+\newcommand{\bth}{\boldsymbol{\theta}}
+\newcommand{\Nrm}{\mathcal{N}}
+\newcommand{\E}{\mathbb{E}}
+
+\theoremstyle{definition}
+\newtheorem{prop}{Proposizione}
+
+\title{Expectation-Maximization per Gaussian Mixture Model:\\
+base teorica e fonti di parallelismo}
+\author{Parallel Expectation-Maximization Clustering -- HPC4DS}
+\date{}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Questo documento riassume la teoria dell'algoritmo Expectation-Maximization (EM)
+applicato ai Gaussian Mixture Model (GMM) con covarianza diagonale, e spiega
+perché l'algoritmo si presta a una parallelizzazione efficiente con MPI e
+OpenMP. L'idea centrale è che tutte le operazioni costose sono \emph{somme su
+punti indipendenti}: i dati si partizionano, i parametri (molto piccoli) si
+replicano e si comunicano solo somme parziali.
+\end{abstract}
+
+%------------------------------------------------------------------
+\section{Il problema}
+%------------------------------------------------------------------
+Dato un insieme di $N$ punti $X=\{\bx_1,\dots,\bx_N\}$, con $\bx_i\in\mathbb{R}^D$,
+vogliamo raggrupparli in $K$ cluster in modo \emph{soft}: ogni punto ha una
+probabilità di appartenere a ciascun cluster, non un'etichetta rigida come in
+$k$-means.
+
+\paragraph{Notazione.}
+\begin{center}
+\begin{tabular}{ll}
+\toprule
+Simbolo & Significato \\
+\midrule
+$N$ & numero di punti \\
+$D$ & numero di feature \\
+$K$ & numero di cluster (componenti) \\
+$\pi_k$ & peso della componente $k$, $\sum_k\pi_k=1$, $\pi_k\ge 0$ \\
+$\bmu_k\in\mathbb{R}^D$ & media della componente $k$ \\
+$\sigma_{kd}^2$ & varianza della componente $k$ sulla feature $d$ \\
+$\bth$ & insieme dei parametri $\{\pi_k,\bmu_k,\sigma^2_{k\cdot}\}_{k=1}^K$ \\
+$z_i\in\{1,\dots,K\}$ & variabile latente: cluster che ha generato $\bx_i$ \\
+$r_{ik}$ & responsabilità: $P(z_i=k\mid\bx_i,\bth)$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+%------------------------------------------------------------------
+\section{Gaussian Mixture Model}
+%------------------------------------------------------------------
+Si assume che ogni punto sia generato così: si estrae un cluster
+$z_i\sim\mathrm{Categorical}(\pi_1,\dots,\pi_K)$, poi
+$\bx_i\mid z_i=k\sim\Nrm(\bmu_k,\Sigma_k)$. La densità marginale è
+\begin{equation}
+p(\bx_i\mid\bth)=\sum_{k=1}^{K}\pi_k\,\Nrm(\bx_i\mid\bmu_k,\Sigma_k).
+\end{equation}
+Con \textbf{covarianza diagonale}, $\Sigma_k=\mathrm{diag}(\sigma_{k1}^2,\dots,\sigma_{kD}^2)$, la
+gaussiana si fattorizza sulle feature:
+\begin{equation}
+\Nrm(\bx\mid\bmu_k,\Sigma_k)=\prod_{d=1}^{D}\frac{1}{\sqrt{2\pi\sigma_{kd}^2}}
+\exp\!\left(-\frac{(x_d-\mu_{kd})^2}{2\sigma_{kd}^2}\right).
+\label{eq:gauss}
+\end{equation}
+Il costo di una valutazione è $O(D)$ (con covarianza piena sarebbe $O(D^2)$ o
+$O(D^3)$).
+
+\subsection{Log-likelihood}
+I punti sono assunti indipendenti, quindi
+\begin{equation}
+\ell(\bth)=\sum_{i=1}^{N}\log\sum_{k=1}^{K}\pi_k\,\Nrm(\bx_i\mid\bmu_k,\Sigma_k).
+\label{eq:loglik}
+\end{equation}
+Massimizzare $\ell$ rispetto a $\bth$ direttamente è difficile: il $\log$ della
+somma interna impedisce una soluzione in forma chiusa. Se conoscessimo gli $z_i$
+il problema sarebbe banale (stime di massima verosimiglianza per ogni cluster
+separatamente). EM sfrutta esattamente questo.
+
+%------------------------------------------------------------------
+\section{L'algoritmo EM}
+%------------------------------------------------------------------
+EM alterna due passi, partendo da un'inizializzazione $\bth^{(0)}$.
+
+\subsection{E-step: calcolo delle responsabilità}
+Con i parametri correnti $\bth^{(t)}$, la probabilità a posteriori che $\bx_i$
+provenga dal cluster $k$ è, per la regola di Bayes,
+\begin{equation}
+r_{ik}=P(z_i=k\mid\bx_i,\bth^{(t)})=
+\frac{\pi_k\,\Nrm(\bx_i\mid\bmu_k,\Sigma_k)}
+{\sum_{j=1}^{K}\pi_j\,\Nrm(\bx_i\mid\bmu_j,\Sigma_j)}.
+\label{eq:estep}
+\end{equation}
+Per ogni $i$, $\sum_k r_{ik}=1$.
+
+\subsection{M-step: aggiornamento dei parametri}
+Si massimizza il valore atteso della log-likelihood completa
+$Q(\bth\mid\bth^{(t)})=\E_{z\mid X,\bth^{(t)}}[\log p(X,z\mid\bth)]$. Con le
+responsabilità fissate si ottengono formule chiuse. Definiamo le
+\emph{statistiche sufficienti}
+\begin{align}
+N_k &= \sum_{i=1}^{N} r_{ik}, &
+S_{kd}^{(1)} &= \sum_{i=1}^{N} r_{ik}\,x_{id}, &
+S_{kd}^{(2)} &= \sum_{i=1}^{N} r_{ik}\,x_{id}^2.
+\label{eq:suff}
+\end{align}
+I nuovi parametri sono
+\begin{align}
+\pi_k^{(t+1)} &= \frac{N_k}{N}, \label{eq:pi}\\
+\mu_{kd}^{(t+1)} &= \frac{S_{kd}^{(1)}}{N_k}, \label{eq:mu}\\
+\sigma_{kd}^{2\,(t+1)} &= \frac{S_{kd}^{(2)}}{N_k}-\left(\mu_{kd}^{(t+1)}\right)^2.
+\label{eq:var}
+\end{align}
+La forma \eqref{eq:var} usa $\E[x^2]-\E[x]^2$ ed è comoda perché richiede solo
+somme che si possono accumulare in un solo passaggio sui dati (nella pratica si
+aggiunge un floor $\sigma^2\ge\varepsilon$ per evitare varianze nulle).
+
+\subsection{Convergenza}
+Si calcola $\ell(\bth^{(t)})$ con \eqref{eq:loglik} e ci si ferma quando
+$|\ell^{(t+1)}-\ell^{(t)}|<\varepsilon$ oppure si raggiunge un numero massimo di
+iterazioni.
+
+\begin{prop}[Monotonia]
+Ad ogni iterazione EM, $\ell(\bth^{(t+1)})\ge\ell(\bth^{(t)})$.
+\end{prop}
+\noindent
+Quindi EM converge a un punto stazionario, in generale un massimo \emph{locale}:
+il risultato dipende dall'inizializzazione. Per confrontare versioni diverse
+(sequenziale, MPI, ottimizzazioni) l'inizializzazione deve essere identica.
+
+\begin{algorithm}[h]
+\caption{EM per GMM a covarianza diagonale (sequenziale)}
+\begin{algorithmic}[1]
+\State Inizializza $\bth^{(0)}$; $t\gets 0$
+\Repeat
+  \For{$i=1$ \textbf{to} $N$} \Comment{E-step}
+    \For{$k=1$ \textbf{to} $K$}
+      \State $a_{ik}\gets\log\pi_k+\log\Nrm(\bx_i\mid\bmu_k,\Sigma_k)$ \Comment{$O(D)$}
+    \EndFor
+    \State $m_i\gets\log\sum_k e^{a_{ik}}$ \Comment{log-sum-exp}
+    \State $r_{ik}\gets e^{a_{ik}-m_i}$ per ogni $k$
+  \EndFor
+  \State $\ell\gets\sum_i m_i$
+  \State calcola $N_k,S^{(1)}_{kd},S^{(2)}_{kd}$ con \eqref{eq:suff} \Comment{M-step}
+  \State aggiorna $\pi,\bmu,\sigma^2$ con \eqref{eq:pi}--\eqref{eq:var}
+  \State $t\gets t+1$
+\Until{$|\ell^{(t)}-\ell^{(t-1)}|<\varepsilon$}
+\end{algorithmic}
+\end{algorithm}
+
+\paragraph{Stabilità numerica.}
+Le densità \eqref{eq:gauss} possono andare in underflow quando $D$ è grande. Si
+lavora in scala logaritmica e si usa il trucco log-sum-exp:
+$\log\sum_k e^{a_k}=a_{\max}+\log\sum_k e^{a_k-a_{\max}}$.
+
+%------------------------------------------------------------------
+\section{Analisi del costo sequenziale}
+%------------------------------------------------------------------
+\begin{center}
+\begin{tabular}{lll}
+\toprule
+Fase & Costo per iterazione & Dati letti \\
+\midrule
+E-step (distanze, log-sum-exp) & $O(NKD)$ & $X$ ($ND$), $\bth$ ($KD$) \\
+Statistiche sufficienti & $O(NKD)$ & $X$, $r$ ($NK$) \\
+M-step (formule \eqref{eq:pi}--\eqref{eq:var}) & $O(KD)$ & $S$ ($KD$) \\
+Log-likelihood & $O(N)$ & $m_i$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+Il costo totale è $T_{\mathrm{seq}}=O(I\cdot NKD)$ con $I$ numero di iterazioni.
+Il M-step vero e proprio (aggiornare i parametri a partire dalle statistiche) è
+trascurabile: tutto il lavoro è nei due cicli su $N$ punti.
+
+Il rapporto tra dimensioni è il punto chiave: i \textbf{dati} occupano $O(ND)$
+(grandi), i \textbf{parametri} $O(KD)$ (piccoli, $K\ll N$).
+
+%------------------------------------------------------------------
+\section{Perché EM è parallelizzabile}
+%------------------------------------------------------------------
+
+\subsection{Indipendenza dei punti nell'E-step}
+Dalla \eqref{eq:estep}, $r_{ik}$ dipende solo da $\bx_i$ e da $\bth^{(t)}$, mai da
+altri punti $\bx_j$, $j\ne i$. Una volta noti i parametri, gli $N$ calcoli
+delle responsabilità sono \emph{completamente indipendenti} (problema
+\emph{embarrassingly parallel}): nessuna dipendenza di dati tra iterazioni del ciclo su $i$.
+
+\subsection{M-step come riduzione}
+Le statistiche \eqref{eq:suff} sono somme sui punti di termini che dipendono
+ciascuno da un solo $i$. Poiché la somma è associativa e commutativa, si può
+partizionare l'insieme dei punti in $P$ blocchi $\mathcal{B}_1,\dots,\mathcal{B}_P$:
+\begin{equation}
+N_k=\sum_{p=1}^{P}N_k^{[p]},\qquad
+S_{kd}^{(1)}=\sum_{p=1}^{P}S_{kd}^{(1)[p]},\qquad
+S_{kd}^{(2)}=\sum_{p=1}^{P}S_{kd}^{(2)[p]},
+\end{equation}
+dove ad esempio $N_k^{[p]}=\sum_{i\in\mathcal{B}_p}r_{ik}$. Ogni blocco calcola
+le proprie somme parziali \emph{in locale}, poi una riduzione globale le combina.
+Lo stesso vale per la log-likelihood: $\ell=\sum_p\ell^{[p]}$.
+
+\begin{prop}[Correttezza della decomposizione]
+Per qualunque partizione $\{\mathcal{B}_p\}$ dell'insieme dei punti, le
+statistiche sufficienti globali coincidono (a meno di errori di arrotondamento
+in virgola mobile) con quelle calcolate sull'intero dataset.
+\end{prop}
+\noindent
+Questo vale perché la somma è un'operazione associativa e commutativa. Nei numeri
+in virgola mobile l'ordine delle somme cambia l'arrotondamento: per questo il
+confronto tra versioni va fatto su tolleranza della log-likelihood, non su
+uguaglianza bit a bit.
+
+\subsection{I parametri sono piccoli}
+Le statistiche sufficienti sono $K(2D+1)$ numeri, indipendenti da $N$. Un
+messaggio di $K(2D+1)$ double (più 1 per $\ell$) basta per sincronizzare tutti i
+processi. Per esempio, $K=10$, $D=50$ dà $\approx 1010$ double, circa 8 KB.
+I dati ($ND$ double) \emph{non si spostano mai}: restano nella memoria del
+rank che li possiede.
+
+\subsection{Il M-step finale è così piccolo che si replica}
+Dopo la riduzione, ogni rank possiede le stesse statistiche globali. Calcolare
+\eqref{eq:pi}--\eqref{eq:var} costa $O(KD)$: più economico che comunicare il
+risultato. Ogni rank lo ripete in locale e ottiene gli stessi $\bth^{(t+1)}$,
+senza un secondo messaggio.
+
+%------------------------------------------------------------------
+\section{Schema di parallelizzazione ibrido}
+%------------------------------------------------------------------
+
+\subsection{MPI: partizione dei dati tra rank}
+Con $P$ rank, ogni rank $p$ possiede $N_p\approx N/P$ righe di $X$ (distribuzione
+a blocchi con \texttt{MPI\_Scatterv}, oppure lettura parallela). I parametri $\bth$ sono
+replicati su tutti i rank.
+
+\begin{algorithm}[h]
+\caption{Iterazione EM distribuita (rank $p$)}
+\begin{algorithmic}[1]
+\State \textbf{E-step locale:} per $i\in\mathcal{B}_p$ calcola $r_{ik}$ e $m_i$ \Comment{$O(N_pKD)$}
+\State \textbf{Somme locali:} $N_k^{[p]},S^{(1)[p]}_{kd},S^{(2)[p]}_{kd},\ell^{[p]}$ \Comment{$O(N_pKD)$}
+\State \texttt{MPI\_Allreduce}(somme locali, \texttt{MPI\_SUM}) $\to$ somme globali \Comment{$O(K D\log P)$}
+\State \textbf{M-step replicato:} calcola $\pi,\bmu,\sigma^2$ \Comment{$O(KD)$}
+\State Test di convergenza su $\ell$ (identico su tutti i rank)
+\end{algorithmic}
+\end{algorithm}
+
+Il test di convergenza usa $\ell$ già ridotto con \texttt{MPI\_Allreduce}: tutti i rank
+prendono la stessa decisione e non serve broadcast del flag.
+
+\subsection{OpenMP: parallelismo dentro il rank}
+Nel ciclo su $i\in\mathcal{B}_p$ ogni thread elabora un sottoinsieme di punti
+(\texttt{\#pragma omp parallel for}). Le somme locali sono riduzioni: ogni thread
+accumula in un buffer privato, poi i buffer si sommano (clausola
+\texttt{reduction} su array, o buffer per thread esplicito). Il rank effettua
+l'\texttt{MPI\_Allreduce} una sola volta per iterazione, fuori dalla regione
+parallela (o con un solo thread, modello \texttt{MPI\_THREAD\_FUNNELED}).
+
+Perché ibrido? Con $R$ rank per nodo, ciascuno replica $\bth$ e il buffer
+dell'\texttt{Allreduce}. Meno rank e più thread riducono la memoria replicata, il
+numero di partecipanti alla collettiva e il traffico sulla rete, a parità di core.
+Il compromesso rank$\times$thread è uno degli esperimenti previsti.
+
+%------------------------------------------------------------------
+\section{Modello di costo e limiti di scalabilità}
+%------------------------------------------------------------------
+Con $P$ rank, il tempo di una iterazione è circa
+\begin{equation}
+T_P(N)\;\approx\;\underbrace{\frac{c\,NKD}{P}}_{\text{calcolo}}
++\underbrace{\alpha\log_2 P+\beta\,K(2D+1)\,w\,\log_2 P}_{\text{Allreduce}}
++\underbrace{c'\,KD}_{\text{M-step replicato}},
+\label{eq:model}
+\end{equation}
+dove $c,c'$ sono costi per operazione, $\alpha$ la latenza, $\beta$ l'inverso
+della banda e $w$ la dimensione di un double (8 byte). Il modello è per una
+\texttt{Allreduce} ad albero; i termini esatti dipendono dall'algoritmo scelto da
+MPICH. Dal modello:
+\begin{itemize}
+  \item il \textbf{calcolo} scala come $1/P$: è la parte che si guadagna;
+  \item la \textbf{comunicazione} cresce con $\log P$ e \emph{non dipende da $N$}:
+        con $N$ grande è trascurabile, con $N$ piccolo domina;
+  \item il \textbf{M-step replicato} è costante in $P$: è la frazione seriale
+        (legge di Amdahl), ma piccola perché $O(KD)\ll O(NKD)$.
+\end{itemize}
+
+\paragraph{Speedup ed efficienza.}
+\begin{equation}
+S(P)=\frac{T_1}{T_P},\qquad E(P)=\frac{S(P)}{P}.
+\end{equation}
+Dalla \eqref{eq:model} l'efficienza resta alta finché $NKD/P\gg
+(\alpha+\beta K D w)\log P$, cioè finché ogni rank ha abbastanza punti da
+nascondere il costo della collettiva.
+
+\paragraph{Strong vs weak scaling.}
+\begin{itemize}
+  \item \emph{Strong}: $N$ fisso, $P$ cresce. Il lavoro per rank scende come $1/P$ e prima o poi la
+        comunicazione prevale: l'efficienza cala.
+  \item \emph{Weak}: $N/P$ fisso. Il calcolo per rank è costante, la comunicazione
+        cresce solo come $\log P$: ci si aspetta un'efficienza quasi costante.
+\end{itemize}
+
+%------------------------------------------------------------------
+\section{Dipendenze di dati e fonti di non-parallelismo}
+%------------------------------------------------------------------
+Non tutto è parallelo:
+\begin{enumerate}
+  \item \textbf{Dipendenza tra iterazioni.} L'E-step di $t+1$ richiede $\bth^{(t+1)}$,
+        quindi serve una barriera logica (la \texttt{Allreduce}) per iterazione.
+        Le iterazioni EM sono inerentemente sequenziali: si parallelizza dentro
+        l'iterazione, non tra iterazioni.
+  \item \textbf{Convergenza.} Il numero di iterazioni $I$ dipende dai dati e
+        dall'inizializzazione, non dal grado di parallelismo.
+  \item \textbf{Inizializzazione.} Scelta di $\bth^{(0)}$ (punti casuali o
+        $k$-means++) e lettura/distribuzione del dataset: I/O e fase iniziale
+        possono essere seriali e vanno misurati a parte.
+  \item \textbf{Load imbalance.} Il costo per punto è uguale, quindi una
+        partizione a blocchi uniforme è bilanciata. Lo sbilanciamento nasce
+        solo da $N\bmod P\neq 0$ o da interferenza di sistema.
+  \item \textbf{Memoria.} Il layout di $X$ (riga per riga o per colonna, AoS vs SoA) e l'ordine
+        dei cicli $i,k,d$ determinano l'uso della cache. L'intensità
+        aritmetica è bassa: il calcolo può essere limitato dalla banda di memoria
+        più che dai FLOP.
+\end{enumerate}
+
+%------------------------------------------------------------------
+\section{Spunti per le ottimizzazioni}
+%------------------------------------------------------------------
+Dalla teoria seguono direzioni naturali per le tre ottimizzazioni rispetto alla baseline:
+\begin{itemize}
+  \item \textbf{Fusione dei cicli}: calcolare E-step e accumulo delle statistiche in un solo
+        passaggio su $X$, senza memorizzare la matrice $r$ ($N\times K$): meno traffico di memoria.
+  \item \textbf{Layout e vettorizzazione}: ordinare i dati e i cicli per accessi contigui, per
+        permettere SIMD sul ciclo su $d$.
+  \item \textbf{Comunicazione}: impacchettare $N_k,S^{(1)},S^{(2)},\ell$ in un unico buffer,
+        una sola \texttt{Allreduce} per iterazione.
+  \item \textbf{Ibrido}: scegliere rank$\times$thread per nodo in funzione di $K,D$ e della
+        topologia (NUMA).
+  \item \textbf{Sovrapposizione} comunicazione/calcolo (\texttt{MPI\_Iallreduce}), utile solo se c'è lavoro
+        indipendente da sovrapporre.
+\end{itemize}
+
+%------------------------------------------------------------------
+\section*{Riferimenti}
+%------------------------------------------------------------------
+\begin{itemize}
+  \item A.~P.~Dempster, N.~M.~Laird, D.~B.~Rubin, \emph{Maximum Likelihood from
+        Incomplete Data via the EM Algorithm}, J.\ Royal Statistical Society B, 1977.
+  \item C.~M.~Bishop, \emph{Pattern Recognition and Machine Learning}, Springer, 2006, cap.~9.
+  \item P.~Pacheco, \emph{An Introduction to Parallel Programming}, Morgan Kaufmann, cap.~3 (MPI).
+\end{itemize}
+
+\end{document}
