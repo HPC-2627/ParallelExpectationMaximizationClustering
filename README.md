@@ -20,8 +20,9 @@ High Performance Computing (HPC) project (University of Trento): parallel Expect
 │   └── plots.py     # Script producing the plots from the results
 ├── doc/
 │   ├── latex/       # IEEE-style report (Group6-Report.tex)
-│   ├── question.md  # Open questions for the instructors
-│   └── todo.md      # Task list
+│   ├── project-guide.md  # Project requirements, report outline, EM background, experiment plan
+│   ├── question.md       # Open questions for the instructors
+│   └── todo.md           # Task list
 ├── makefile         # Build rules
 └── README.md
 ```
