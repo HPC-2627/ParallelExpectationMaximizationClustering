@@ -11,11 +11,12 @@ High Performance Computing (HPC) project (University of Trento): parallel Expect
 ```
 .
 ├── src/
-│   ├── PEMC-baseline-sequential.c    # Sequential version (correctness reference and serial time)
-│   ├── PEMC-baseline-MPI-OpenMP.c    # Hybrid MPI + OpenMP baseline
-│   ├── PEMC-opt1-MPI-OpenMP.c        # Optimization 1 of the baseline
-│   ├── PEMC-opt2-MPI-OpenMP.c        # Optimization 2 of the baseline
-│   └── PEMC-opt3-MPI-OpenMP.c        # Optimization 3 of the baseline
+│   ├── PEMC-baseline-sequential-diagonal.c    # Sequential version (correctness reference and serial time)
+│   ├── PEMC-baseline-MPI-OpenMP-diagonal.c    # Hybrid MPI + OpenMP baseline
+│   ├── PEMC-opt1-MPI-OpenMP-diagonal.c        # Optimization 1 of the baseline
+│   ├── PEMC-opt2-MPI-OpenMP-diagonal.c        # Optimization 2 of the baseline
+│   ├── PEMC-opt3-MPI-OpenMP-diagonal.c        # Optimization 3 of the baseline
+│   └── PEMC-baseline-MPI-OpenMP-full.c        # Baseline variant with full covariance (extension)
 ├── include/         # Header files
 ├── data/
 │   ├── real/        # Real (medical) datasets
@@ -37,6 +38,8 @@ High Performance Computing (HPC) project (University of Trento): parallel Expect
 ├── makefile         # Build rules
 └── README.md
 ```
+
+The `-diagonal` files use a Gaussian mixture with diagonal covariance (the main line of the project: sequential reference, baseline and 3 optimizations). The `-full` file is a variant with full covariance: it changes the model, so its results are compared only with runs of the same model.
 
 ## Documentation
 
