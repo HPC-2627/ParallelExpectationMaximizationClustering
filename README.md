@@ -16,8 +16,11 @@ High Performance Computing (HPC) project (University of Trento): parallel Expect
 │   ├── PEMC-opt1-MPI-OpenMP-diagonal.c        # Optimization 1 of the baseline
 │   ├── PEMC-opt2-MPI-OpenMP-diagonal.c        # Optimization 2 of the baseline
 │   ├── PEMC-opt3-MPI-OpenMP-diagonal.c        # Optimization 3 of the baseline
-│   └── PEMC-baseline-MPI-OpenMP-full.c        # Baseline variant with full covariance (extension)
-├── include/         # Header files
+│   ├── PEMC-baseline-MPI-OpenMP-full.c        # Baseline variant with full covariance (extension)
+│   └── common/
+│       └── my-time-lib.c                      # Shared code: statistics for the benchmarks (mean, median, standard deviation)
+├── include/
+│   └── my-time-lib.h                          # Timer macros and statistics prototypes (compile with -Iinclude and -lm)
 ├── data/
 │   ├── real/        # Real (medical) datasets
 │   └── synthetic/   # Synthetically generated datasets
