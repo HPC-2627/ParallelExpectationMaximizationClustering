@@ -123,3 +123,8 @@ Why this format:
 - `synth_overlap` is generated with correlated variables, while the baseline uses a diagonal covariance: the model does not match the data on purpose.
 - Nested files: the weak scaling datasets of different $p$ share the same first rows. This makes the comparison cleaner, but the measurements for different $p$ are not independent samples.
 - The work per rank is an operation count ($N_0 \cdot K \cdot D$), not a measured time.
+
+## 9. WEAK vs STRONG SCALABILITY
+
+- **Strong scaling:** fixed problem (same file, e.g. `_p16`) run with more processes, so the work per process decreases; ideally the time halves when the processes double (speedup $S = T_1/T_p$, efficiency $E = S/p$).
+- **Weak scaling:** fixed work per process ($N_0$ rows each) with a problem that grows with the processes (file `_p<p>`); ideally the time stays constant (efficiency $E = T_1/T_p$).
