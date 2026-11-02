@@ -7,12 +7,11 @@ Workflow, in order. Phases overlap on purpose: datasets are prepared while the c
 - [ ] Split the work between team members
 
 ## 1. Preparation
-- [ ] Understand better EM clustering (mike)
 - [X] Find papers on parallel Expectation-Maximization clustering
 - [X] Find papers where this was already done on a single node and on multiple nodes (to cite in the report)
 - [ ] Write Introduction, sequential algorithm and state of the art in the report (`doc/latex/Group6-Report.tex`, as soon as the papers are read)
 - [ ] Find about 10 real datasets (as many as possible medical) and write down their sources (to cite them), saved in `data/real/`
-- [X] Write the generator (new script, location to decide) and create 3 synthetic datasets (small / medium / large, different characteristics), saved in `data/synthetic/`
+- [ ] Write the generator (new script, location to decide) and create 3 synthetic datasets (small / medium / large, different characteristics), saved in `data/synthetic/`
 - [ ] Preprocessing of the datasets: normalization, missing values, common input format
 
 ## 2. Implementation
