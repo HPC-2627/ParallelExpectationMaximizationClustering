@@ -35,6 +35,8 @@ High Performance Computing (HPC) project (University of Trento): parallel Expect
 │   │   ├── Group6-Report.tex         # IEEE-style report
 │   │   └── theory/em-theory.tex      # EM theory notes (Gaussian Mixture Model, algorithm, sequential cost)
 │   ├── em-explained.md   # Study guide on the EM algorithm
+│   ├── papers.md         # Free papers for the state of the art (theory, single node, multiple nodes, 5 candidate optimizations)
+│   ├── papers/           # Local copies of the papers, numbered like papers.md (not versioned, listed in .gitignore)
 │   ├── project-guide.md  # Project requirements, report outline, evaluation criteria, data tips
 │   ├── question.md       # Open questions for the instructors
 │   └── todo.md           # Task list and workflow
@@ -50,6 +52,7 @@ The `-diagonal` files use a Gaussian mixture with diagonal covariance (the main 
 - [doc/question.md](doc/question.md): open questions for the instructors
 - [doc/project-guide.md](doc/project-guide.md): project requirements, report outline, evaluation criteria, data tips
 - [doc/em-explained.md](doc/em-explained.md): study guide on the EM algorithm (formulas, notation, data, parallelism)
+- [doc/papers.md](doc/papers.md): free papers for the state of the art (theory, parallel EM on one and several nodes, candidate optimizations); the PDFs are in `doc/papers/`, kept only locally
 - [doc/latex/theory/em-theory.tex](doc/latex/theory/em-theory.tex): LaTeX notes on the EM theory
 - [doc/latex/Group6-Report.tex](doc/latex/Group6-Report.tex): IEEE-style report
 - [Presentation](https://docs.google.com/presentation/d/1nnzwo61ZBHoQlmlYfGVbIb39rVTOexQlnH01uqBfev0/edit?slide=id.g4dfce81f19_0_45#slide=id.g4dfce81f19_0_45): project presentation slides (Google Slides)
