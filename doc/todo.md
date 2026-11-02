@@ -4,17 +4,18 @@ Workflow, in order. Phases overlap on purpose: datasets are prepared while the c
 
 ## 0. Organization
 - [X] Send the email with the questions (see [question.md](question.md))
-- [ ] Split the work between team members
+- [X] Split the work between team members
 
 ## 1. Preparation
 - [X] Find papers on parallel Expectation-Maximization clustering
 - [X] Find papers where this was already done on a single node and on multiple nodes (to cite in the report)
 - [ ] Write Introduction, sequential algorithm and state of the art in the report (`doc/latex/Group6-Report.tex`, as soon as the papers are read)
-- [ ] Find about 10 real datasets (as many as possible medical) and write down their sources (to cite them), saved in `data/real/`
-- [ ] Write the generator (new script, location to decide) and create 3 synthetic datasets (small / medium / large, different characteristics), saved in `data/synthetic/`
+- [X] Find about 10 real datasets (as many as possible medical) and write down their sources (to cite them), saved in `data/real/`
+- [X] Write the generator (new script, location to decide) and create 3 synthetic datasets saved in `data/synthetic/`
 - [ ] Preprocessing of the datasets: normalization, missing values, common input format
 
 ## 2. Implementation
+- [ ] Shared code (reading datasets, timers, logging) in `include/`
 - [ ] Sequential C implementation: `src/PEMC-baseline-sequential-diagonal.c` (correctness reference and serial time)
 - [ ] Define the log format (CSV: version, dataset, ranks, threads, time per phase, iterations, log-likelihood) and the PBS launch script (new file, location to decide)
 - [ ] Baseline MPI + OpenMP: `src/PEMC-baseline-MPI-OpenMP-diagonal.c`, checked against `src/PEMC-baseline-sequential-diagonal.c` (same final log-likelihood) on a small dataset
@@ -22,7 +23,6 @@ Workflow, in order. Phases overlap on purpose: datasets are prepared while the c
 - [ ] Optimization 1: `src/PEMC-opt1-MPI-OpenMP-diagonal.c` (compared against `src/PEMC-baseline-MPI-OpenMP-diagonal.c`) --> to choose
 - [ ] Optimization 2: `src/PEMC-opt2-MPI-OpenMP-diagonal.c` (compared against `src/PEMC-baseline-MPI-OpenMP-diagonal.c`) --> to choose
 - [ ] Optimization 3: `src/PEMC-opt3-MPI-OpenMP-diagonal.c` (compared against `src/PEMC-baseline-MPI-OpenMP-diagonal.c`) --> to choose
-- [ ] Shared code (reading datasets, timers, logging) in `include/`
 - [ ] Build rules for all the versions in `makefile`
 - [ ] Correctness test after every version, not only at the end
 
