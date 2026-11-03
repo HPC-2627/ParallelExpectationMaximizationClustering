@@ -5,12 +5,13 @@ Each dataset is saved as raw/features.csv (+ raw/targets.csv when a label
 exists), exactly as served by the source, with NO preprocessing.
 The script is idempotent: a dataset already downloaded is skipped.
 
-Usage:  python3 download_datasets.py [name ...]     (no names = all)
+Usage:  python3 src/dataset-managed/generate-real-datasets.py [name ...]     (no names = all)
 """
 import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent
+# The script is in <repo>/src/dataset-managed: the data goes to <repo>/data/real
+ROOT = Path(__file__).resolve().parents[2] / "data" / "real"
 
 # name -> (source, id). source "uci" = UCI ML Repository, "openml" = OpenML.
 DATASETS = {

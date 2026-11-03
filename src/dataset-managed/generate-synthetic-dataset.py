@@ -88,9 +88,9 @@ With the same seed and the same parameters identical files are obtained: every b
 uses a random generator derived from (seed, profile, block number).
 
 USAGE
-  python3 src/generate-synthetic-dataset.py                       # the 3 profiles, default parameters
-  python3 src/generate-synthetic-dataset.py --n-per-rank 100000 --procs 1 2 4 8
-  python3 src/generate-synthetic-dataset.py --profiles synth_clean
+  python3 src/dataset-managed/generate-synthetic-dataset.py                       # the 3 profiles, default parameters
+  python3 src/dataset-managed/generate-synthetic-dataset.py --n-per-rank 100000 --procs 1 2 4 8
+  python3 src/dataset-managed/generate-synthetic-dataset.py --profiles synth_clean
 """
 
 import argparse
@@ -446,8 +446,8 @@ def verify_file(path_bin, N, D):
 # ----------------------------------------------------------------------------------------
 
 def main():
-    # Default output folder: <repo>/data/synthetic (the script is in <repo>/src)
-    default_out = Path(__file__).resolve().parent.parent / "data" / "synthetic"
+    # Default output folder: <repo>/data/synthetic (the script is in <repo>/src/dataset-managed)
+    default_out = Path(__file__).resolve().parents[2] / "data" / "synthetic"
 
     ap = argparse.ArgumentParser(description="Generates the synthetic datasets for the weak scaling")
     ap.add_argument("--profiles", nargs="+", default=list(PROFILES), choices=list(PROFILES),

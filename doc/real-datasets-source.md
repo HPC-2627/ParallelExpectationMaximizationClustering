@@ -1,7 +1,7 @@
 # Data sources
 
-Raw files are in `data/real/<name>/raw/` (not versioned, re-created by `download_datasets.py`).
-Downloaded 2026-11-02. Verification results: see `doc/VERIFICATION.md`.
+Raw files are in `data/real/<name>/raw/` (not versioned, re-created by `src/dataset-managed/generate-real-datasets.py`).
+Downloaded 2026-11-02. Verification results: see `doc/real-datasets-info.md`.
 
 | Folder | Dataset | N x D (verified) | License | URL |
 |---|---|---|---|---|
