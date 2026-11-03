@@ -16,6 +16,14 @@ with more than MAX_CLASSES distinct values is continuous and is not exported.
 brainweb: the T1 volume is flattened to N = voxels, D = 1; the labels (0.5 mm grid) are
 subsampled to the 1 mm grid of the T1 (nearest voxel), which needs nibabel.
 
+WHY THIS FORMAT
+The same binary layout as the synthetic datasets, so the C/MPI program reads real and synthetic
+data with the same code: a single fread (or MPI-IO read) of contiguous row-major doubles, with
+no text parsing. float64 and little-endian for the same reasons given in
+generate-synthetic-dataset.py (accuracy of the sums/exp/log, x86 cluster nodes). The labels are
+in a separate file so the EM cannot "see" the truth; they are used only to check the results.
+The z-score constants (mean/std) are saved in the JSON to be able to go back to the original units.
+
 Usage:  python3 src/dataset-managed/convert-real-to-bin.py [name ...]     (no names = all)
 """
 import json
@@ -31,8 +39,11 @@ ROOT = Path(__file__).resolve().parents[2] / "data" / "real"
 # Columns that are identifiers, not data (same list as verify-real-datasets.py).
 ID_COLUMNS = {"encounter_id", "patient_nbr", "id", "ID", "subject#", "SegFile",
               "FileName", "Date"}
+# A numeric target with more distinct values than this is treated as a continuous quantity
+# (a regression target), not as a cluster label.
 MAX_CLASSES = 20
 
+# Datasets converted when no name is given on the command line (same list as the verify script).
 DATASETS = ["diabetes130", "cdc_diabetes", "cardiovascular", "parkinson",
             "eeg_eye_state", "gene_rnaseq", "wdbc", "heart_failure",
             "cardiotocography", "statlog_heart", "cleveland", "brainweb"]
@@ -40,9 +51,11 @@ DATASETS = ["diabetes130", "cdc_diabetes", "cardiovascular", "parkinson",
 
 def write_bin(path, X):
     """Header (int32 N, int32 D) + float64 row-major, little-endian."""
+    # Contiguous row-major copy: tofile() writes the memory as it is, so the layout must be
+    # the one expected by the reader (row 0, row 1, ...).
     X = np.ascontiguousarray(X, dtype="<f8")
     with open(path, "wb") as f:
-        np.array(X.shape, dtype="<i4").tofile(f)
+        np.array(X.shape, dtype="<i4").tofile(f)    # header: N, D
         X.tofile(f)
 
 
@@ -56,20 +69,25 @@ def standardize(X):
 def encode_labels(y):
     """First target column -> int32 0..C-1, or None when it is continuous."""
     col = y.iloc[:, 0]
+    # Many distinct numeric values = continuous target: it is not a grouping, skip it
     if pd.api.types.is_numeric_dtype(col) and col.nunique() > MAX_CLASSES:
         return None, col.name
+    # sort=True makes the encoding deterministic (the smallest value gets class 0)
     codes, uniques = pd.factorize(col, sort=True)
-    if (codes < 0).any():
+    if (codes < 0).any():                           # -1 = missing label: cannot be encoded
         return None, col.name
     return codes.astype("<i4"), {str(u): int(i) for i, u in enumerate(uniques)}
 
 
 def save(name, X, cols, dropped, labels, label_info, extra=None):
+    """Standardizes X and writes <name>.bin, <name>_labels.bin (if any) and <name>.json."""
     out = ROOT / name
     Z, mean, std = standardize(X)
     write_bin(out / f"{name}.bin", Z)
     if labels is not None:
         labels.astype("<i4").tofile(out / f"{name}_labels.bin")
+    # The JSON documents the dataset: which columns were used/dropped, the constants of the
+    # standardization (to invert it) and how the labels were encoded.
     info = {"name": name, "N": int(Z.shape[0]), "D": int(Z.shape[1]),
             "columns": cols, "dropped_columns": dropped,
             "mean": mean.tolist(), "std": std.tolist(),
@@ -83,20 +101,25 @@ def save(name, X, cols, dropped, labels, label_info, extra=None):
 
 
 def convert_csv(name):
+    """Converts a dataset stored as raw/features.csv (+ raw/targets.csv)."""
     raw = ROOT / name / "raw"
     idx = 0 if name == "gene_rnaseq" else None      # first column = sample id
     X = pd.read_csv(raw / "features.csv", low_memory=False, index_col=idx)
     y = pd.read_csv(raw / "targets.csv", index_col=idx) if (raw / "targets.csv").exists() else None
 
+    # Columns usable by a Gaussian mixture: numeric and not identifiers
     num = [c for c in X.columns
            if pd.api.types.is_numeric_dtype(X[c]) and c not in ID_COLUMNS]
     non_num = [c for c in X.columns if c not in num]
+    # No imputation: filling the gaps would invent data, so an incomplete dataset is skipped
     n_empty = int(X[num].isna().sum().sum())
     if n_empty:
         print(f"[skip] {name}: {n_empty} empty cells in the numeric columns (DISCARD)")
         return
 
     A = X[num].to_numpy(dtype=np.float64)
+    # A constant column has zero variance: it would give a singular covariance (and a
+    # division by zero in the z-score), so it is dropped
     constant = A.std(axis=0) == 0
     cols = [c for c, k in zip(num, constant) if not k]
     dropped = non_num + [c for c, k in zip(num, constant) if k]
@@ -114,7 +137,8 @@ def convert_csv(name):
 
 
 def convert_brainweb():
-    import nibabel as nib
+    """BrainWeb: T1 volume -> one row per voxel (D = 1), with the tissue labels as ground truth."""
+    import nibabel as nib                           # imported here: only this dataset needs it
     raw = ROOT / "brainweb" / "raw"
     t1 = np.asarray(nib.load(raw / "subject44_t1w.nii.gz").dataobj)
     lab = np.asarray(nib.load(raw / "brainweb_s44_crisp.nii.gz").dataobj)
@@ -123,6 +147,8 @@ def convert_brainweb():
         return
     X = t1.reshape(-1, 1).astype(np.float64)       # voxel order = C order of the volume
 
+    # The labels are on a finer grid than the T1: they can be used only if every axis is an
+    # integer multiple, so that each T1 voxel corresponds to exactly one label voxel
     labels, note = None, "labels grid does not match the T1 grid: not exported"
     ratio = [l / t for l, t in zip(lab.shape, t1.shape)]
     if all(r == ratio[0] and r >= 1 and float(r).is_integer() for r in ratio):
@@ -130,6 +156,7 @@ def convert_brainweb():
         # 0.5 mm -> 1 mm: the voxel centres coincide with every s-th label voxel
         labels = lab[::s, ::s, ::s].reshape(-1).astype("<i4")
         note = f"labels subsampled by {s} (nearest voxel) to the T1 grid"
+    # Final safety check: one label per row of the data matrix
     if labels is not None and labels.size != X.shape[0]:
         labels, note = None, "labels size does not match the T1 size: not exported"
     save("brainweb", X, ["t1"], [], labels, {"exported": labels is not None, "note": note},
@@ -141,7 +168,7 @@ def main():
     for name in names:
         try:
             convert_brainweb() if name == "brainweb" else convert_csv(name)
-        except Exception as exc:
+        except Exception as exc:                    # one failing dataset must not stop the others
             print(f"[ERR]  {name}: {exc}")
 
 

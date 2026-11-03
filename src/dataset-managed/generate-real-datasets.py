@@ -5,6 +5,19 @@ Each dataset is saved as raw/features.csv (+ raw/targets.csv when a label
 exists), exactly as served by the source, with NO preprocessing.
 The script is idempotent: a dataset already downloaded is skipped.
 
+WHY REAL DATASETS
+The synthetic datasets (generate-synthetic-dataset.py) are used for the weak scaling, because
+N can grow at will. The real ones are small, but they are needed to show that the EM works on
+data that do not come from a Gaussian mixture. They are medical, like the synthetic profiles,
+and cover different shapes: many rows (diabetes130, cardiovascular), high D (gene_rnaseq,
+20531 variables), tiny sets (wdbc, heart_failure) and an image volume (brainweb, D = 1).
+The raw files are kept untouched: all the choices (which columns, what to discard) are made
+later and are documented by verify-real-datasets.py and convert-real-to-bin.py.
+
+Sources: UCI Machine Learning Repository (through the ucimlrepo package), OpenML (through
+scikit-learn), a direct zip for the UCI dataset that ucimlrepo cannot import, and the BrainWeb
+simulator (through the brainweb-dl command line tool).
+
 Usage:  python3 src/dataset-managed/generate-real-datasets.py [name ...]     (no names = all)
 """
 import sys
@@ -38,7 +51,7 @@ UCI_ZIP_URLS = {
 
 def fetch_uci(ident):
     """Return (features, targets, metadata) from the UCI repository."""
-    from ucimlrepo import fetch_ucirepo
+    from ucimlrepo import fetch_ucirepo             # imported here: needed only for UCI datasets
     d = fetch_ucirepo(id=ident)
     return d.data.features, d.data.targets, d.metadata
 
@@ -46,7 +59,10 @@ def fetch_uci(ident):
 def fetch_openml_ds(ident):
     """Return (features, targets, metadata) from OpenML."""
     from sklearn.datasets import fetch_openml
+    # as_frame=True: pandas DataFrames, so they can be saved as CSV as they are.
+    # The "liac-arff" parser is pure Python (the default one needs extra dependencies).
     d = fetch_openml(data_id=ident, as_frame=True, parser="liac-arff")
+    # d.target is a Series: converted to a DataFrame to have the same shape as the UCI targets
     target = d.target.to_frame() if d.target is not None else None
     return d.data, target, {"name": d.details.get("name"), "url": d.details.get("url")}
 
@@ -72,12 +88,15 @@ def download_uci_zip(ident, url, raw):
 
 
 def name_of(raw):
+    """Dataset name from its raw folder (data/real/<name>/raw)."""
     return raw.parent.name
 
 
 def download(name):
+    """Downloads one CSV dataset into data/real/<name>/raw/, unless already there."""
     source, ident = DATASETS[name]
     raw = ROOT / name / "raw"
+    # features.csv is written last, so its presence means the download was completed
     if (raw / "features.csv").exists():
         print(f"[skip] {name}: already downloaded")
         return
@@ -86,8 +105,9 @@ def download(name):
         download_uci_zip(ident, UCI_ZIP_URLS[name], raw)
         return
     X, y, meta = fetch_uci(ident) if source == "uci" else fetch_openml_ds(ident)
+    # index=False: the row number is not data. Nothing else is touched (no preprocessing).
     X.to_csv(raw / "features.csv", index=False)
-    if y is not None:
+    if y is not None:      # some datasets have no label
         y.to_csv(raw / "targets.csv", index=False)
     print(f"[ok]   {name}: features {X.shape}, targets "
           f"{None if y is None else y.shape} ({source} {ident})")
@@ -103,6 +123,8 @@ def download_brainweb():
     raw = ROOT / "brainweb" / "raw"
     raw.mkdir(parents=True, exist_ok=True)
     cli = Path(sys.executable).parent / "brainweb-dl"   # installed in the same venv
+    # "T1" is the MRI intensity (the data, one value per voxel); "crisp" is the discrete tissue
+    # segmentation (background, CSF, grey matter, white matter...) used as ground truth
     for contrast, fname in (("T1", "subject44_t1w.nii.gz"),
                             ("crisp", "brainweb_s44_crisp.nii.gz")):
         if (raw / fname).exists():
@@ -115,6 +137,8 @@ def download_brainweb():
 
 
 def main():
+    # No names on the command line = all the datasets, brainweb included (it is not in DATASETS
+    # because it is not a CSV and has its own download function)
     names = sys.argv[1:] or list(DATASETS) + ["brainweb"]
     for name in names:
         try:

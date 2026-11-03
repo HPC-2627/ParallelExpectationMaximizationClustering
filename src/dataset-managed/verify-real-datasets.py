@@ -7,6 +7,17 @@ doc/real-datasets-info.md. Verdict per dataset:
   DISCARD  - empty cells (or masked ones) present in those columns
 
 Empty = NaN, "", whitespace, "?", "NA", "N/A", "null" (case-insensitive).
+
+WHY THIS CHECK
+The EM (as implemented here) needs a complete numeric matrix: a missing value cannot enter the
+Gaussian density, and imputing it would invent data and bias the clusters. So before using a
+dataset it is checked whether it has empty cells in the columns that would be clustered; the
+ones that do are DISCARDED, not repaired. The same rule is applied by convert-real-to-bin.py.
+Missing values are often hidden: they come as "?" or as a 0 in a variable where 0 is
+impossible. The script looks for the text tokens and reports the suspicious zeros, but a zero
+is only reported (never counted as empty): deciding if it is a real value needs domain knowledge.
+The report also gives size, constant columns (zero variance, useless for a Gaussian), duplicate
+rows and the distribution of the labels, to choose and describe the datasets in the report.
 """
 import sys
 from pathlib import Path
@@ -18,12 +29,14 @@ import pandas as pd
 REPO = Path(__file__).resolve().parents[2]
 ROOT = REPO / "data" / "real"
 REPORT = REPO / "doc" / "real-datasets-info.md"
+# Strings that mean "missing" in the sources (compared after strip() and lower())
 EMPTY_TOKENS = {"", "?", "na", "n/a", "nan", "null", "none"}
 
 # Columns that are identifiers, not data: never used for clustering.
 ID_COLUMNS = {"encounter_id", "patient_nbr", "id", "ID", "subject#", "SegFile",
               "FileName", "Date"}
 
+# Datasets verified when no name is given on the command line
 DATASETS = ["diabetes130", "cdc_diabetes", "cardiovascular", "parkinson",
             "eeg_eye_state", "gene_rnaseq", "wdbc", "heart_failure",
             "cardiotocography", "statlog_heart", "cleveland", "brainweb"]
@@ -32,6 +45,7 @@ DATASETS = ["diabetes130", "cdc_diabetes", "cardiovascular", "parkinson",
 def empty_mask(df):
     """Boolean frame: True where the cell is empty (NaN or an empty token)."""
     mask = df.isna()
+    # Text columns only: a numeric column cannot contain "?" (it would not be numeric)
     for col in df.columns:
         if df[col].dtype == object or str(df[col].dtype).startswith("str"):
             mask[col] |= df[col].astype(str).str.strip().str.lower().isin(EMPTY_TOKENS)
@@ -39,7 +53,9 @@ def empty_mask(df):
 
 
 def verify(name):
+    """Analyses data/real/<name>/raw and returns the statistics (dict) used by render()."""
     raw = ROOT / name / "raw"
+    # gene_rnaseq has the sample id in the first column: used as index, so it is not data
     X = pd.read_csv(raw / "features.csv", low_memory=False,
                     index_col=0 if name == "gene_rnaseq" else None)
     y = pd.read_csv(raw / "targets.csv", index_col=0 if name == "gene_rnaseq" else None) \
@@ -66,6 +82,7 @@ def verify(name):
     n_dup = int(X.duplicated().sum())
     binary_cols = [c for c in num if X[c].dropna().nunique() == 2]
 
+    # Only the empties in the numeric columns matter: the others are not used for clustering
     verdict = "COMPLETE" if num_empty == 0 else "DISCARD"
     return dict(name=name, n=n, d=d, n_num=len(num), n_binary=len(binary_cols),
                 empty_total=int(empties.sum().sum()), empty_by_col=empty_by_col,
@@ -77,6 +94,7 @@ def verify(name):
 
 
 def render(r):
+    """Markdown section of the report for one dataset (r = result of verify())."""
     lines = [f"## {r['name']} — {r['verdict']}", "",
              f"- Size: **{r['n']} x {r['d']}** ({r['n_num']} numeric columns, "
              f"{r['n_binary']} of them binary)",
@@ -100,7 +118,7 @@ def render(r):
 
 def verify_brainweb():
     """BrainWeb subject 44 (T1 only): voxel count, NaN, range, ground-truth labels."""
-    import nibabel as nib
+    import nibabel as nib                           # imported here: only this dataset needs it
     raw = ROOT / "brainweb" / "raw"
     t1 = np.asarray(nib.load(raw / "subject44_t1w.nii.gz").dataobj)
     lab = np.asarray(nib.load(raw / "brainweb_s44_crisp.nii.gz").dataobj)
@@ -117,6 +135,7 @@ def verify_brainweb():
           "to the T1 grid before computing ARI/Dice.",
           "- Only T1 is used (D = 1). T2/T2* were dropped: the BrainWeb server "
           "download did not complete.", ""]
+    # Same keys used by the summary table in main() (the other fields do not apply to a volume)
     row = dict(name="brainweb", n=n_vox, d=1, n_num=1, num_empty=nan_t1,
                verdict=verdict)
     return row, "\n".join(md)
@@ -148,11 +167,12 @@ def main():
             print(f"[ERR] {name}: {exc}")
             continue
         out += [render(r)]
-        rows.append(r)
+        rows.append(r)                              # kept for the summary table
         print(f"[{r['verdict']}] {name}: {r['n']}x{r['d']}, numeric={r['n_num']}, "
               f"empty(numeric)={r['num_empty']}, dup={r['n_dup']}")
     out += extra
     rows.sort(key=lambda r: r["name"] == "brainweb")   # brainweb last in the table
+    # Summary table inserted after the title and the "Generated by" line (position 4)
     out.insert(4, "| Dataset | N x D | Numeric | Empty (numeric) | Verdict |\n|---|---|---|---|---|\n"
                + "\n".join(f"| {r['name']} | {r['n']} x {r['d']} | {r['n_num']} | "
                            f"{r['num_empty']} | {r['verdict']} |" for r in rows) + "\n")
