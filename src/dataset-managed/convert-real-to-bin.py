@@ -1,0 +1,149 @@
+#!/usr/bin/env python3
+"""Convert the real datasets (data/real/<name>/raw/) to the binary format of the synthetic ones.
+
+Output, in data/real/<name>/:
+  <name>.bin         8-byte header (int32 N, int32 D, little-endian) + N*D float64, row-major
+  <name>_labels.bin  N int32 (only when a usable label exists)
+  <name>.json        columns used, dropped columns, mean/std used for the standardization
+
+Preprocessing (the same used to decide COMPLETE/DISCARD in verify-real-datasets.py):
+  - only numeric columns are kept, identifiers (ID_COLUMNS) are removed;
+  - a dataset with empty cells in those columns is skipped (DISCARD), nothing is imputed;
+  - constant columns are dropped (zero variance makes the covariance singular);
+  - every column is standardized (z-score), as for the synthetic datasets.
+Labels: the first column of targets.csv, encoded as 0..C-1 (sorted values). A numeric target
+with more than MAX_CLASSES distinct values is continuous and is not exported.
+brainweb: the T1 volume is flattened to N = voxels, D = 1; the labels (0.5 mm grid) are
+subsampled to the 1 mm grid of the T1 (nearest voxel), which needs nibabel.
+
+Usage:  python3 src/dataset-managed/convert-real-to-bin.py [name ...]     (no names = all)
+"""
+import json
+import sys
+from pathlib import Path
+
+import numpy as np
+import pandas as pd
+
+# The script is in <repo>/src/dataset-managed: reads and writes <repo>/data/real
+ROOT = Path(__file__).resolve().parents[2] / "data" / "real"
+
+# Columns that are identifiers, not data (same list as verify-real-datasets.py).
+ID_COLUMNS = {"encounter_id", "patient_nbr", "id", "ID", "subject#", "SegFile",
+              "FileName", "Date"}
+MAX_CLASSES = 20
+
+DATASETS = ["diabetes130", "cdc_diabetes", "cardiovascular", "parkinson",
+            "eeg_eye_state", "gene_rnaseq", "wdbc", "heart_failure",
+            "cardiotocography", "statlog_heart", "cleveland", "brainweb"]
+
+
+def write_bin(path, X):
+    """Header (int32 N, int32 D) + float64 row-major, little-endian."""
+    X = np.ascontiguousarray(X, dtype="<f8")
+    with open(path, "wb") as f:
+        np.array(X.shape, dtype="<i4").tofile(f)
+        X.tofile(f)
+
+
+def standardize(X):
+    """Z-score per column; returns (Z, mean, std)."""
+    mean = X.mean(axis=0)
+    std = X.std(axis=0)
+    return (X - mean) / std, mean, std
+
+
+def encode_labels(y):
+    """First target column -> int32 0..C-1, or None when it is continuous."""
+    col = y.iloc[:, 0]
+    if pd.api.types.is_numeric_dtype(col) and col.nunique() > MAX_CLASSES:
+        return None, col.name
+    codes, uniques = pd.factorize(col, sort=True)
+    if (codes < 0).any():
+        return None, col.name
+    return codes.astype("<i4"), {str(u): int(i) for i, u in enumerate(uniques)}
+
+
+def save(name, X, cols, dropped, labels, label_info, extra=None):
+    out = ROOT / name
+    Z, mean, std = standardize(X)
+    write_bin(out / f"{name}.bin", Z)
+    if labels is not None:
+        labels.astype("<i4").tofile(out / f"{name}_labels.bin")
+    info = {"name": name, "N": int(Z.shape[0]), "D": int(Z.shape[1]),
+            "columns": cols, "dropped_columns": dropped,
+            "mean": mean.tolist(), "std": std.tolist(),
+            "labels": label_info, "format": "int32 N, int32 D, float64[N*D] row-major, little-endian"}
+    if extra:
+        info.update(extra)
+    (out / f"{name}.json").write_text(json.dumps(info, indent=1))
+    lab = "no labels" if labels is None else f"{len(set(labels.tolist()))} classes"
+    print(f"[ok]   {name}: {Z.shape[0]} x {Z.shape[1]}, {lab}, "
+          f"{dropped and len(dropped) or 0} columns dropped")
+
+
+def convert_csv(name):
+    raw = ROOT / name / "raw"
+    idx = 0 if name == "gene_rnaseq" else None      # first column = sample id
+    X = pd.read_csv(raw / "features.csv", low_memory=False, index_col=idx)
+    y = pd.read_csv(raw / "targets.csv", index_col=idx) if (raw / "targets.csv").exists() else None
+
+    num = [c for c in X.columns
+           if pd.api.types.is_numeric_dtype(X[c]) and c not in ID_COLUMNS]
+    non_num = [c for c in X.columns if c not in num]
+    n_empty = int(X[num].isna().sum().sum())
+    if n_empty:
+        print(f"[skip] {name}: {n_empty} empty cells in the numeric columns (DISCARD)")
+        return
+
+    A = X[num].to_numpy(dtype=np.float64)
+    constant = A.std(axis=0) == 0
+    cols = [c for c, k in zip(num, constant) if not k]
+    dropped = non_num + [c for c, k in zip(num, constant) if k]
+    A = A[:, ~constant]
+
+    labels, label_info = (None, None)
+    if y is not None:
+        labels, label_info = encode_labels(y)
+        if labels is None:
+            print(f"[note] {name}: target '{y.columns[0]}' is continuous, labels not exported")
+            label_info = {"column": y.columns[0], "exported": False}
+        else:
+            label_info = {"column": y.columns[0], "exported": True, "classes": label_info}
+    save(name, A, [str(c) for c in cols], [str(c) for c in dropped], labels, label_info)
+
+
+def convert_brainweb():
+    import nibabel as nib
+    raw = ROOT / "brainweb" / "raw"
+    t1 = np.asarray(nib.load(raw / "subject44_t1w.nii.gz").dataobj)
+    lab = np.asarray(nib.load(raw / "brainweb_s44_crisp.nii.gz").dataobj)
+    if np.isnan(t1.astype(float)).any():
+        print("[skip] brainweb: NaN in the T1 volume (DISCARD)")
+        return
+    X = t1.reshape(-1, 1).astype(np.float64)       # voxel order = C order of the volume
+
+    labels, note = None, "labels grid does not match the T1 grid: not exported"
+    ratio = [l / t for l, t in zip(lab.shape, t1.shape)]
+    if all(r == ratio[0] and r >= 1 and float(r).is_integer() for r in ratio):
+        s = int(ratio[0])
+        # 0.5 mm -> 1 mm: the voxel centres coincide with every s-th label voxel
+        labels = lab[::s, ::s, ::s].reshape(-1).astype("<i4")
+        note = f"labels subsampled by {s} (nearest voxel) to the T1 grid"
+    if labels is not None and labels.size != X.shape[0]:
+        labels, note = None, "labels size does not match the T1 size: not exported"
+    save("brainweb", X, ["t1"], [], labels, {"exported": labels is not None, "note": note},
+         extra={"volume_shape": list(t1.shape)})
+
+
+def main():
+    names = sys.argv[1:] or DATASETS
+    for name in names:
+        try:
+            convert_brainweb() if name == "brainweb" else convert_csv(name)
+        except Exception as exc:
+            print(f"[ERR]  {name}: {exc}")
+
+
+if __name__ == "__main__":
+    main()

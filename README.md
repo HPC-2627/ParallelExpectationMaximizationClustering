@@ -20,13 +20,14 @@ High Performance Computing (HPC) project (University of Trento): parallel Expect
 │   ├── dataset-managed/                       # Scripts that create and check the datasets
 │   │   ├── generate-synthetic-dataset.py      # Generator of the synthetic datasets (3 profiles, one file per number of processes) -> data/synthetic/
 │   │   ├── generate-real-datasets.py          # Downloads the real datasets -> data/real/<name>/raw/
-│   │   └── verify-real-datasets.py            # Checks size and missing values, writes doc/real-datasets-info.md
+│   │   ├── verify-real-datasets.py            # Checks size and missing values, writes doc/real-datasets-info.md
+│   │   └── convert-real-to-bin.py             # Converts the real datasets to the binary format of the synthetic ones -> data/real/<name>/<name>.bin
 │   └── common/
 │       └── my-time-lib.c                      # Shared code: statistics for the benchmarks (mean, median, standard deviation)
 ├── include/
 │   └── my-time-lib.h                          # Timer macros and statistics prototypes (compile with -Iinclude and -lm)
 ├── data/            # NOT versioned (listed in .gitignore): it is filled locally by the scripts in src/dataset-managed/
-│   ├── real/        # Real (medical) datasets: <name>/raw/features.csv (+ targets.csv)
+│   ├── real/        # Real (medical) datasets: <name>/raw/features.csv (+ targets.csv), converted to <name>/<name>.bin (+ labels, .json)
 │   └── synthetic/   # Synthetic datasets, one folder per profile
 │       ├── synth_clean/     # K=4, D=10: files synth_clean_p01.bin ... p16.bin, labels, .json
 │       ├── synth_overlap/   # K=5, D=20: overlapping clusters, correlated variables
@@ -152,6 +153,22 @@ python3 src/dataset-managed/verify-real-datasets.py
 ```
 
 It reports, for each dataset, the size, the number of numeric columns, the empty cells (NaN, empty strings, `?`, `NA`), the duplicate rows and the label distribution. The report is written to [doc/real-datasets-info.md](doc/real-datasets-info.md). A dataset is `COMPLETE` if its numeric columns have no empty cell, otherwise `DISCARD`.
+
+### Conversion to binary
+
+The raw CSV files are kept as served by the source. To use the real datasets with the same C loader of the synthetic ones, convert them:
+
+```bash
+python3 src/dataset-managed/convert-real-to-bin.py            # all the datasets
+python3 src/dataset-managed/convert-real-to-bin.py wdbc       # only some
+```
+
+For each dataset it writes in `data/real/<name>/`:
+- `<name>.bin`: same format as the synthetic data (8-byte header with two `int` N and D, then $N \cdot D$ `double` row-major, little-endian);
+- `<name>_labels.bin`: one `int` per row (classes encoded as 0..C-1), only if the label is categorical (`parkinson` has continuous targets, so no labels);
+- `<name>.json`: columns used and dropped, mean and standard deviation of the standardization, class mapping.
+
+Preprocessing: only the numeric columns are kept (identifiers removed), constant columns are dropped, every column is standardized (z-score). The datasets marked `DISCARD` (`cleveland`) are skipped: nothing is imputed. For `brainweb` (needs `nibabel`) the T1 volume becomes a matrix with $N$ = number of voxels and $D = 1$, and the labels are subsampled from the 0.5 mm grid to the 1 mm grid of the T1.
 
 ## Build
 
