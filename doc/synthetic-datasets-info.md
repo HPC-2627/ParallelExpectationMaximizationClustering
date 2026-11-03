@@ -25,7 +25,7 @@ Notes:
 
 - In `synth_overlap` the variables are correlated inside each cluster (for example age with pressure, BMI with glucose), so the **diagonal covariance model is slightly wrong** for these data. This is intentional and has to be stated as a limit.
 - In `synth_rare` the imbalance of the cluster sizes does **not** unbalance the work between the MPI ranks (the cost of a point is the same for all points): this profile tests numerical stability (empty or collapsing clusters, underflow, regularization), not load balancing.
-- The EM cost per iteration is roughly $N \cdot K \cdot D$, so the three profiles differ in the amount of work per rank (table in section 4).
+- The EM cost per iteration is roughly $N \cdot K \cdot D$, so the three profiles differ in the amount of work per rank (tables in sections 4 and 5).
 
 ## 3. Variables
 
@@ -83,8 +83,34 @@ Work per rank (constant in the weak scaling, since each rank always has $N_0$ ro
 
 The cost per iteration of `synth_rare` is therefore about 7.5 times that of `synth_clean` per rank, which gives different regimes (memory-bound for small $D$, closer to compute-bound for large $D$). This is an operation count and not a measured time.
 
+Ideal behaviour: the time stays constant when $p$ grows; efficiency $E = T_1/T_p$.
 
-## 5. How the data are generated
+## 5. Strong scaling: fixed file and work per rank
+
+The problem size is fixed: the largest file of each profile (`_p16`, $N = 4\,000\,000$ rows) is run with $p \in \{1,2,4,8,16\}$ processes. Rank $r$ reads $N/p$ rows, from $r \cdot N/p$ to $(r+1) \cdot N/p - 1$, so the work per rank decreases when $p$ grows. No extra file is needed.
+
+| $p$ | Rows per rank $N/p$ | `synth_clean` data per rank | `synth_overlap` data per rank | `synth_rare` data per rank |
+|---|---|---|---|---|
+| 1 | 4 000 000 | 320 MB | 640 MB | 1 600 MB |
+| 2 | 2 000 000 | 160 MB | 320 MB | 800 MB |
+| 4 | 1 000 000 | 80 MB | 160 MB | 400 MB |
+| 8 | 500 000 | 40 MB | 80 MB | 200 MB |
+| 16 | 250 000 | 20 MB | 40 MB | 100 MB |
+
+Work per rank, $N \cdot K \cdot D / p$ (proportional to the cost of an iteration):
+
+| $p$ | `synth_clean` | `synth_overlap` | `synth_rare` |
+|---|---|---|---|
+| 1 | $1.6 \cdot 10^8$ | $4.0 \cdot 10^8$ | $1.2 \cdot 10^9$ |
+| 2 | $8.0 \cdot 10^7$ | $2.0 \cdot 10^8$ | $6.0 \cdot 10^8$ |
+| 4 | $4.0 \cdot 10^7$ | $1.0 \cdot 10^8$ | $3.0 \cdot 10^8$ |
+| 8 | $2.0 \cdot 10^7$ | $5.0 \cdot 10^7$ | $1.5 \cdot 10^8$ |
+| 16 | $1.0 \cdot 10^7$ | $2.5 \cdot 10^7$ | $7.5 \cdot 10^7$ |
+
+Ideal behaviour: the time halves when $p$ doubles; speedup $S = T_1/T_p$, efficiency $E = S/p$. With $p = 16$ the work per rank equals that of the weak scaling ($N_0 \cdot K \cdot D$), so the two experiments meet at the same point. These are operation counts and not measured times.
+
+
+## 6. How the data are generated
 
 1. **True model.** For every profile the true parameters are drawn once from a random generator with a fixed seed: the means $\mu_k$ and the covariances $\Sigma_k$ of the $K$ clusters.
    - Means: every coordinate is Gaussian with standard deviation $\delta / \sqrt{2D}$, so the distance between two cluster means is about $\delta$ (in standard deviations inside the cluster) whatever $D$ is. This gives $\delta$ the same meaning for all the profiles.
@@ -96,7 +122,7 @@ The cost per iteration of `synth_rare` is therefore about 7.5 times that of `syn
 
 Every block of rows uses its own random generator derived from (seed, profile, block number), so the same seed and parameters always give identical files (seed 42 by default).
 
-## 6. How to read data in C/C++
+## 7. How to read data in C/C++
 
 ```c
 FILE *f = fopen("data/synthetic/synth_clean/synth_clean_p04.bin", "rb");
@@ -123,8 +149,3 @@ Why this format:
 - `synth_overlap` is generated with correlated variables, while the baseline uses a diagonal covariance: the model does not match the data on purpose.
 - Nested files: the weak scaling datasets of different $p$ share the same first rows. This makes the comparison cleaner, but the measurements for different $p$ are not independent samples.
 - The work per rank is an operation count ($N_0 \cdot K \cdot D$), not a measured time.
-
-## 9. WEAK vs STRONG SCALABILITY
-
-- **Strong scaling:** fixed problem (same file, e.g. `_p16`) run with more processes, so the work per process decreases; ideally the time halves when the processes double (speedup $S = T_1/T_p$, efficiency $E = S/p$).
-- **Weak scaling:** fixed work per process ($N_0$ rows each) with a problem that grows with the processes (file `_p<p>`); ideally the time stays constant (efficiency $E = T_1/T_p$).
