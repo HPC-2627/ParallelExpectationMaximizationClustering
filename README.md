@@ -106,12 +106,10 @@ The real datasets are public and are not versioned: `data/real/*/raw/` is listed
 | `parkinson` | Parkinsons Telemonitoring | 5,875 x 19 | UCI 189 |
 | `eeg_eye_state` | EEG Eye State | 14,980 x 14 | UCI 264 |
 | `gene_rnaseq` | Gene expression cancer RNA-Seq (TCGA) | 801 x 20,531 | UCI 401 |
-| `wdbc` | Breast Cancer Wisconsin (Diagnostic) | 569 x 30 | UCI 17 |
 | `heart_failure` | Heart Failure Clinical Records | 299 x 12 | UCI 519 |
 | `cardiotocography` | Cardiotocography | 2,126 x 21 | UCI 193 |
 | `statlog_heart` | Statlog (Heart) | 270 x 13 | UCI 145 |
 | `brainweb` | BrainWeb simulated brain MRI, subject 44 (T1 + ground-truth labels) | 11,862,016 voxels x 1 | BrainWeb |
-| `cleveland` | Heart Disease (Cleveland) | 303 x 13 | UCI 45 |
 
 `cleveland` is downloaded only to document why it is discarded: it has 6 incomplete rows. The other datasets have no missing values in the numeric columns (see [doc/real-datasets-info.md](doc/real-datasets-info.md)).
 
@@ -136,7 +134,7 @@ python3 src/dataset-managed/generate-real-datasets.py
 Download only some datasets, by folder name:
 
 ```bash
-python3 src/dataset-managed/generate-real-datasets.py wdbc heart_failure brainweb
+python3 src/dataset-managed/generate-real-datasets.py heart_failure brainweb
 ```
 
 Each dataset is saved in `data/real/<name>/raw/` as `features.csv` and, when a label exists, `targets.csv`, exactly as served by the source and without preprocessing. `brainweb` is saved as two `.nii.gz` volumes: the T1 image (the data) and the `crisp` labels (the ground truth). The script is idempotent: a dataset already downloaded is skipped.
