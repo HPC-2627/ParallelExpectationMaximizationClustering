@@ -23,6 +23,9 @@ High Performance Computing (HPC) project (University of Trento): parallel Expect
 │   │   ├── verify-real-datasets.py            # Checks size and missing values, writes doc/real-datasets-info.md
 │   │   ├── convert-real-to-bin.py             # Converts the real CSV datasets to the binary format of the synthetic ones -> data/real/<name>/<name>.bin
 │   │   └── convert-brainweb-to-bin.py         # BrainWeb: .nii.gz -> .nii -> .bin (+ labels aligned to the T1 grid) -> data/real/brainweb/
+│   ├── plots-generate/                        # Scripts that generate the plots -> results/plots/
+│   │   ├── plots-performance.py               # Performance plots (time, speedup, efficiency, scaling, ...)
+│   │   └── plots-cluster.py                   # Clustering plots (PCA, centroids, cluster sizes, ...)
 │   └── common/                                # Shared code (no MPI): compiled with every version
 │       ├── dataset.c                          #   reading of the .bin datasets (whole file or a block of rows) and of the labels
 │       ├── gmm.c                              #   parameters of the mixture, identical initialization, log-sum-exp, convergence test
@@ -43,9 +46,7 @@ High Performance Computing (HPC) project (University of Trento): parallel Expect
 ├── results/
 │   ├── logs/        # Raw execution logs
 │   ├── tables/      # Benchmark tables
-│   ├── plots/       # Generated plots
-│   ├── plots-performance.py  # Performance plots (time, speedup, efficiency, scaling, ...)
-│   └── plots-cluster.py      # Clustering plots (PCA, centroids, cluster sizes, ...)
+│   └── plots/       # Generated plots
 ├── doc/
 │   ├── latex/
 │   │   └── Group6-Report.tex         # IEEE-style report

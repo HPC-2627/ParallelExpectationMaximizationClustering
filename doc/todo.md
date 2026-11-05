@@ -38,8 +38,8 @@ Run all the versions (`src/PEMC-baseline-sequential-diagonal.c`, `src/PEMC-basel
 - [ ] Repeat each run several times (discard warm-up), keep the raw logs in `results/logs/` and the summary tables in `results/tables/`
 
 ## 4. Plots and report
-- [ ] Performance plots in `results/plots-performance.py` (time, speedup, efficiency, scaling, communication breakdown, ...), output in `results/plots/`
-- [ ] Clustering plots in `results/plots-cluster.py` (PCA, centroid heatmap, cluster sizes, log-likelihood, ...), output in `results/plots/`
+- [ ] Performance plots in `src/plots-generate/plots-performance.py` (time, speedup, efficiency, scaling, communication breakdown, ...), output in `results/plots/`
+- [ ] Clustering plots in `src/plots-generate/plots-cluster.py` (PCA, centroid heatmap, cluster sizes, log-likelihood, ...), output in `results/plots/`
 - [ ] Parallel design, implementation and results sections of the report (`doc/latex/Group6-Report.tex`)
 - [ ] Discussion and conclusions
 - [ ] AI statement (mandatory)

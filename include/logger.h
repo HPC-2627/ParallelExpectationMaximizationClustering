@@ -8,7 +8,7 @@
  * (previous runs are not deleted).
  *
  * The keys are the same for all the versions, so a single script
- * (results/plots-performance.py) can read all the logs to make the performance plots
+ * (src/plots-generate/plots-performance.py) can read all the logs to make the performance plots
  * (speedup, efficiency, ...).
  *
  * Example of a block (the comments on the right are NOT in the file):
