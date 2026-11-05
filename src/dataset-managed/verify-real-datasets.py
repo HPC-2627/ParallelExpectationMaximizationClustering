@@ -38,8 +38,8 @@ ID_COLUMNS = {"encounter_id", "patient_nbr", "id", "ID", "subject#", "SegFile",
 
 # Datasets verified when no name is given on the command line
 DATASETS = ["diabetes130", "cdc_diabetes", "cardiovascular", "parkinson",
-            "eeg_eye_state", "gene_rnaseq", "wdbc", "heart_failure",
-            "cardiotocography", "statlog_heart", "cleveland", "brainweb"]
+            "eeg_eye_state", "gene_rnaseq", "heart_failure",
+            "cardiotocography", "statlog_heart", "brainweb"]
 
 
 def empty_mask(df):
