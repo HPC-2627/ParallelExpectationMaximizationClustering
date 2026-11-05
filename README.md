@@ -21,7 +21,8 @@ High Performance Computing (HPC) project (University of Trento): parallel Expect
 │   │   ├── generate-synthetic-dataset.py      # Generator of the synthetic datasets (3 profiles, one file per number of processes) -> data/synthetic/
 │   │   ├── generate-real-datasets.py          # Downloads the real datasets -> data/real/<name>/raw/
 │   │   ├── verify-real-datasets.py            # Checks size and missing values, writes doc/real-datasets-info.md
-│   │   └── convert-real-to-bin.py             # Converts the real datasets to the binary format of the synthetic ones -> data/real/<name>/<name>.bin
+│   │   ├── convert-real-to-bin.py             # Converts the real CSV datasets to the binary format of the synthetic ones -> data/real/<name>/<name>.bin
+│   │   └── convert-brainweb-to-bin.py         # BrainWeb: .nii.gz -> .nii -> .bin (+ labels aligned to the T1 grid) -> data/real/brainweb/
 │   └── common/
 │       └── my-time-lib.c                      # Shared code: statistics for the benchmarks (mean, median, standard deviation)
 ├── include/
@@ -142,7 +143,7 @@ python3 src/dataset-managed/generate-real-datasets.py wdbc heart_failure brainwe
 Each dataset is saved in `data/real/<name>/raw/` as `features.csv` and, when a label exists, `targets.csv`, exactly as served by the source and without preprocessing. `brainweb` is saved as two `.nii.gz` volumes: the T1 image (the data) and the `crisp` labels (the ground truth). The script is idempotent: a dataset already downloaded is skipped.
 
 Notes:
-- The T1 and `crisp` volumes of BrainWeb are on different grids (1 mm and 0.5 mm): resample the labels to the T1 grid before comparing the clustering with them.
+- The T1 and `crisp` volumes of BrainWeb are on different grids (1 mm and 0.5 mm): `convert-brainweb-to-bin.py` resamples the labels to the T1 grid (see Conversion to binary).
 - The T2 and T2* images of BrainWeb are not used: the download from the BrainWeb server did not complete, so BrainWeb has one feature (D = 1).
 - `epileptic seizure recognition` was planned but is no longer on UCI (removed at the curators' request): it was replaced by `gene_rnaseq`.
 
@@ -168,7 +169,24 @@ For each dataset it writes in `data/real/<name>/`:
 - `<name>_labels.bin`: one `int` per row (classes encoded as 0..C-1), only if the label is categorical (`parkinson` has continuous targets, so no labels);
 - `<name>.json`: columns used and dropped, mean and standard deviation of the standardization, class mapping.
 
-Preprocessing: only the numeric columns are kept (identifiers removed), constant columns are dropped, every column is standardized (z-score). The datasets marked `DISCARD` (`cleveland`) are skipped: nothing is imputed. For `brainweb` (needs `nibabel`) the T1 volume becomes a matrix with $N$ = number of voxels and $D = 1$, and the labels are subsampled from the 0.5 mm grid to the 1 mm grid of the T1.
+Preprocessing: only the numeric columns are kept (identifiers removed), constant columns are dropped, every column is standardized (z-score). The datasets marked `DISCARD` (`cleveland`) are skipped: nothing is imputed. `brainweb` is not CSV and has its own script (below).
+
+#### BrainWeb (NIfTI volumes)
+
+`brainweb` is converted by a dedicated script, because its raw files are `.nii.gz` volumes, not CSV. It needs `nibabel` (already installed with `brainweb-dl`, otherwise `pip install numpy nibabel`) and the download of the previous step (`generate-real-datasets.py brainweb`):
+
+```bash
+python3 src/dataset-managed/convert-brainweb-to-bin.py            # --force to redo every step
+```
+
+Three steps, each visible on disk in `data/real/brainweb/`:
+
+```
+raw/*.nii.gz  --gunzip-->  nifti/*.nii  --nibabel + numpy-->  brainweb.bin, brainweb_labels.bin, brainweb.json
+```
+
+- **Data:** the T1 volume (181 x 256 x 256) becomes a matrix with $N$ = 11,862,016 voxels (C order) and $D = 1$, standardized (z-score). Same `.bin` format as every other dataset (about 95 MB).
+- **Labels:** the `crisp` labels (0.5 mm, tissue classes 0-11) are subsampled by 2 and placed on the T1 grid at the offset found by cross-correlating the two brain masks; voxels outside get label 0. The NIfTI affines of these files are inconsistent, so they are not used. The script prints $\eta^2$, the share of T1 variance explained by the labels, as a check (0.95 with the estimated offset, 0.18 with the affines). The labels are in `brainweb_labels.bin` (one `int` per voxel), used only to measure ARI/Dice.
 
 ## Build
 

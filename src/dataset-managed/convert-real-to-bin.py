@@ -13,8 +13,7 @@ Preprocessing (the same used to decide COMPLETE/DISCARD in verify-real-datasets.
   - every column is standardized (z-score), as for the synthetic datasets.
 Labels: the first column of targets.csv, encoded as 0..C-1 (sorted values). A numeric target
 with more than MAX_CLASSES distinct values is continuous and is not exported.
-brainweb: the T1 volume is flattened to N = voxels, D = 1; the labels (0.5 mm grid) are
-subsampled to the 1 mm grid of the T1 (nearest voxel), which needs nibabel.
+brainweb: NIfTI volumes, not CSV: converted by convert-brainweb-to-bin.py.
 
 WHY THIS FORMAT
 The same binary layout as the synthetic datasets, so the C/MPI program reads real and synthetic
@@ -46,7 +45,7 @@ MAX_CLASSES = 20
 # Datasets converted when no name is given on the command line (same list as the verify script).
 DATASETS = ["diabetes130", "cdc_diabetes", "cardiovascular", "parkinson",
             "eeg_eye_state", "gene_rnaseq", "wdbc", "heart_failure",
-            "cardiotocography", "statlog_heart", "cleveland", "brainweb"]
+            "cardiotocography", "statlog_heart", "cleveland"]
 
 
 def write_bin(path, X):
@@ -136,38 +135,14 @@ def convert_csv(name):
     save(name, A, [str(c) for c in cols], [str(c) for c in dropped], labels, label_info)
 
 
-def convert_brainweb():
-    """BrainWeb: T1 volume -> one row per voxel (D = 1), with the tissue labels as ground truth."""
-    import nibabel as nib                           # imported here: only this dataset needs it
-    raw = ROOT / "brainweb" / "raw"
-    t1 = np.asarray(nib.load(raw / "subject44_t1w.nii.gz").dataobj)
-    lab = np.asarray(nib.load(raw / "brainweb_s44_crisp.nii.gz").dataobj)
-    if np.isnan(t1.astype(float)).any():
-        print("[skip] brainweb: NaN in the T1 volume (DISCARD)")
-        return
-    X = t1.reshape(-1, 1).astype(np.float64)       # voxel order = C order of the volume
-
-    # The labels are on a finer grid than the T1: they can be used only if every axis is an
-    # integer multiple, so that each T1 voxel corresponds to exactly one label voxel
-    labels, note = None, "labels grid does not match the T1 grid: not exported"
-    ratio = [l / t for l, t in zip(lab.shape, t1.shape)]
-    if all(r == ratio[0] and r >= 1 and float(r).is_integer() for r in ratio):
-        s = int(ratio[0])
-        # 0.5 mm -> 1 mm: the voxel centres coincide with every s-th label voxel
-        labels = lab[::s, ::s, ::s].reshape(-1).astype("<i4")
-        note = f"labels subsampled by {s} (nearest voxel) to the T1 grid"
-    # Final safety check: one label per row of the data matrix
-    if labels is not None and labels.size != X.shape[0]:
-        labels, note = None, "labels size does not match the T1 size: not exported"
-    save("brainweb", X, ["t1"], [], labels, {"exported": labels is not None, "note": note},
-         extra={"volume_shape": list(t1.shape)})
-
-
 def main():
     names = sys.argv[1:] or DATASETS
     for name in names:
         try:
-            convert_brainweb() if name == "brainweb" else convert_csv(name)
+            if name == "brainweb":
+                print("[skip] brainweb: use convert-brainweb-to-bin.py (NIfTI volumes, not CSV)")
+                continue
+            convert_csv(name)
         except Exception as exc:                    # one failing dataset must not stop the others
             print(f"[ERR]  {name}: {exc}")
 
