@@ -475,21 +475,20 @@ int main(int argc, char **argv)
     printf("dataset         : %s\n", a.dataset);
     printf("rows x columns  : %d x %d, K = %d\n", N, D, K);
     printf("seed / restarts : %llu / %d\n", (unsigned long long)a.seed, a.restarts);
-    printf("iterations      : %d (%s)\n", best_res.iterations,
-           best_res.converged ? "converged" : "maximum number of iterations reached");
+    printf("iterations      : %d (%s)\n", best_res.iterations, best_res.converged ? "converged" : "maximum number of iterations reached");
     printf("log-likelihood  : %.10g\n", best_res.ll);
+    
     if (!isnan(ari) && ari > -1.5)
         printf("vs true labels  : ARI %.4f, purity %.4f\n", ari, pur);
-    printf("time (s)        : total %.4f | read %.4f | init %.4f | E-step %.4f | M-step %.4f\n",
-           t_total, t_read, t_init, t_estep, t_mstep);
+
+    printf("time (s)        : total %.4f | read %.4f | init %.4f | E-step %.4f | M-step %.4f\n", t_total, t_read, t_init, t_estep, t_mstep);
     if (total_iterations > 0)
-        printf("per iteration   : %.3f ms (E-step + M-step)\n",
-               1e3 * (t_estep + t_mstep) / total_iterations);
+        printf("per iteration   : %.3f ms (E-step + M-step)\n",1e3 * (t_estep + t_mstep) / total_iterations);
     if (best_res.empty_events > 0)
-        printf("warning         : %d empty cluster(s) found during the iterations\n",
-               best_res.empty_events);
+        printf("warning         : %d empty cluster(s) found during the iterations\n", best_res.empty_events);
     if (a.log_path != NULL)
         printf("log             : %s\n", a.log_path);
+
 
     /* Release of the memory */
     free(truth);
