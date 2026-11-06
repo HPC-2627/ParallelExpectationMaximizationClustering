@@ -1,0 +1,422 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>EM Clustering Visualizer</title>
+<style>
+:root{
+  --bg:#fafaf8; --panel:#ffffff; --ink:#1c1c1a; --muted:#6b6b66; --line:#e2e2dc; --accent:#2a5bd7; --warn:#b4540a; --ok:#1a7f4b;
+  --grid:#ececE6;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){ --bg:#141413; --panel:#1d1d1b; --ink:#ecece6; --muted:#9a9a92; --line:#33332f; --accent:#7aa2ff; --warn:#f0a35e; --ok:#58c98b; --grid:#2a2a27; }
+}
+:root[data-theme="dark"]{ --bg:#141413; --panel:#1d1d1b; --ink:#ecece6; --muted:#9a9a92; --line:#33332f; --accent:#7aa2ff; --warn:#f0a35e; --ok:#58c98b; --grid:#2a2a27; }
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+header{padding:14px 16px 6px}
+h1{font-size:18px;margin:0 0 2px}
+.sub{color:var(--muted);font-size:13px}
+.bar{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:end;padding:10px 16px;border-bottom:1px solid var(--line);background:var(--panel)}
+.bar label{display:flex;flex-direction:column;font-size:12px;color:var(--muted);gap:2px}
+.bar input,.bar select{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:5px 7px;min-width:70px}
+.bar select{min-width:260px}
+button{font:inherit;cursor:pointer;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:6px 12px}
+button:hover{border-color:var(--accent)}
+button.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+main{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(320px,1fr);gap:14px;padding:14px 16px;max-width:1500px;margin:auto}
+@media (max-width:900px){main{grid-template-columns:1fr}}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px}
+#plot{width:100%;aspect-ratio:1.15/1;display:block;border-radius:6px}
+.controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:10px}
+.controls input[type=range]{accent-color:var(--accent)}
+#timeline{width:100%;display:flex;gap:2px;margin-top:10px;height:14px}
+#timeline div{flex:1;border-radius:2px;background:var(--line);cursor:pointer}
+#timeline div.cur{outline:2px solid var(--ink)}
+.phase{display:inline-block;font-size:12px;font-weight:600;padding:2px 9px;border-radius:99px;color:#fff;margin-right:6px}
+h2{font-size:17px;margin:2px 0 6px}
+.formula{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px;background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:7px 9px;margin:8px 0;overflow-x:auto;white-space:pre}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:2px 12px;font-size:13px;margin:8px 0}
+.kv b{font-variant-numeric:tabular-nums}
+table{border-collapse:collapse;width:100%;font-size:12.5px;font-variant-numeric:tabular-nums}
+th,td{padding:3px 6px;text-align:right;border-bottom:1px solid var(--line)}
+th:first-child,td:first-child{text-align:left}
+.sw{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px;vertical-align:middle}
+.muted{color:var(--muted)} .ok{color:var(--ok)} .warn{color:var(--warn)}
+#llchart{width:100%;height:140px;display:block}
+.bars .row{display:grid;grid-template-columns:70px 1fr 110px;gap:6px;align-items:center;font-size:12.5px;margin:2px 0}
+.bars .b{height:10px;border-radius:5px;background:var(--line);overflow:hidden}.bars .b i{display:block;height:100%}
+details{margin-top:8px} summary{cursor:pointer;color:var(--muted);font-size:13px}
+.legend{font-size:12px;color:var(--muted);margin-top:6px}
+#msg{padding:30px;text-align:center;color:var(--muted)}
+</style>
+</head>
+<body>
+<header>
+  <h1>How EM works for a Gaussian Mixture Model (diagonal covariance)</h1>
+  <div class="sub">The same steps as <code>PEMC-baseline-sequential-diagonal.c</code>, animated one at a time. Data and iterations come from the local server; the log-likelihood is checked against your C binary.</div>
+</header>
+
+<!-- Run settings: they are sent to the server (/api/run) and mirror the options of the C program -->
+<div class="bar">
+  <label>Dataset <select id="ds"></select></label>
+  <label>K (clusters)<input id="k" type="number" min="1" value="3"></label>
+  <label>Rows used (n)<input id="n" type="number" min="10" max="3000" value="300"></label>
+  <label>Seed<input id="seed" type="number" value="42"></label>
+  <label>max_iter<input id="maxit" type="number" value="200"></label>
+  <label>tol<input id="tol" value="1e-6"></label>
+  <button class="primary" id="run">Run</button>
+  <span id="status" class="muted"></span>
+</div>
+
+<div id="msg">Choose a dataset and press <b>Run</b>.</div>
+
+<main id="app" hidden>
+  <!-- Left column: the scatter plot, the timeline of the phases and the playback controls -->
+  <section class="card">
+    <canvas id="plot"></canvas>
+    <div class="legend" id="legend"></div>
+    <div id="timeline"></div>
+    <div class="controls">
+      <button id="first">⏮</button>
+      <button id="prev">◀ Back</button>
+      <button id="play" class="primary">▶ Play</button>
+      <button id="next">Next ▶</button>
+      <button id="last">⏭</button>
+      <label class="muted">speed <input id="speed" type="range" min="0.25" max="4" step="0.25" value="1"> <span id="speedv">1×</span></label>
+      <label class="muted"><input id="showtruth" type="checkbox"> true labels (ring)</label>
+    </div>
+    <div class="legend">Click a point to see how its responsibility is computed. The view is the projection on the first two principal components (<span id="expl"></span> of the variance); EM works in all <span id="dd"></span> dimensions.</div>
+  </section>
+
+  <!-- Right column: explanation of the current phase, log-likelihood chart, comparison with the C binary -->
+  <section>
+    <div class="card" id="info"></div>
+    <div class="card" style="margin-top:14px">
+      <b>Log-likelihood per iteration</b>
+      <canvas id="llchart"></canvas>
+      <details><summary>Comparison with the C binary (<code>-v</code>)</summary><div id="cmp"></div></details>
+    </div>
+  </section>
+</main>
+
+<script>
+"use strict";
+
+/* ==========================================================================================
+ * EM visualizer (client side)
+ *
+ * The server (server.py) runs EM and returns a TRACE: for every iteration the parameters
+ * before and after the M-step, the log-density of every point for every cluster (logp) and
+ * the log-likelihood. This page only PLAYS the trace back, phase by phase:
+ *     init -> [ E-step -> convergence check -> M-step ] x iterations -> done
+ * Each phase is a "frame"; draw() renders one frame, info() explains it.
+ * ========================================================================================== */
+
+/* One colour per cluster (cycled if K > 12) */
+const PAL = ["#2f6fe4","#e8590c","#2f9e44","#c2255c","#7048e8","#e0a100","#0c8599","#862e9c","#5c940d","#d6336c","#495057","#a5522a"];
+/* Name and colour of every phase (the colour is also used in the timeline) */
+const PHASE = {init:["Initialization","#6b6b66"], e:["E-step","#2f6fe4"], check:["Convergence test","#e0a100"], m:["M-step","#2f9e44"], done:["Done","#1a7f4b"]};
+const $ = id => document.getElementById(id);
+
+/* State: R = trace returned by the server, frames = list of phases, cur = current frame,
+ * playing = autoplay on/off, frameStart = time when the current frame began (for animations),
+ * sel = index of the clicked point (-1 = none), view = bounds of the plot in data coordinates */
+let R = null, frames = [], cur = 0, playing = false, frameStart = 0, sel = -1, view = null;
+let respCache = {};   /* responsibilities already computed, per iteration */
+
+/* ---------- loading ---------- */
+
+/* Fills the dataset menu with the .bin files found by the server */
+async function boot(){
+  const ds = await (await fetch("/api/datasets")).json();
+  const sel_ = $("ds");
+  ds.forEach(d => { const o = document.createElement("option"); o.value = d.path; o.dataset.k = d.K;
+    o.textContent = `${d.path.replace("data/","")}  (N=${d.N}, D=${d.D})`; sel_.appendChild(o); });
+  const pref = [...sel_.options].find(o => o.value.includes("cardiotocography")) || sel_.options[0];
+  sel_.value = pref.value; $("k").value = pref.dataset.k;
+  /* choosing a dataset suggests its number of true classes as K */
+  sel_.onchange = () => { $("k").value = sel_.selectedOptions[0].dataset.k; };
+}
+
+/* "Run": asks the server for the trace and starts the visualization */
+$("run").onclick = async () => {
+  const q = new URLSearchParams({path:$("ds").value,k:$("k").value,n:$("n").value,seed:$("seed").value,max_iter:$("maxit").value,tol:$("tol").value});
+  $("status").textContent = "computing…"; playing = false;
+  try{
+    const r = await fetch("/api/run?"+q); const j = await r.json();
+    if(j.error) throw new Error(j.error);
+    setup(j); $("status").textContent = "";
+  }catch(e){ $("status").textContent = "error: "+e.message; }
+};
+
+/* Prepares everything for a new trace: list of frames, timeline, plot bounds, legend */
+function setup(j){
+  R = j; respCache = {}; sel = -1; cur = 0;
+  $("msg").hidden = true; $("app").hidden = false;
+  $("expl").textContent = (100*j.explained).toFixed(0)+"%"; $("dd").textContent = j.D;
+  /* frames: init, then for every iteration E-step + convergence test (+ M-step if not stopped), then done */
+  frames = [{t:"init"}];
+  j.iters.forEach((it,i) => { frames.push({t:"e",i}); frames.push({t:"check",i}); if(it.next) frames.push({t:"m",i}); });
+  frames.push({t:"done"});
+  /* timeline: one coloured block per frame, clickable */
+  const tl = $("timeline"); tl.innerHTML = "";
+  frames.forEach((f,idx) => { const d = document.createElement("div"); d.style.background = PHASE[f.t][1]; d.style.opacity = .55;
+    d.title = PHASE[f.t][0]+(f.i!=null?" "+f.i:""); d.onclick = () => go(idx); tl.appendChild(d); });
+  /* bounds of the plot = bounding box of the projected points, plus an 8% margin */
+  let x0=1e99,x1=-1e99,y0=1e99,y1=-1e99;
+  j.points.forEach(p => { x0=Math.min(x0,p[0]);x1=Math.max(x1,p[0]);y0=Math.min(y0,p[1]);y1=Math.max(y1,p[1]); });
+  const px=(x1-x0)*.08||1, py=(y1-y0)*.08||1; view = {x0:x0-px,x1:x1+px,y0:y0-py,y1:y1+py};
+  $("legend").innerHTML = Array.from({length:j.K},(_,k)=>`<span class="sw" style="background:${PAL[k%PAL.length]}"></span>cluster ${k}`).join(" &nbsp; ");
+  buildCompare(); go(0);
+}
+
+/* ---------- math ---------- */
+
+/* Responsibilities of iteration i, from the log-densities sent by the server:
+ *   r[n][k] = exp(logp[n][k] - lse[n]),  lse = log-sum-exp over k
+ * (same computation as the E-step in the C code; the maximum is subtracted to avoid underflow) */
+function resp(i){
+  if(respCache[i]) return respCache[i];
+  const lp = R.iters[i].logp, out = new Array(lp.length), lse = new Array(lp.length);
+  for(let n=0;n<lp.length;n++){ const m=Math.max(...lp[n]); let s=0; for(const v of lp[n]) s+=Math.exp(v-m); const l=m+Math.log(s); lse[n]=l; out[n]=lp[n].map(v=>Math.exp(v-l)); }
+  return respCache[i] = {r:out,lse};
+}
+
+/* Parameters to draw in frame f at animation progress t in [0,1].
+ * During the M-step they are interpolated from the old to the new values, so the means
+ * and the ellipses visibly move; in the other frames they are the current ones. */
+function params(f,t){
+  const P = (f.t==="init"||f.t==="e"||f.t==="check") ? R.iters[f.i??0].params
+          : f.t==="m" ? R.iters[f.i].params : R.iters[R.iters.length-1].params;
+  if(f.t!=="m") return P;
+  const Q = R.iters[f.i].next, e = ease(t), mix=(a,b)=>a+(b-a)*e;
+  return {pi:P.pi.map((v,k)=>mix(v,Q.pi[k])), mu:P.mu.map((m,k)=>[mix(m[0],Q.mu[k][0]),mix(m[1],Q.mu[k][1])]),
+          cov:P.cov.map((c,k)=>c.map((v,q)=>mix(v,Q.cov[k][q]))), var_mean:P.var_mean};
+}
+/* smooth start and end of the animations (ease-in-out) */
+const ease = t => t<.5 ? 2*t*t : 1-Math.pow(-2*t+2,2)/2;
+function hex2rgb(h){return [parseInt(h.slice(1,3),16),parseInt(h.slice(3,5),16),parseInt(h.slice(5,7),16)];}
+
+/* Principal axes of a 2x2 covariance c = [xx, xy, yy]: semi-axes (square roots of the
+ * eigenvalues) and rotation angle. They define the ellipse drawn for a cluster. */
+function ellipse(c){
+  const [a,b,d]=c, tr=a+d, det=a*d-b*b, s=Math.sqrt(Math.max(tr*tr/4-det,0));
+  const l1=tr/2+s, l2=Math.max(tr/2-s,1e-12), ang=.5*Math.atan2(2*b,a-d);
+  return {r1:Math.sqrt(Math.max(l1,1e-12)),r2:Math.sqrt(l2),ang};
+}
+
+/* ---------- drawing ---------- */
+const cv = $("plot"), ctx = cv.getContext("2d");
+
+/* Adapts the canvas resolution to its size on screen (sharp on high-DPI displays) */
+function fit(canvas){ const r=canvas.getBoundingClientRect(), dpr=devicePixelRatio||1;
+  if(canvas.width!==Math.round(r.width*dpr)||canvas.height!==Math.round(r.height*dpr)){canvas.width=Math.round(r.width*dpr);canvas.height=Math.round(r.height*dpr);}
+  return {w:canvas.width,h:canvas.height,dpr}; }
+/* data coordinates -> canvas pixels (y is flipped: canvas y grows downwards) */
+function sx(x,W){return (x-view.x0)/(view.x1-view.x0)*W;}
+function sy(y,H){return H-(y-view.y0)/(view.y1-view.y0)*H;}
+/* value of a CSS variable (theme colours) */
+function css(v){return getComputedStyle(document.documentElement).getPropertyValue(v).trim();}
+
+/* Draws one frame f at animation progress t in [0,1]:
+ *   - points: grey at init; afterwards coloured by the MIX of the cluster colours weighted
+ *     by the responsibilities (in the E-step the colour fades in from grey);
+ *   - ellipses at 1 and 2 standard deviations of every cluster, and a cross on every mean;
+ *   - M-step: dashed arrows from the old to the new means;
+ *   - init: rings on the K rows chosen as initial means;
+ *   - optional ring with the TRUE label colour, and a ring on the clicked point. */
+function draw(f,t){
+  const {w:W,h:H,dpr}=fit(cv); ctx.clearRect(0,0,W,H);
+  ctx.fillStyle=css("--bg"); ctx.fillRect(0,0,W,H);
+  const P = params(f,t), K=R.K, N=R.N;
+  const it = f.t==="done" ? R.iters.length-1 : (f.i??0);
+  const showR = f.t!=="init", rr = resp(it).r;
+  /* points */
+  const grey=hex2rgb("#9a9a92");
+  for(let n=0;n<N;n++){
+    const p=R.points[n], x=sx(p[0],W), y=sy(p[1],H);
+    let col;
+    if(!showR) col=`rgba(${grey[0]},${grey[1]},${grey[2]},.65)`;
+    else{
+      let rgb=[0,0,0]; for(let k=0;k<K;k++){const c=hex2rgb(PAL[k%PAL.length]);rgb[0]+=rr[n][k]*c[0];rgb[1]+=rr[n][k]*c[1];rgb[2]+=rr[n][k]*c[2];}
+      const a = f.t==="e" ? ease(Math.min(t,1)) : 1;      /* fade-in during the E-step */
+      const g = f.t==="e" ? [grey[0]+(rgb[0]-grey[0])*a,grey[1]+(rgb[1]-grey[1])*a,grey[2]+(rgb[2]-grey[2])*a] : rgb;
+      col=`rgb(${g.map(Math.round).join(",")})`;
+    }
+    ctx.beginPath(); ctx.arc(x,y,3.2*dpr,0,6.283); ctx.fillStyle=col; ctx.fill();
+    if($("showtruth").checked && R.truth){ ctx.lineWidth=1.4*dpr; ctx.strokeStyle=PAL[R.truth[n]%PAL.length]; ctx.beginPath(); ctx.arc(x,y,5.6*dpr,0,6.283); ctx.stroke(); }
+  }
+  /* ellipses (1 and 2 sigma) */
+  const sxs=W/(view.x1-view.x0), sys=H/(view.y1-view.y0);
+  for(let k=0;k<K;k++){
+    const col=PAL[k%PAL.length], m=P.mu[k], c=P.cov[k];
+    /* covariance in screen coordinates (x scaled, y scaled and flipped): S C S^T.
+     * Doing the eigen-decomposition AFTER the scaling keeps the ellipse correct even when
+     * the two axes of the plot have different scales. */
+    const e=ellipse([c[0]*sxs*sxs, -c[1]*sxs*sys, c[2]*sys*sys]);
+    [1,2].forEach(s=>{ctx.save();ctx.translate(sx(m[0],W),sy(m[1],H));ctx.rotate(e.ang);
+      ctx.beginPath();ctx.ellipse(0,0,e.r1*s,e.r2*s,0,0,6.283);ctx.restore();
+      ctx.lineWidth=(s===1?2.4:1.2)*dpr;ctx.strokeStyle=col;ctx.globalAlpha=s===1?.95:.45;ctx.stroke();ctx.globalAlpha=1;});
+  }
+  /* arrows old mean -> new mean during the M-step */
+  if(f.t==="m"){ const A=R.iters[f.i].params.mu, B=R.iters[f.i].next.mu;
+    for(let k=0;k<K;k++){ ctx.setLineDash([5*dpr,4*dpr]); ctx.strokeStyle=css("--ink"); ctx.lineWidth=1.2*dpr; ctx.globalAlpha=.6;
+      ctx.beginPath(); ctx.moveTo(sx(A[k][0],W),sy(A[k][1],H)); ctx.lineTo(sx(B[k][0],W),sy(B[k][1],H)); ctx.stroke(); ctx.setLineDash([]); ctx.globalAlpha=1; } }
+  /* cross on every mean (with a background-coloured outline to stay readable) */
+  for(let k=0;k<K;k++){ const m=P.mu[k], x=sx(m[0],W), y=sy(m[1],H);
+    ctx.lineWidth=3.5*dpr; ctx.strokeStyle=css("--bg"); cross(x,y,8*dpr); ctx.lineWidth=2*dpr; ctx.strokeStyle=PAL[k%PAL.length]; cross(x,y,8*dpr); }
+  /* initialization: ring on the rows chosen as initial means */
+  if(f.t==="init"){ R.init_idx.forEach((ix,k)=>{ const p=R.points[ix], x=sx(p[0],W), y=sy(p[1],H);
+    ctx.lineWidth=2.2*dpr; ctx.strokeStyle=PAL[k%PAL.length]; ctx.beginPath(); ctx.arc(x,y,9*dpr,0,6.283); ctx.stroke(); }); }
+  /* clicked point */
+  if(sel>=0){ const p=R.points[sel], x=sx(p[0],W), y=sy(p[1],H); ctx.lineWidth=2.4*dpr; ctx.strokeStyle=css("--ink"); ctx.beginPath(); ctx.arc(x,y,8*dpr,0,6.283); ctx.stroke(); }
+}
+function cross(x,y,s){ctx.beginPath();ctx.moveTo(x-s,y);ctx.lineTo(x+s,y);ctx.moveTo(x,y-s);ctx.lineTo(x,y+s);ctx.stroke();}
+
+/* ---------- information panel ---------- */
+const fx = (v,d=2) => Number(v).toLocaleString("en-US",{maximumFractionDigits:d,minimumFractionDigits:d});   /* fixed decimals */
+const fe = v => Number(v).toExponential(2);                                                                  /* scientific notation */
+function swatch(k){return `<span class="sw" style="background:${PAL[k%PAL.length]}"></span>`;}
+
+/* Box for the clicked point: its K log-densities, the log-sum-exp and the resulting
+ * responsibilities (this is exactly what the E-step computes for one row). */
+function pointBox(it){
+  if(sel<0||!R.iters[it]) return `<div class="muted" style="font-size:12.5px">Click a point in the plot to see its calculations.</div>`;
+  const lp=R.iters[it].logp[sel], {r,lse}=resp(it), K=R.K;
+  return `<div style="margin-top:10px"><b>Point #${sel}</b> <span class="muted">— log π<sub>k</sub> N(x|μ<sub>k</sub>,σ²<sub>k</sub>) → responsibility</span>
+   <div class="bars">${lp.map((v,k)=>`<div class="row"><span>${swatch(k)}k=${k}</span><span class="b"><i style="width:${(100*r[sel][k]).toFixed(1)}%;background:${PAL[k%PAL.length]}"></i></span><span>log=${fx(v,1)} → <b>${fx(r[sel][k],3)}</b></span></div>`).join("")}</div>
+   <div class="muted" style="font-size:12.5px">log-sum-exp = ${fx(lse[sel],2)} (= log p(x)); r<sub>k</sub> = exp(log<sub>k</sub> − ${fx(lse[sel],2)}); the K responsibilities sum to 1.</div></div>`;
+}
+
+/* Table with the parameters of the clusters (weight pi, optionally N_k, mean variance) */
+function paramTable(P,Nk){
+  return `<table><tr><th>cluster</th><th>π</th>${Nk?"<th>N<sub>k</sub></th>":""}<th>mean var</th></tr>${P.pi.map((p,k)=>`<tr><td>${swatch(k)}${k}</td><td>${fx(p,3)}</td>${Nk?`<td>${fx(Nk[k],1)}</td>`:""}<td>${fx(P.var_mean[k],3)}</td></tr>`).join("")}</table>`;
+}
+
+/* Writes in the right panel the explanation of frame f: what the phase does, the formulas
+ * and the real numbers of the current iteration. */
+function info(f){
+  const [name,color]=PHASE[f.t], K=R.K, N=R.N, D=R.D, tol=R.tol, its=R.iters;
+  let title="", body="";
+  const head = n => `<span class="phase" style="background:${color}">${name}</span>${n}`;
+  if(f.t==="init"){
+    title=head("");
+    body=`<p>EM needs a starting point. <b>K = ${K} distinct rows</b> of the dataset are chosen (coloured rings) with <code>srand(${R.seed})</code> + <code>rand()</code>, exactly like <code>gmm_init_indices</code>: rows ${R.init_idx.join(", ")}.</p>
+    <div class="formula">μ_k = chosen row k      (the crosses)
+σ²_kd = 1               (standardized data → circles of radius ~1)
+π_k  = 1/K = ${fx(1/K,3)}</div>
+    <p class="muted">The points are still grey: none has been assigned to a cluster yet. There are ${N} points in ${D} dimensions; here you see them projected on 2.</p>`;
+  }else if(f.t==="e"){
+    const it=its[f.i], prev=f.i>0?its[f.i-1].ll:null;
+    title=head(`iteration ${f.i}`);
+    body=`<p>With the current parameters, for <b>every point</b> and <b>every cluster</b> the <b>responsibility</b> is computed: the probability that the point belongs to the cluster. The colour of a point is the mix of the cluster colours weighted by r<sub>ik</sub>.</p>
+    <div class="formula">log π_k N(x_i|μ_k,σ²_k) = log π_k − ½[ D·log 2π + Σ_d log σ²_kd + Σ_d (x_id−μ_kd)²/σ²_kd ]
+r_ik = exp( logp_ik − log_sum_exp_k(logp_ik) )
+ll   = Σ_i log_sum_exp_k(logp_ik)</div>
+    <div class="kv"><span>log-likelihood</span><b>${fx(it.ll,4)}</b><span>change</span><b>${prev==null?"—":(it.ll-prev>=0?"+":"")+fe(it.ll-prev)}</b></div>
+    <p class="muted">Logarithms + <i>log-sum-exp</i> prevent the densities from underflowing to zero (with large D they are about e<sup>−hundreds</sup>).</p>
+    <b style="font-size:13px">Parameters used</b>${paramTable(it.params,null)}`;
+  }else if(f.t==="check"){
+    const it=its[f.i], prev=f.i>0?its[f.i-1].ll:null;
+    title=head(`iteration ${f.i}`);
+    if(prev==null) body=`<p>First iteration: there is no previous log-likelihood, so <b>it cannot decide yet</b>: it goes on with the M-step.</p>`;
+    else{ const d=Math.abs(it.ll-prev), th=tol*Math.abs(it.ll), c=d<=th;
+      body=`<p>The change of the log-likelihood is compared with the (relative) tolerance:</p>
+      <div class="formula">|ll − ll_prev| = ${fe(d)}
+tol · |ll|      = ${fe(th)}      (tol = ${R.tol})
+${fe(d)} ${c?"≤":">"} ${fe(th)}   →   ${c?"CONVERGED: stop":"not converged: continue"}</div>
+      <p class="${c?"ok":"warn"}">${c?"The likelihood no longer improves: EM stops, the parameters are already the ones that gave this ll.":"The model is still improving: another M-step is needed."}</p>`; }
+  }else if(f.t==="m"){
+    const it=its[f.i];
+    title=head(`iteration ${f.i}`);
+    body=`<p>Now the opposite: the responsibilities become <b>weights</b> to recompute the parameters. Every point counts in proportion to how much it belongs to the cluster. The crosses move (dashed lines) and the ellipses adapt to the points.</p>
+    <div class="formula">N_k   = Σ_i r_ik
+μ_k   = Σ_i r_ik x_i / N_k
+σ²_k  = Σ_i r_ik x_i² / N_k − μ_k²     (min 1e-6)
+π_k   = N_k / N</div>
+    <b style="font-size:13px">New parameters</b>${paramTable(it.next,it.Nk)}
+    ${it.empty?`<p class="warn">⚠ ${it.empty} empty cluster(s): mean and variance are left unchanged.</p>`:""}
+    <p class="muted">The ellipses show 1σ (thick) and 2σ (thin), projected on the plane.</p>`;
+  } else {
+    const last=its[its.length-1];
+    title=head("");
+    body=`<p class="${last.converged?"ok":"warn"}"><b>${last.converged?"Converged":"max_iter reached without converging"}</b> after ${its.filter(x=>x.next).length} M-steps.</p>
+    <div class="kv"><span>final log-likelihood</span><b>${fx(last.ll,6)}</b><span>iterations</span><b>${its.filter(x=>x.next).length}</b><span>rows × dimensions</span><b>${N} × ${D}</b></div>
+    <p class="muted">Every point is assigned to the cluster with the largest responsibility (<code>assign()</code>). The true labels, if they exist, are never seen by EM: they are only used to compute the ARI at the end.</p>
+    ${paramTable(last.params,null)}`;
+  }
+  const itIdx = f.t==="done" ? its.length-1 : (f.i??0);
+  $("info").innerHTML = `<h2>${title}</h2>${body}${f.t==="init"?"":pointBox(itIdx)}`;
+}
+
+/* ---------- log-likelihood chart and comparison with the C binary ---------- */
+
+/* Line chart of the log-likelihood: only the iterations up to the current frame are drawn,
+ * so the curve grows while the algorithm is played. */
+function llChart(f){
+  const c=$("llchart"), {w:W,h:H,dpr}=fit(c), g=c.getContext("2d"); g.clearRect(0,0,W,H);
+  const ys=R.iters.map(x=>x.ll), n=ys.length; if(n<1) return;
+  let lo=Math.min(...ys), hi=Math.max(...ys); if(hi===lo){hi=lo+1;}
+  const padL=8*dpr,padR=8*dpr,padT=10*dpr,padB=18*dpr, X=i=>padL+(n===1?0:i/(n-1))*(W-padL-padR), Y=v=>padT+(1-(v-lo)/(hi-lo))*(H-padT-padB);
+  g.strokeStyle=css("--grid"); g.lineWidth=1*dpr; g.beginPath(); g.moveTo(padL,H-padB); g.lineTo(W-padR,H-padB); g.stroke();
+  const upto = f.t==="done" ? n-1 : (f.i??-1);
+  g.lineWidth=2*dpr; g.strokeStyle=css("--accent"); g.beginPath();
+  for(let i=0;i<=upto;i++){ i?g.lineTo(X(i),Y(ys[i])):g.moveTo(X(i),Y(ys[i])); } g.stroke();
+  for(let i=0;i<=upto;i++){ g.fillStyle=css("--accent"); g.beginPath(); g.arc(X(i),Y(ys[i]),(i===upto?4:2.2)*dpr,0,6.283); g.fill(); }
+  g.fillStyle=css("--muted"); g.font=`${11*dpr}px system-ui`; g.fillText("iteration →",W-padR-70*dpr,H-4*dpr); g.fillText(fx(hi,0),padL,padT+8*dpr);
+}
+
+/* Table that compares the log-likelihood of every iteration printed by the real C program
+ * (run with -v by the server) with the one of the trace. The match is judged on the relative
+ * difference, because with large D the log-likelihood has a huge absolute value. */
+function buildCompare(){
+  const c=R.c_binary;
+  if(!c||!c.ll.length){ $("cmp").innerHTML=`<p class="muted">Binary not found (run <code>make</code>).</p>`; return; }
+  const m=Math.min(c.ll.length,R.iters.length); let md=0; for(let i=0;i<m;i++) md=Math.max(md,Math.abs(c.ll[i]-R.iters[i].ll));
+  /* if max_iter was reached the trace has one extra entry (the final E-step), which the C program does not print */
+  const fin=R.iters[R.iters.length-1].final?1:0, same=c.ll.length===R.iters.length-fin, rel=md/Math.max(1,Math.abs(R.iters[0].ll)), ok=same&&rel<1e-6;
+  $("cmp").innerHTML=`<p class="${ok?"ok":"warn"}">${ok?"✓ Match":"⚠ Differences"}: ${c.ll.length} iterations in the C binary, ${R.iters.length} here; maximum difference |Δll| = ${fe(md)}.</p>
+  <table><tr><th>it</th><th>C</th><th>page</th></tr>${Array.from({length:Math.min(m,60)},(_,i)=>`<tr><td>${i}</td><td>${fx(c.ll[i],6)}</td><td>${fx(R.iters[i].ll,6)}</td></tr>`).join("")}</table>`;
+}
+
+/* ---------- navigation and animation ---------- */
+
+/* Duration (ms, at speed 1×) of every phase before autoplay moves to the next one */
+const DUR = {init:2600,e:3600,check:3000,m:3600,done:3000};
+
+/* Jumps to frame i: restarts its animation, updates the panel, the chart and the timeline */
+function go(i){ cur=Math.max(0,Math.min(frames.length-1,i)); frameStart=performance.now(); info(frames[cur]); llChart(frames[cur]);
+  [...$("timeline").children].forEach((d,k)=>{d.classList.toggle("cur",k===cur);d.style.opacity=k<=cur?1:.4;}); }
+
+/* Animation loop (every screen refresh): draws the current frame with its progress t and,
+ * if autoplay is on, moves to the next frame when its duration is over. */
+function tick(now){
+  if(R){ const f=frames[cur], sp=+$("speed").value, dur=DUR[f.t]/sp, el=now-frameStart;
+    const animDur = Math.min(dur*.7, 2200/sp);       /* the movement ends before the phase does */
+    draw(f, Math.min(el/animDur,1));
+    if(playing && el>=dur){ if(cur<frames.length-1) go(cur+1); else {playing=false; $("play").textContent="▶ Play";} } }
+  requestAnimationFrame(tick);
+}
+
+/* Controls (manual navigation always pauses the autoplay) */
+$("play").onclick=()=>{ if(!playing && cur>=frames.length-1) go(0); playing=!playing; frameStart=performance.now(); $("play").textContent=playing?"⏸ Pause":"▶ Play"; };
+$("next").onclick=()=>{playing=false;$("play").textContent="▶ Play";go(cur+1);};
+$("prev").onclick=()=>{playing=false;$("play").textContent="▶ Play";go(cur-1);};
+$("first").onclick=()=>{playing=false;$("play").textContent="▶ Play";go(0);};
+$("last").onclick=()=>{playing=false;$("play").textContent="▶ Play";go(frames.length-1);};
+$("speed").oninput=()=>{$("speedv").textContent=$("speed").value+"×";};
+
+/* Click on the plot: selects the nearest point (within ~14 px) to show its calculations */
+cv.addEventListener("click",e=>{ if(!R) return; const r=cv.getBoundingClientRect(), mx=e.clientX-r.left, my=e.clientY-r.top;
+  let best=-1,bd=14*14; R.points.forEach((p,n)=>{const x=(p[0]-view.x0)/(view.x1-view.x0)*r.width,y=r.height-(p[1]-view.y0)/(view.y1-view.y0)*r.height,d=(x-mx)**2+(y-my)**2; if(d<bd){bd=d;best=n;}});
+  sel=best; info(frames[cur]); });
+
+/* Keyboard: left/right arrows = previous/next phase, space = play/pause */
+document.addEventListener("keydown",e=>{ if(e.target.tagName==="INPUT"||!R) return; if(e.key==="ArrowRight")$("next").click(); if(e.key==="ArrowLeft")$("prev").click(); if(e.key===" "){e.preventDefault();$("play").click();} });
+
+boot(); requestAnimationFrame(tick);
+</script>
+</body>
+</html>
