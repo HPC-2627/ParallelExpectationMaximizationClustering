@@ -53,7 +53,9 @@ void gmm_init_indices(uint64_t N, int K, uint64_t seed, uint64_t *idx)
     int found = 0;
     while (found < K)
     {
-        uint64_t r = ((uint64_t)rand() << 31) ^ (uint64_t)rand();
+        uint64_t hi = (uint64_t)rand();                            
+        uint64_t lo = (uint64_t)rand();
+        uint64_t r = (hi << 31) ^ lo;
         uint64_t candidate = r % N;
         int repeated = 0;
         for (int j = 0; j < found; j++)
