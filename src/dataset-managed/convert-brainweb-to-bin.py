@@ -7,7 +7,7 @@ Pipeline (three steps, each one visible on disk in data/real/brainweb/):
   3. arrays        --------->   brainweb.bin, brainweb_labels.bin, brainweb.json
 
 Output, in data/real/brainweb/ (same layout as convert-real-to-bin.py and the synthetic data):
-  brainweb.bin         8-byte header (int32 N, int32 D, little-endian) + N*D float64, row-major
+  brainweb.bin         8-byte header (int32 N, int32 D) + N*D float64, row-major
   brainweb_labels.bin  N int32, one tissue label (0..11) per T1 voxel
   brainweb.json        columns, mean/std of the z-score, label info, volume shape
 
@@ -72,7 +72,7 @@ def standardize(X):
 
 
 def write_bin(path, X):
-    """Header (int32 N, int32 D) + float64 row-major, little-endian."""
+    """Header (int32 N, int32 D) + float64 row-major."""
     # path: Path /* in */ ; X: ndarray (N, D) /* in */
     X = np.ascontiguousarray(X, dtype="<f8")   # tofile() writes the memory as it is
     with open(path, "wb") as f:
@@ -169,7 +169,7 @@ def main():
             "labels": {"exported": True, "classes": sorted(np.unique(labels).tolist()),
                        "note": "crisp labels subsampled by 2 and placed on the T1 grid at the offset "
                                "found by mask cross-correlation; voxels outside = 0"},
-            "format": "int32 N, int32 D, float64[N*D] row-major, little-endian",
+            "format": "int32 N, int32 D, float64[N*D] row-major",
             "volume_shape": list(t1.shape)}
     (BRAIN / "brainweb.json").write_text(json.dumps(info, indent=1))
     print(f"[ok]   brainweb: {Z.shape[0]} x {Z.shape[1]}, {len(info['labels']['classes'])} classes "

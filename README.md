@@ -96,7 +96,7 @@ Three profiles, generated from a known Gaussian mixture (true labels available),
 - **Variables:** the first 20 are clinical (age, bmi, sys_bp, glucose, hba1c, cholesterol, ...), the others (up to 50) are generic biomarkers. The values are generic adult values chosen by us, not from a real cohort. Every column is standardized (z-score).
 - **Weak scaling:** one file per number of processes $p \in \{1,2,4,8,16\}$, with $N = 250\,000 \cdot p$ rows (so each rank always has 250 000 rows). The files of a profile are nested (the file for $2p$ contains the one for $p$). Strong scaling uses a fixed file (e.g. `_p16`) with more processes.
 - **Size on disk:** `synth_clean` 620 MB, `synth_overlap` 1 240 MB, `synth_rare` 3 100 MB (about 5 GB in total, labels included). The largest file is 4 000 000 x 50 doubles (1.6 GB).
-- **File format:** binary little-endian, an 8-byte header with two `int` (N, D) followed by $N \cdot D$ `double` in row-major order; the labels are in a separate file (`int`, one per row). Reading in C: `fread` of the header, then of the matrix `X[i*D + d]`.
+- **File format:** binary, an 8-byte header with two `int` (N, D) followed by $N \cdot D$ `double` in row-major order; the labels are in a separate file (`int`, one per row). Reading in C: `fread` of the header, then of the matrix `X[i*D + d]`.
 - **Limits:** `synth_overlap` is correlated while the baseline is diagonal on purpose; nested files are not independent samples.
 
 Full details (variables with units and limits, generation procedure, work per rank, C reading code) are in [doc/synthetic-datasets-info.md](doc/synthetic-datasets-info.md).
@@ -171,7 +171,7 @@ python3 src/dataset-managed/convert-real-to-bin.py wdbc       # only some
 ```
 
 For each dataset it writes in `data/real/<name>/`:
-- `<name>.bin`: same format as the synthetic data (8-byte header with two `int` N and D, then $N \cdot D$ `double` row-major, little-endian);
+- `<name>.bin`: same format as the synthetic data (8-byte header with two `int` N and D, then $N \cdot D$ `double` row-major);
 - `<name>_labels.bin`: one `int` per row (classes encoded as 0..C-1), only if the label is categorical (`parkinson` has continuous targets, so no labels);
 - `<name>.json`: columns used and dropped, mean and standard deviation of the standardization, class mapping.
 

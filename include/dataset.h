@@ -13,7 +13,6 @@
  *   bytes 4..7    int32  D    number of columns (variables)
  *   bytes 8..     N*D float64 (double) values, written ROW BY ROW:
  *                 row 0 (D values), row 1 (D values), ..., row N-1
- *   Everything is little-endian (least significant byte first, as on x86 CPUs).
  *   Expected total file size: 8 + N*D*8 bytes.
  *
  *   LABELS: if they exist, they are in a SEPARATE file with N int32 values, one per row

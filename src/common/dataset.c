@@ -29,16 +29,6 @@
 
 #define HEADER_BYTES 8 /* the header is made of two int32 (N and D): 2 * 4 = 8 bytes */
 
-/* The files are little-endian. On a big-endian machine the bytes would have to be swapped: all
- * the processors of the cluster are x86 (little-endian), so it is simply rejected.
- * The test: the number 1 is written on 16 bits and the FIRST byte in memory is inspected. On a
- * little-endian machine the least significant byte (1) comes first; on a big-endian one it is 0. */
-static int host_is_little_endian(void)
-{
-    const uint16_t one = 1;
-    return *(const unsigned char *)&one == 1;
-}
-
 /* Opens the file, reads the header and checks that the size is EXACTLY
  * HEADER_BYTES + N*D*8: it immediately detects a truncated file or a wrong format.
  *   path  path of the file
@@ -47,11 +37,6 @@ static int host_is_little_endian(void)
  * Returns 0 if ok, -1 on error (message on stderr; the file is already closed). */
 static int open_and_check(const char *path, FILE **fp, long *N, int *D)
 {
-    if (!host_is_little_endian())
-    {
-        fprintf(stderr, "dataset: big-endian machines are not supported\n");
-        return -1;
-    }
     FILE *f = fopen(path, "rb"); /* "rb": read in binary mode */
     if (f == NULL)
     {

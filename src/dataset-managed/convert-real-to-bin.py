@@ -2,7 +2,7 @@
 """Convert the real datasets (data/real/<name>/raw/) to the binary format of the synthetic ones.
 
 Output, in data/real/<name>/:
-  <name>.bin         8-byte header (int32 N, int32 D, little-endian) + N*D float64, row-major
+  <name>.bin         8-byte header (int32 N, int32 D) + N*D float64, row-major
   <name>_labels.bin  N int32 (only when a usable label exists)
   <name>.json        columns used, dropped columns, mean/std used for the standardization
 
@@ -18,7 +18,7 @@ brainweb: NIfTI volumes, not CSV: converted by convert-brainweb-to-bin.py.
 WHY THIS FORMAT
 The same binary layout as the synthetic datasets, so the C/MPI program reads real and synthetic
 data with the same code: a single fread (or MPI-IO read) of contiguous row-major doubles, with
-no text parsing. float64 and little-endian for the same reasons given in
+no text parsing. float64 for the same reasons given in
 generate-synthetic-dataset.py (accuracy of the sums/exp/log, x86 cluster nodes). The labels are
 in a separate file so the EM cannot "see" the truth; they are used only to check the results.
 The z-score constants (mean/std) are saved in the JSON to be able to go back to the original units.
@@ -49,7 +49,7 @@ DATASETS = ["diabetes130", "cdc_diabetes", "cardiovascular", "parkinson",
 
 
 def write_bin(path, X):
-    """Header (int32 N, int32 D) + float64 row-major, little-endian."""
+    """Header (int32 N, int32 D) + float64 row-major."""
     # Contiguous row-major copy: tofile() writes the memory as it is, so the layout must be
     # the one expected by the reader (row 0, row 1, ...).
     X = np.ascontiguousarray(X, dtype="<f8")
@@ -90,7 +90,7 @@ def save(name, X, cols, dropped, labels, label_info, extra=None):
     info = {"name": name, "N": int(Z.shape[0]), "D": int(Z.shape[1]),
             "columns": cols, "dropped_columns": dropped,
             "mean": mean.tolist(), "std": std.tolist(),
-            "labels": label_info, "format": "int32 N, int32 D, float64[N*D] row-major, little-endian"}
+            "labels": label_info, "format": "int32 N, int32 D, float64[N*D] row-major"}
     if extra:
         info.update(extra)
     (out / f"{name}.json").write_text(json.dumps(info, indent=1))

@@ -59,7 +59,7 @@ FILE FORMAT (in data/synthetic/<profile>/, one folder per profile:
   synth_clean/, synth_overlap/, synth_rare/)
   <name>_pPP.bin         (PP = number of processes, two digits: p01, p02, p04, p08, p16)
                      header: 2 32-bit integers (N, D), then N*D double numbers (8 bytes)
-                     in row-major order (row 0, row 1, ...), little-endian.
+                     in row-major order (row 0, row 1, ...).
                      In C:  fread(&N,4,1,f); fread(&D,4,1,f); fread(X, 8, N*D, f);
   <name>_pPP.labels.bin  N 32-bit integers: the true subgroup of every row (-1 = outlier).
                      Used only to check the results, NOT by the EM.
@@ -75,7 +75,6 @@ Why this format:
     precision avoids losses of accuracy that would make the parallel versions differ;
   - row-major order: the points of a rank are a contiguous block of the file, so every rank can
     read only its own rows (fseek or MPI-IO) without anyone reading everything;
-  - little-endian: it is the byte order of the x86 processors of the cluster nodes;
   - 8-byte header (two int32): it is enough to describe the file and it keeps the doubles
     aligned to 8 bytes;
   - labels in a separate file: the EM must not be able to "see" the truth and the data file
@@ -365,7 +364,7 @@ def generate_profile(name, index, p, args, out_dir):
             name_pp = f"{name}_p{pp:02d}"
             fb = stack.enter_context(open(folder / f"{name_pp}.bin", "wb"))
             fl = stack.enter_context(open(folder / f"{name_pp}.labels.bin", "wb"))
-            # Header: N and D as little-endian 32-bit integers ("<i4")
+            # Header: N and D as 32-bit integers ("<i4")
             fb.write(np.array([n_pp, D], dtype="<i4").tobytes())
             files[pp] = dict(
                 name=name_pp, N=n_pp, fb=fb, fl=fl,
@@ -386,8 +385,8 @@ def generate_profile(name, index, p, args, out_dir):
                 m = min(n, f["N"] - row)
                 if m <= 0:
                     continue
-                f["fb"].write(Xn[:m].astype("<f8").tobytes())       # little-endian double, row-major
-                f["fl"].write(labels[:m].astype("<i4").tobytes())   # little-endian int32
+                f["fb"].write(Xn[:m].astype("<f8").tobytes())       # double, row-major
+                f["fl"].write(labels[:m].astype("<i4").tobytes())   # int32
                 update_statistics(f["sums"], f["counts"], Xn[:m], labels[:m])
 
             row += n

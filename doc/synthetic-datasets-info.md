@@ -139,7 +139,6 @@ Why this format:
 - **Binary and not CSV:** it is read with one `fread`, without converting text into numbers, and it is much smaller (8 bytes per value instead of 15–20 characters). The reading time is part of the measurements.
 - **`double`:** the EM sums many numbers and computes `exp` and `log`; double precision avoids accuracy losses that would make the parallel versions differ.
 - **Row-major order:** the rows of a rank are a contiguous block, so every rank can read only its own rows (`fseek` or MPI-IO).
-- **Little-endian:** the byte order of the x86 processors of the cluster nodes.
 - **8-byte header:** it describes the file and keeps the doubles aligned to 8 bytes.
 - **Labels in a separate file:** the EM cannot "see" the truth and the data file stays a clean matrix of numbers.
 
