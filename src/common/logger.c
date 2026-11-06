@@ -5,10 +5,6 @@
  * are described in logger.h.
  */
 
-/* Enables the POSIX functions (gethostname, gmtime_r, mkdir, ...) even with -std=c11.
- * It must come BEFORE any #include. */
-#define _POSIX_C_SOURCE 200809L
-
 #include "logger.h"
 
 #include <math.h>      /* isnan */

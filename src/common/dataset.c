@@ -5,14 +5,8 @@
  * dataset.h (8-byte header with N and D, then N*D doubles row by row).
  */
 
-/* These two #define must come BEFORE any #include: they enable functions that plain standard
- * C does not offer.
- *   _POSIX_C_SOURCE 200809L : makes the POSIX functions (fseeko, fileno, access, ...) available
- *                             even when compiling with -std=c11 instead of gnu11.
- *   _FILE_OFFSET_BITS 64    : makes off_t / fseeko use 64 bits even on 32-bit systems, so that
- *                             files larger than 2 GB can be read (for example the synthetic
- *                             p = 16 of synth_rare: 1.6 GB, or brainweb). */
-#define _POSIX_C_SOURCE 200809L
+/* _FILE_OFFSET_BITS 64 makes off_t / fseeko use 64 bits even on 32-bit systems, so that files
+ * larger than 2 GB can be read. It must come BEFORE any #include. */
 #define _FILE_OFFSET_BITS 64
 
 #include "dataset.h"
