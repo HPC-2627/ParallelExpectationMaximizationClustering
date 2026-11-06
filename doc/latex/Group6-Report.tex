@@ -54,6 +54,131 @@
 \subsection{Hardware Infrastructure}
 \subsection{Dataset}
 
+\begin{table*}[t]
+\centering
+\caption{Real datasets. $N$ and $D$ are the values actually used by the EM after preprocessing; $K$ is the number of ground-truth classes (used only for evaluation).}
+\label{tab:real}
+\footnotesize
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{llrrrrll}
+\toprule
+\textbf{Name} & \textbf{Source} & \textbf{$N$} & \textbf{$D$} & \textbf{$K$} & \textbf{File} & \textbf{Label} & \textbf{Description} \\
+\midrule
+\texttt{statlog\_heart}   & UCI \#145 & 270 & 13 & 2 & 28 KB & \texttt{heart-disease} & Heart disease, small clinical sample \\
+\texttt{heart\_failure}   & UCI \#519 & 299 & 12 & 2 & 29 KB & \texttt{death\_event} & Heart failure patients, survival \\
+\texttt{gene\_rnaseq}     & UCI \#401 & 801 & 20\,264 & 5 & 130 MB & \texttt{Class} & TCGA RNA-Seq, 5 cancer types \\
+\texttt{cardiotocography} & UCI \#193 & 2\,126 & 21 & 10 & 357 KB & \texttt{CLASS} & Fetal cardiotocograms \\
+\texttt{parkinson}        & UCI \#189 & 5\,875 & 19 & -- & 893 KB & -- (regression) & Voice telemonitoring \\
+\texttt{eeg\_eye\_state}  & UCI \#264 & 14\,980 & 14 & 2 & 1.7 MB & \texttt{eyeDetection} & EEG, eyes open/closed \\
+\texttt{cardiovascular}   & OpenML 45547 & 70\,000 & 11 & 2 & 6.2 MB & \texttt{cardio} & Cardiovascular disease \\
+\texttt{diabetes130}      & UCI \#296 & 101\,766 & 11 & 3 & 9.0 MB & \texttt{readmitted} & Hospital readmission, 130 US hospitals \\
+\texttt{cdc\_diabetes}    & UCI \#891 & 253\,680 & 21 & 2 & 43 MB & \texttt{Diabetes\_binary} & CDC health indicators survey \\
+\texttt{brainweb}         & BrainWeb (subj.~44) & 11\,862\,016 & 1 & 12 & 95 MB & crisp labels & Simulated T1 brain MRI, one voxel = one point \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+\begin{table*}[t]
+\centering
+\caption{Synthetic profiles. $\delta$ is the distance between cluster means in units of the within-cluster standard deviation.}
+\label{tab:synth-profiles}
+\footnotesize
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{llll}
+\toprule
+ & \texttt{synth\_clean} & \texttt{synth\_overlap} & \texttt{synth\_rare} \\
+\midrule
+Role & easy, satisfies the model & realistic & hard \\
+Clusters $K$ & 4 & 5 & 6 \\
+Variables $D$ & 10 & 20 & 50 \\
+Cluster weights & 25, 25, 25, 25\,\% & 30, 25, 20, 15, 10\,\% & 40, 25, 18, 12, 4, 1\,\% \\
+Separation $\delta$ & 6.0 (well separated) & 2.5 (overlapping) & 4.0 (intermediate) \\
+Covariance in a cluster & diagonal & correlated (3-factor model, 0.5) & diagonal \\
+Std.\ per variable & 1.0 & 1.0 (before correlation) & in $[0.6, 1.4]$ \\
+Outliers & 0\,\% & 0\,\% & 2\,\% (label $-1$) \\
+Skewed (log-normal) variables & no & yes (7 of 20) & no \\
+Physiological clipping & no & yes & yes (clinical variables) \\
+What it tests & correctness, scaling reference & slow convergence, choice of $K$, model mismatch & numerical stability \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+\begin{table*}[t]
+\centering
+\caption{Clinical variables used to build the synthetic data (typical mean $\pm$ std and physiological limits).}
+\label{tab:synth-vars}
+\footnotesize
+\begin{tabular}{rlllcc}
+\toprule
+\# & \textbf{Variable} & \textbf{Unit} & \textbf{Mean $\pm$ std} & \textbf{Limits} & \textbf{Skew} \\
+\midrule
+1 & \texttt{age} & years & $55 \pm 15$ & 18--100 & \\
+2 & \texttt{bmi} & kg/m$^2$ & $27 \pm 5$ & 14--60 & \\
+3 & \texttt{sys\_bp} & mmHg & $130 \pm 20$ & 80--230 & \\
+4 & \texttt{dia\_bp} & mmHg & $80 \pm 11$ & 40--130 & \\
+5 & \texttt{glucose} & mg/dL & $105 \pm 30$ & 50--400 & \checkmark \\
+6 & \texttt{hba1c} & \% & $5.8 \pm 1.0$ & 4--14 & \checkmark \\
+7 & \texttt{cholesterol} & mg/dL & $200 \pm 40$ & 90--400 & \\
+8 & \texttt{hdl} & mg/dL & $52 \pm 14$ & 20--110 & \\
+9 & \texttt{creatinine} & mg/dL & $1.0 \pm 0.3$ & 0.3--6 & \checkmark \\
+10 & \texttt{heart\_rate} & bpm & $75 \pm 12$ & 40--150 & \\
+11 & \texttt{ldl} & mg/dL & $120 \pm 35$ & 30--300 & \\
+12 & \texttt{triglycerides} & mg/dL & $140 \pm 70$ & 30--800 & \checkmark \\
+13 & \texttt{albumin} & g/dL & $4.2 \pm 0.4$ & 2--5.5 & \\
+14 & \texttt{hemoglobin} & g/dL & $13.5 \pm 1.8$ & 6--19 & \\
+15 & \texttt{wbc} & $10^3/\mu$L & $7.0 \pm 2.0$ & 2--25 & \checkmark \\
+16 & \texttt{platelets} & $10^3/\mu$L & $250 \pm 60$ & 50--600 & \\
+17 & \texttt{sodium} & mmol/L & $140 \pm 3$ & 120--160 & \\
+18 & \texttt{potassium} & mmol/L & $4.2 \pm 0.4$ & 2.5--6.5 & \\
+19 & \texttt{alt} & U/L & $28 \pm 15$ & 5--200 & \checkmark \\
+20 & \texttt{crp} & mg/L & $3.0 \pm 3.0$ & 0.1--100 & \checkmark \\
+21--50 & \texttt{biomarker\_01..30} & -- & $0 \pm 1$ & none & \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+\begin{table*}[t]
+\centering
+\caption{Weak scaling: rows and data file size for each profile ($N_0 = 250\,000$ rows per process; labels file of $4N$ bytes for every profile). MB $= 10^6$ bytes.}
+\label{tab:weak}
+\footnotesize
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{rrrrrr}
+\toprule
+\textbf{$p$} & \textbf{$N = N_0 \cdot p$} & \texttt{synth\_clean} & \texttt{synth\_overlap} & \texttt{synth\_rare} & \textbf{Labels} \\
+\midrule
+1  & 250\,000   & 20 MB  & 40 MB  & 100 MB   & 1 MB \\
+2  & 500\,000   & 40 MB  & 80 MB  & 200 MB   & 2 MB \\
+4  & 1\,000\,000 & 80 MB  & 160 MB & 400 MB   & 4 MB \\
+8  & 2\,000\,000 & 160 MB & 320 MB & 800 MB   & 8 MB \\
+16 & 4\,000\,000 & 320 MB & 640 MB & 1\,600 MB & 16 MB \\
+\midrule
+\textbf{Total} & & 620 MB & 1\,240 MB & 3\,100 MB & 31 MB \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+\begin{table*}[t]
+\centering
+\caption{Strong scaling (fixed $N = 4\,000\,000$): data per rank and work per rank $N \cdot K \cdot D / p$. The work is an operation count proportional to the cost of an iteration, not a measured time.}
+\label{tab:strong}
+\footnotesize
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{rrrrrrrr}
+\toprule
+ & & \multicolumn{3}{c}{\textbf{Data per rank}} & \multicolumn{3}{c}{\textbf{Work per rank ($N K D / p$)}} \\
+\cmidrule(lr){3-5} \cmidrule(lr){6-8}
+\textbf{$p$} & \textbf{Rows/rank} & \texttt{clean} & \texttt{overlap} & \texttt{rare} & \texttt{clean} & \texttt{overlap} & \texttt{rare} \\
+\midrule
+1  & 4\,000\,000 & 320 MB & 640 MB & 1\,600 MB & $1.6 \cdot 10^8$ & $4.0 \cdot 10^8$ & $1.2 \cdot 10^9$ \\
+2  & 2\,000\,000 & 160 MB & 320 MB & 800 MB    & $8.0 \cdot 10^7$ & $2.0 \cdot 10^8$ & $6.0 \cdot 10^8$ \\
+4  & 1\,000\,000 & 80 MB  & 160 MB & 400 MB    & $4.0 \cdot 10^7$ & $1.0 \cdot 10^8$ & $3.0 \cdot 10^8$ \\
+8  & 500\,000    & 40 MB  & 80 MB  & 200 MB    & $2.0 \cdot 10^7$ & $5.0 \cdot 10^7$ & $1.5 \cdot 10^8$ \\
+16 & 250\,000    & 20 MB  & 40 MB  & 100 MB    & $1.0 \cdot 10^7$ & $2.5 \cdot 10^7$ & $7.5 \cdot 10^7$ \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
 \section{Performance Evaluation}
 \subsection{Execution Time and Throughput}
 \subsection{Strong Scaling}
