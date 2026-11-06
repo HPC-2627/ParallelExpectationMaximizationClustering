@@ -51,7 +51,7 @@ void gmm_copy(GMMParams *dst, const GMMParams *src);
  * so to compare the versions they must all start from the same point).
  *
  * Step 1: gmm_init_indices() chooses K DISTINCT rows of the dataset (indices in [0, N)) with
- *         the seeded generator (see rng.h). Only N, K and the seed are needed, not the data:
+ *         rand() seeded with the given seed. Only N, K and the seed are needed, not the data:
  *         every MPI rank can therefore compute the same indices without communicating (then
  *         the rank that owns a chosen row sends it to the others).
  *           N     total number of rows of the dataset

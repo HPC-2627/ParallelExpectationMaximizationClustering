@@ -8,7 +8,6 @@
 
 #include "gmm.h"
 #include "common.h"
-#include "rng.h"
 
 #include <math.h>
 #include <stdlib.h>
@@ -45,11 +44,29 @@ void gmm_copy(GMMParams *dst, const GMMParams *src)
 
 void gmm_init_indices(uint64_t N, int K, uint64_t seed, uint64_t *idx)
 {
-    /* The generator depends only on the seed: every version (and every MPI rank) obtains the
-     * same indices, without needing to communicate. */
-    Rng rng;
-    rng_seed(&rng, seed);
-    rng_sample_distinct(&rng, N, K, idx);
+    /* rand() depends only on the seed (srand): every version (and every MPI rank) running on
+     * the same machine/C library obtains the same indices, without communicating.
+     * rand() returns only 31 bits (RAND_MAX >= 2^31-1 on glibc), so two calls are combined to
+     * be able to index datasets with more than 2^31 rows. Rejection sampling: a candidate is
+     * accepted only if not already drawn (cheap because K is tiny compared to N). */
+    srand((unsigned int)seed);
+    int found = 0;
+    while (found < K)
+    {
+        uint64_t r = ((uint64_t)rand() << 31) ^ (uint64_t)rand();
+        uint64_t candidate = r % N;
+        int repeated = 0;
+        for (int j = 0; j < found; j++)
+        {
+            if (idx[j] == candidate)
+            {
+                repeated = 1;
+                break;
+            }
+        }
+        if (!repeated)
+            idx[found++] = candidate;
+    }
 }
 
 void gmm_init_from_rows(GMMParams *p, const double *rows)

@@ -29,13 +29,12 @@ High Performance Computing (HPC) project (University of Trento): parallel Expect
 │   └── common/                                # Shared code (no MPI): compiled with every version
 │       ├── dataset.c                          #   reading of the .bin datasets (whole file or a block of rows) and of the labels
 │       ├── gmm.c                              #   parameters of the mixture, identical initialization, log-sum-exp, convergence test
-│       ├── rng.c                              #   seeded random generator (same initialization in all the versions)
 │       ├── args.c                             #   command-line options, the same in all the versions
 │       ├── logger.c                           #   .log text file of the runs (one block per run, with hostname and CPU model)
 │       ├── eval.c                             #   adjusted Rand index and purity against the true labels
 │       └── my-time-lib.c                      #   statistics for the benchmarks (mean, median, standard deviation)
 ├── include/                                   # Headers of src/common (compile with -Iinclude and -lm)
-│   ├── common.h  dataset.h  gmm.h  rng.h  args.h  logger.h  eval.h
+│   ├── common.h  dataset.h  gmm.h  args.h  logger.h  eval.h
 │   └── my-time-lib.h                          #   timer macros and statistics prototypes
 ├── data/            # NOT versioned (listed in .gitignore): it is filled locally by the scripts in src/dataset-managed/
 │   ├── real/        # Real (medical) datasets: <name>/raw/features.csv (+ targets.csv), converted to <name>/<name>.bin (+ labels, .json)
