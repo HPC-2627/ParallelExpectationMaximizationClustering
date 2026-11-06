@@ -26,7 +26,7 @@ High Performance Computing (HPC) project (University of Trento): parallel Expect
 │   ├── plots-generate/                        # Scripts that generate the plots -> results/plots/
 │   │   ├── plots-performance.py               # Performance plots (time, speedup, efficiency, scaling, ...)
 │   │   └── plots-cluster.py                   # Clustering plots (PCA, centroids, cluster sizes, ...)
-│   ├── visual/                                # Step-by-step web visualization of the EM algorithm
+│   ├── visual-sequential-diagonal/            # Step-by-step web visualization of the EM algorithm
 │   │   ├── server.py                          #   local server: runs EM on a dataset, records every iteration, checks it against the C binary
 │   │   └── index.html                         #   page that plays the iterations back (E-step, convergence test, M-step)
 │   └── common/                                # Shared code (no MPI): compiled with every version
@@ -289,7 +289,7 @@ A small web page shows how EM works step by step on any dataset of `data/`: the 
 
 ```
 make                              # builds bin/PEMC-baseline-sequential-diagonal
-python3 src/visual/server.py      # then open http://127.0.0.1:8000
+python3 src/visual-sequential-diagonal/server.py   # then open http://127.0.0.1:8000
 ```
 
 Choose the dataset, `K`, the number of rows (at most 3000), the seed, `max_iter` and `tol`, then press **Run**. Controls: play/pause, back/next phase (also with the arrow keys and space), speed slider, clickable timeline, and a checkbox that draws the true labels as rings.

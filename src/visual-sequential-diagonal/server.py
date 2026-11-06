@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-Local server for the EM visualization (src/visual/index.html).
+Local server for the EM visualization (src/visual-sequential-diagonal/index.html).
 
-  python3 src/visual/server.py      ->  http://127.0.0.1:8000
+  python3 src/visual-sequential-diagonal/server.py  ->  http://127.0.0.1:8000
 
 What it does for every run requested by the page:
   1. reads the first n rows of a .bin dataset (header int32 N, int32 D + float64 row-major);
@@ -31,7 +31,7 @@ import numpy as np
 # Paths and constants
 # ---------------------------------------------------------------------------------------------
 
-# Repository root (this file is in src/visual/); data/ and bin/ are looked for from here
+# Repository root (this file is in src/visual-sequential-diagonal/); data/ and bin/ are looked for from here
 ROOT = Path(__file__).resolve().parent.parent.parent
 DATA = ROOT / "data"
 BIN = ROOT / "bin" / "PEMC-baseline-sequential-diagonal"
