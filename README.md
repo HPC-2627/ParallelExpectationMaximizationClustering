@@ -111,16 +111,16 @@ The real datasets are public and are not versioned: `data/real/*/raw/` is listed
 
 | Folder | Dataset | N x D | Source |
 |---|---|---|---|
-| `diabetes130` | Diabetes 130-US hospitals | 101,766 x 11 numeric (of 47) | UCI 296 |
-| `cdc_diabetes` | CDC Diabetes Health Indicators | 253,680 x 21 | UCI 891 |
-| `cardiovascular` | Cardiovascular Disease | 70,000 x 11 | OpenML 45547 |
-| `parkinson` | Parkinsons Telemonitoring | 5,875 x 19 | UCI 189 |
-| `eeg_eye_state` | EEG Eye State | 14,980 x 14 | UCI 264 |
-| `gene_rnaseq` | Gene expression cancer RNA-Seq (TCGA) | 801 x 20,531 | UCI 401 |
-| `heart_failure` | Heart Failure Clinical Records | 299 x 12 | UCI 519 |
-| `cardiotocography` | Cardiotocography | 2,126 x 21 | UCI 193 |
-| `statlog_heart` | Statlog (Heart) | 270 x 13 | UCI 145 |
-| `brainweb` | BrainWeb simulated brain MRI, subject 44 (T1 + ground-truth labels) | 11,862,016 voxels x 1 | BrainWeb |
+| `diabetes130` | Diabetes 130-US hospitals | 101,766 x 11 numeric (of 47) | [UCI 296](https://archive.ics.uci.edu/dataset/296) |
+| `cdc_diabetes` | CDC Diabetes Health Indicators | 253,680 x 21 | [UCI 891](https://archive.ics.uci.edu/dataset/891) |
+| `cardiovascular` | Cardiovascular Disease | 70,000 x 11 | [OpenML 45547](https://www.openml.org/d/45547) |
+| `parkinson` | Parkinsons Telemonitoring | 5,875 x 19 | [UCI 189](https://archive.ics.uci.edu/dataset/189) |
+| `eeg_eye_state` | EEG Eye State | 14,980 x 14 | [UCI 264](https://archive.ics.uci.edu/dataset/264) |
+| `gene_rnaseq` | Gene expression cancer RNA-Seq (TCGA) | 801 x 20,531 | [UCI 401](https://archive.ics.uci.edu/dataset/401) |
+| `heart_failure` | Heart Failure Clinical Records | 299 x 12 | [UCI 519](https://archive.ics.uci.edu/dataset/519) |
+| `cardiotocography` | Cardiotocography | 2,126 x 21 | [UCI 193](https://archive.ics.uci.edu/dataset/193) |
+| `statlog_heart` | Statlog (Heart) | 270 x 13 | [UCI 145](https://archive.ics.uci.edu/dataset/145) |
+| `brainweb` | BrainWeb simulated brain MRI, subject 44 (T1 + ground-truth labels) | 11,862,016 voxels x 1 | [BrainWeb](https://brainweb.bic.mni.mcgill.ca/) |
 
 `cleveland` is downloaded only to document why it is discarded: it has 6 incomplete rows. The other datasets have no missing values in the numeric columns (see [doc/real-datasets-info.md](doc/real-datasets-info.md)).
 
