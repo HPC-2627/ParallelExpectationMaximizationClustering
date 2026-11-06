@@ -48,6 +48,13 @@ Run all the versions (`src/PEMC-baseline-sequential-diagonal.c`, `src/PEMC-basel
 - [ ] Report at least 10 pages
 
 ## Final checks
+- [ ] Code audit (`src/`, `src/common/`, `include/`, `src/visual-sequential-diagonal/`), version by version, before delivery:
+  - every function, struct and non-obvious line is commented (what it does and why), in English
+  - everything is used: no unused functions, parameters, options, macros, includes or files (for example the statistics in `my-time-lib.c` and `dataset_read_header()` if no version ends up calling them); delete what is not used
+  - no hand-made replacements of standard functions (e.g. a custom random generator instead of `rand()`); use the standard library
+  - no leftover portability or "just in case" code that the cluster does not need (we already removed the custom RNG, the architecture/endianness check on the datasets and `_POSIX_C_SOURCE`; look for similar cases: unneeded `#define`s, defensive checks, duplicated helpers)
+  - no behaviour hidden in the code that is not in the README (options, defaults, file formats)
+  - `make` from scratch with no warnings (`-Wall -Wextra`), and the visualization still matches the C binary after any change
 - [ ] Code commented, `makefile` builds from scratch, `README.md` has build and usage instructions
 - [ ] Both team members ready for the oral exam
 
