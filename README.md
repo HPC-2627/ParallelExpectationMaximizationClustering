@@ -27,7 +27,7 @@ High Performance Computing (HPC) project (University of Trento): parallel Expect
 │   ├── plots-generate/                        # Scripts that generate the plots -> results/plots/
 │   │   ├── plots-performance.py               # Performance plots (time, speedup, efficiency, scaling, ...)
 │   │   └── plots-cluster.py                   # Clustering plots (PCA, centroids, cluster sizes, ...)
-│   ├── visual-sequential-diagonal/            # Step-by-step web visualization of the EM algorithm
+│   ├── visual-sequential/                     # Step-by-step web visualization of the EM algorithm (diagonal or full covariance)
 │   │   ├── server.py                          #   local server: runs EM on a dataset, records every iteration, checks it against the C binary
 │   │   └── index.html                         #   page that plays the iterations back (E-step, convergence test, M-step)
 │   └── common/                                # Shared code (no MPI): compiled with every version
@@ -298,16 +298,16 @@ Times are in seconds. `hostname` and `cpu_model` identify the node (the nodes of
 A small web page shows how EM works step by step on any dataset of `data/`: the initial centroids, then for every iteration the E-step (points coloured by their responsibilities), the convergence test on the log-likelihood and the M-step (means and ellipses moving to their new values). It also shows the formulas with the real numbers of the current iteration, the log-likelihood curve, and the calculation of any point you click.
 
 ```
-make                              # builds bin/PEMC-baseline-sequential-diagonal
-python3 src/visual-sequential-diagonal/server.py   # then open http://127.0.0.1:8000
+make                              # builds the two C binaries (diagonal and full)
+python3 src/visual-sequential/server.py   # then open http://127.0.0.1:8000
 ```
 
-Choose the dataset, `K`, the number of rows (at most 3000), the seed, `max_iter` and `tol`, then press **Run**. Controls: play/pause, back/next phase (also with the arrow keys and space), speed slider, clickable timeline, and a checkbox that draws the true labels as rings.
+Choose the dataset, the covariance (**diagonal** or **full**), `K`, the number of rows (at most 3000), the seed, `max_iter` and `tol`, then press **Run**. Controls: play/pause, back/next phase (also with the arrow keys and space), speed slider, clickable timeline, and a checkbox that draws the true labels as rings.
 
 How it relates to the C program:
 - The initial rows are chosen with the **same libc `srand()`/`rand()`** as `gmm_init_indices()` (called through `ctypes`), so the starting point is the same.
-- The server repeats the same EM as `PEMC-baseline-sequential-diagonal.c` (diagonal covariance, same floors and convergence test) in NumPy, recording every iteration.
-- It also runs the **real binary** with `-v` on the same data and the page compares the log-likelihood of every iteration (expandable section under the chart). A mismatch would mean that the page and the C code have diverged.
+- The server repeats the same EM as `PEMC-baseline-sequential-diagonal.c` or `PEMC-baseline-sequential-full.c` (depending on the covariance chosen; same floors and convergence test) in NumPy, recording every iteration. With full covariance the ellipses are tilted, because they follow the correlations between variables.
+- It also runs the **real binary** of the chosen model with `-v` on the same data and the page compares the log-likelihood of every iteration (expandable section under the chart). A mismatch would mean that the page and the C code have diverged.
 - The data have D dimensions: the plot is the projection on the first two principal components (the percentage of variance kept is shown), while EM uses all dimensions.
 
 Requirements: Python 3 with NumPy; the browser only needs to reach `127.0.0.1`.

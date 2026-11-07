@@ -48,7 +48,7 @@ Run all the versions (`src/PEMC-baseline-sequential-diagonal.c`, `src/PEMC-basel
 - [ ] Report at least 10 pages
 
 ## Final checks
-- [ ] Code audit (`src/`, `src/common/`, `include/`, `src/visual-sequential-diagonal/`), version by version, before delivery:
+- [ ] Code audit (`src/`, `src/common/`, `include/`, `src/visual-sequential/`), version by version, before delivery:
   - every function, struct and non-obvious line is commented (what it does and why), in English
   - everything is used: no unused functions, parameters, options, macros, includes or files (for example the statistics in `my-time-lib.c` and `dataset_read_header()` if no version ends up calling them); delete what is not used
   - no hand-made replacements of standard functions (e.g. a custom random generator instead of `rand()`); use the standard library

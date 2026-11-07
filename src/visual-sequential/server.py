@@ -1,16 +1,17 @@
 #!/usr/bin/env python3
 """
-Local server for the EM visualization (src/visual-sequential-diagonal/index.html).
+Local server for the EM visualization (src/visual-sequential/index.html).
 
-  python3 src/visual-sequential-diagonal/server.py  ->  http://127.0.0.1:8000
+  python3 src/visual-sequential/server.py  ->  http://127.0.0.1:8000
 
 What it does for every run requested by the page:
   1. reads the first n rows of a .bin dataset (header int32 N, int32 D + float64 row-major);
   2. chooses the K initial rows with the SAME libc srand()/rand() calls used by gmm_init_indices()
      in src/common/gmm.c (through ctypes), so the starting point is the one of the C program;
-  3. runs the same EM as src/PEMC-baseline-sequential-diagonal.c (diagonal covariance, same
-     floors, same convergence test) and records every iteration;
-  4. runs the REAL binary bin/PEMC-baseline-sequential-diagonal with -v on the same data and
+  3. runs the same EM as src/PEMC-baseline-sequential-diagonal.c or
+     src/PEMC-baseline-sequential-full.c (model=diagonal | full: same floors, same convergence
+     test) and records every iteration;
+  4. runs the REAL binary bin/PEMC-baseline-sequential-<model> with -v on the same data and
      returns its log-likelihood per iteration, so the page can show that the two agree.
 The data have D dimensions: for the picture they are projected on the first two principal
 components (the EM itself works in the full D dimensions).
@@ -31,10 +32,15 @@ import numpy as np
 # Paths and constants
 # ---------------------------------------------------------------------------------------------
 
-# Repository root (this file is in src/visual-sequential-diagonal/); data/ and bin/ are looked for from here
+# Repository root (this file is in src/visual-sequential/); data/ and bin/ are looked for from here
 ROOT = Path(__file__).resolve().parent.parent.parent
 DATA = ROOT / "data"
-BIN = ROOT / "bin" / "PEMC-baseline-sequential-diagonal"
+MODELS = ("diagonal", "full")
+
+
+def binary(model):
+    """Path of the C program of the given model."""
+    return ROOT / "bin" / f"PEMC-baseline-sequential-{model}"
 PAGE = Path(__file__).resolve().parent / "index.html"
 
 # Same constants as include/common.h:
@@ -109,7 +115,7 @@ def init_indices(N, K, seed):
 
 
 def e_step(X, pi, mu, var):
-    """E-step: returns the log-densities logp[i,k] = log(pi_k N(x_i|mu_k,var_k)), their
+    """DIAGONAL model. E-step: returns the log-densities logp[i,k] = log(pi_k N(x_i|mu_k,var_k)), their
     log-sum-exp per row (lse) and the log-likelihood ll = sum_i lse[i].
     The responsibilities are r_ik = exp(logp_ik - lse_i) (computed where needed)."""
     N, D = X.shape
@@ -128,7 +134,7 @@ def e_step(X, pi, mu, var):
 
 
 def m_step(X, logp, lse, pi, mu, var):
-    """M-step: updates pi, mu, var IN PLACE using the responsibilities as weights.
+    """DIAGONAL model. M-step: updates pi, mu, var IN PLACE using the responsibilities as weights.
     Returns N_k (sum of the responsibilities of each cluster) and the number of empty clusters."""
     N = X.shape[0]
     r = np.exp(logp - lse[:, None])      # responsibilities, shape (N, K)
@@ -151,35 +157,91 @@ def m_step(X, logp, lse, pi, mu, var):
     return Nk, empty
 
 
+def cholesky_jitter(S):
+    """Cholesky factor of S; if S is not positive definite a growing jitter is added to the
+    diagonal (starting from VAR_FLOOR, x10), exactly like e_step() of the full C program."""
+    jitter = 0.0
+    while True:
+        try:
+            return np.linalg.cholesky(S + jitter * np.eye(len(S)))
+        except np.linalg.LinAlgError:
+            jitter = VAR_FLOOR if jitter == 0.0 else jitter * 10.0
+            if jitter > 1e6:
+                raise ValueError("covariance not positive definite")
+
+
+def e_step_full(X, pi, mu, cov):
+    """FULL model. Same outputs as e_step(). Sigma_k = L L^T; log det = 2 sum log L_dd and the
+    squared Mahalanobis distance is |L^-1 (x - mu)|^2."""
+    N, D = X.shape
+    K = len(pi)
+    logp = np.empty((N, K))
+    for k in range(K):
+        L = cholesky_jitter(cov[k])
+        log_det = 2.0 * np.log(np.diag(L)).sum()
+        z = (X - mu[k]) @ np.linalg.inv(L).T      # rows: L^-1 (x_i - mu_k)
+        logp[:, k] = np.log(pi[k]) - 0.5 * (D * LOG_2PI + log_det) - 0.5 * (z * z).sum(axis=1)
+    m = logp.max(axis=1, keepdims=True)
+    lse = (m + np.log(np.exp(logp - m).sum(axis=1, keepdims=True)))[:, 0]
+    return logp, lse, float(lse.sum())
+
+
+def m_step_full(X, logp, lse, pi, mu, cov):
+    """FULL model. M-step IN PLACE: Sigma_k = sum_i r_ik x x^T / N_k - mu mu^T (+ VAR_FLOOR on
+    the diagonal). Returns N_k and the number of empty clusters."""
+    N, D = X.shape
+    r = np.exp(logp - lse[:, None])
+    Nk = r.sum(axis=0)
+    sx = r.T @ X
+    empty = 0
+    for k in range(len(pi)):
+        if Nk[k] < NK_EMPTY:
+            empty += 1
+            pi[k] = PI_FLOOR
+            continue
+        mean = sx[k] / Nk[k]
+        sxx = (X * r[:, k:k + 1]).T @ X            # sum_i r_ik x_i x_i^T
+        S = sxx / Nk[k] - np.outer(mean, mean)
+        S = (S + S.T) / 2.0 + VAR_FLOOR * np.eye(D)
+        mu[k] = mean
+        cov[k] = S
+        pi[k] = max(Nk[k] / N, PI_FLOOR)
+    return Nk, empty
+
+
 def snapshot(pi, mu, var, mean, V):
     """Parameters as the page needs them, in the 2D plane of the picture.
     mean, V = mean of the data and the D x 2 matrix of the first two principal components.
+    var is K x D (diagonal model) or K x D x D (full model: the covariance matrices).
       mu   -> projected means (K x 2)
-      cov  -> projected covariance of each cluster V^T diag(var) V, as [xx, xy, yy]
+      cov  -> projected covariance of each cluster V^T Sigma V, as [xx, xy, yy]
       var_mean -> average variance over the D variables (a single number per cluster)"""
     mu2 = (mu - mean) @ V
+    full = var.ndim == 3
     cov = []
     for k in range(len(pi)):
-        C = V.T @ (var[k][:, None] * V)
+        C = V.T @ (var[k] @ V if full else var[k][:, None] * V)
         cov.append([C[0, 0], C[0, 1], C[1, 1]])
+    vm = np.trace(var, axis1=1, axis2=2) / var.shape[2] if full else var.mean(axis=1)
     return {"pi": pi.tolist(), "mu": mu2.round(5).tolist(), "cov": np.round(cov, 6).tolist(),
-            "var_mean": var.mean(axis=1).round(5).tolist()}
+            "var_mean": vm.round(5).tolist()}
 
 
 # ---------------------------------------------------------------------------------------------
 # Cross-check with the real C program
 # ---------------------------------------------------------------------------------------------
 
-def run_c_binary(path, K, n, seed, max_iter, tol):
-    """Runs bin/PEMC-baseline-sequential-diagonal with the same settings and -v, and parses
+def run_c_binary(model, path, K, n, seed, max_iter, tol):
+    """Runs bin/PEMC-baseline-sequential-<model> with the same settings and -v, and parses
     the log-likelihood printed at every iteration. Returns None if the binary is missing
     (run `make`) or fails. The page compares these values with its own."""
-    if not BIN.exists():
+    exe = binary(model)
+    if not exe.exists():
         return None
-    cmd = [str(BIN), "-d", path, "-k", str(K), "-n", str(n), "-s", str(seed),
+    cmd = [str(exe), "-d", path, "-k", str(K), "-n", str(n), "-s", str(seed),
            "-i", str(max_iter), "-t", repr(tol), "--no-log", "-v"]  # --no-log: do not touch the log file
     try:
-        out = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True, timeout=120).stdout
+        out = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True, timeout=300).stdout
     except Exception:
         return None
     # lines like "  iteration   3  log-likelihood -1234.5  change +1.0e+01"
@@ -195,13 +257,17 @@ def run_c_binary(path, K, n, seed, max_iter, tol):
 
 def run_trace(q):
     """Runs EM on the first n rows and returns the full trace for the page (see index.html).
-    q = query parameters of the request (path, k, n, seed, max_iter, tol)."""
+    q = query parameters of the request (path, model, k, n, seed, max_iter, tol)."""
     # --- parameters, with the same defaults as the C program ---
     rel = q["path"]
     p = (ROOT / rel).resolve()
     # safety: only .bin files inside data/ can be read (no path tricks like ../)
     if DATA not in p.parents or p.suffix != ".bin" or not p.exists():
         raise ValueError("invalid dataset")
+    model = q.get("model", "diagonal")
+    if model not in MODELS:
+        raise ValueError("invalid model")
+    full = model == "full"
     K = int(q.get("k", 3))
     seed = int(q.get("seed", 42))
     max_iter = int(q.get("max_iter", 200))
@@ -232,14 +298,15 @@ def run_trace(q):
     idx = init_indices(n, K, seed)
     pi = np.full(K, 1.0 / K)
     mu = X[idx].copy()
-    var = np.ones((K, D))
+    var = np.tile(np.eye(D), (K, 1, 1)) if full else np.ones((K, D))   # Sigma = I / var = 1
+    e_fn, m_fn = (e_step_full, m_step_full) if full else (e_step, m_step)
 
     # --- main EM loop, same structure as run_em() in the C file: E-step, convergence test on
     #     the log-likelihood, M-step. One record per iteration is stored for the page. ---
     iters, ll_prev = [], -math.inf
     done = False
     for it in range(max_iter):
-        logp, lse, ll = e_step(X, pi, mu, var)
+        logp, lse, ll = e_fn(X, pi, mu, var)
         # "params" = parameters USED by this E-step; logp lets the page recompute the
         # responsibilities of every point (rounded to keep the JSON small)
         rec = {"ll": ll, "params": snapshot(pi, mu, var, mean, V), "logp": logp.round(3).tolist(),
@@ -250,19 +317,19 @@ def run_trace(q):
             iters.append(rec)
             done = True
             break
-        Nk, empty = m_step(X, logp, lse, pi, mu, var)
+        Nk, empty = m_fn(X, logp, lse, pi, mu, var)
         rec["Nk"], rec["empty"] = Nk.round(4).tolist(), empty
         rec["next"] = snapshot(pi, mu, var, mean, V)   # parameters AFTER the M-step
         iters.append(rec)
         ll_prev = ll
     if not done:  # same extra E-step as run_em() when max_iter is reached
-        logp, lse, ll = e_step(X, pi, mu, var)
+        logp, lse, ll = e_fn(X, pi, mu, var)
         iters.append({"ll": ll, "params": snapshot(pi, mu, var, mean, V), "logp": logp.round(3).tolist(),
                       "converged": False, "final": True})
 
-    return {"path": rel, "N": n, "N_file": N_file, "D": D, "K": K, "seed": seed, "tol": tol,
+    return {"path": rel, "model": model, "N": n, "N_file": N_file, "D": D, "K": K, "seed": seed, "tol": tol,
             "max_iter": max_iter, "points": pts, "truth": truth, "init_idx": idx,
-            "explained": expl, "iters": iters, "c_binary": run_c_binary(rel, K, n, seed, max_iter, tol)}
+            "explained": expl, "iters": iters, "c_binary": run_c_binary(model, rel, K, n, seed, max_iter, tol)}
 
 
 # ---------------------------------------------------------------------------------------------

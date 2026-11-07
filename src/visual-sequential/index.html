@@ -54,13 +54,14 @@ details{margin-top:8px} summary{cursor:pointer;color:var(--muted);font-size:13px
 </head>
 <body>
 <header>
-  <h1>How EM works for a Gaussian Mixture Model (diagonal covariance)</h1>
-  <div class="sub">The same steps as <code>PEMC-baseline-sequential-diagonal.c</code>, animated one at a time. Data and iterations come from the local server; the log-likelihood is checked against your C binary.</div>
+  <h1>How EM works for a Gaussian Mixture Model (<span id="modeltitle">diagonal</span> covariance)</h1>
+  <div class="sub">The same steps as <code>PEMC-baseline-sequential-<span id="modelfile">diagonal</span>.c</code>, animated one at a time. Data and iterations come from the local server; the log-likelihood is checked against your C binary.</div>
 </header>
 
 <!-- Run settings: they are sent to the server (/api/run) and mirror the options of the C program -->
 <div class="bar">
   <label>Dataset <select id="ds"></select></label>
+  <label>Covariance <select id="model"><option value="diagonal">diagonal</option><option value="full">full</option></select></label>
   <label>K (clusters)<input id="k" type="number" min="1" value="3"></label>
   <label>Rows used (n)<input id="n" type="number" min="10" max="3000" value="300"></label>
   <label>Seed<input id="seed" type="number" value="42"></label>
@@ -142,7 +143,7 @@ async function boot(){
 
 /* "Run": asks the server for the trace and starts the visualization */
 $("run").onclick = async () => {
-  const q = new URLSearchParams({path:$("ds").value,k:$("k").value,n:$("n").value,seed:$("seed").value,max_iter:$("maxit").value,tol:$("tol").value});
+  const q = new URLSearchParams({path:$("ds").value,model:$("model").value,k:$("k").value,n:$("n").value,seed:$("seed").value,max_iter:$("maxit").value,tol:$("tol").value});
   $("status").textContent = "computing…"; playing = false;
   try{
     const r = await fetch("/api/run?"+q); const j = await r.json();
@@ -153,7 +154,8 @@ $("run").onclick = async () => {
 
 /* Prepares everything for a new trace: list of frames, timeline, plot bounds, legend */
 function setup(j){
-  R = j; respCache = {}; sel = -1; cur = 0;
+  R = j; respCache = {};
+  $("modeltitle").textContent = $("modelfile").textContent = j.model; sel = -1; cur = 0;
   $("msg").hidden = true; $("app").hidden = false;
   $("expl").textContent = (100*j.explained).toFixed(0)+"%"; $("dd").textContent = j.D;
   /* frames: init, then for every iteration E-step + convergence test (+ M-step if not stopped), then done */
@@ -285,7 +287,7 @@ function swatch(k){return `<span class="sw" style="background:${PAL[k%PAL.length
 function pointBox(it){
   if(sel<0||!R.iters[it]) return `<div class="muted" style="font-size:12.5px">Click a point in the plot to see its calculations.</div>`;
   const lp=R.iters[it].logp[sel], {r,lse}=resp(it), K=R.K;
-  return `<div style="margin-top:10px"><b>Point #${sel}</b> <span class="muted">— log π<sub>k</sub> N(x|μ<sub>k</sub>,σ²<sub>k</sub>) → responsibility</span>
+  return `<div style="margin-top:10px"><b>Point #${sel}</b> <span class="muted">— log π<sub>k</sub> N(x|μ<sub>k</sub>,${R.model==="full"?"Σ":"σ²"}<sub>k</sub>) → responsibility</span>
    <div class="bars">${lp.map((v,k)=>`<div class="row"><span>${swatch(k)}k=${k}</span><span class="b"><i style="width:${(100*r[sel][k]).toFixed(1)}%;background:${PAL[k%PAL.length]}"></i></span><span>log=${fx(v,1)} → <b>${fx(r[sel][k],3)}</b></span></div>`).join("")}</div>
    <div class="muted" style="font-size:12.5px">log-sum-exp = ${fx(lse[sel],2)} (= log p(x)); r<sub>k</sub> = exp(log<sub>k</sub> − ${fx(lse[sel],2)}); the K responsibilities sum to 1.</div></div>`;
 }
@@ -305,14 +307,14 @@ function info(f){
     title=head("");
     body=`<p>EM needs a starting point. <b>K = ${K} distinct rows</b> of the dataset are chosen (coloured rings) with <code>srand(${R.seed})</code> + <code>rand()</code>, exactly like <code>gmm_init_indices</code>: rows ${R.init_idx.join(", ")}.</p>
     <div class="formula">μ_k = chosen row k      (the crosses)
-σ²_kd = 1               (standardized data → circles of radius ~1)
+${R.model==="full"?"Σ_k   = I               (identity: standardized data → circles of radius ~1)":"σ²_kd = 1               (standardized data → circles of radius ~1)"}
 π_k  = 1/K = ${fx(1/K,3)}</div>
     <p class="muted">The points are still grey: none has been assigned to a cluster yet. There are ${N} points in ${D} dimensions; here you see them projected on 2.</p>`;
   }else if(f.t==="e"){
     const it=its[f.i], prev=f.i>0?its[f.i-1].ll:null;
     title=head(`iteration ${f.i}`);
     body=`<p>With the current parameters, for <b>every point</b> and <b>every cluster</b> the <b>responsibility</b> is computed: the probability that the point belongs to the cluster. The colour of a point is the mix of the cluster colours weighted by r<sub>ik</sub>.</p>
-    <div class="formula">log π_k N(x_i|μ_k,σ²_k) = log π_k − ½[ D·log 2π + Σ_d log σ²_kd + Σ_d (x_id−μ_kd)²/σ²_kd ]
+    <div class="formula">${R.model==="full"?"log π_k N(x_i|μ_k,Σ_k) = log π_k − ½[ D·log 2π + log det Σ_k + (x_i−μ_k)ᵀ Σ_k⁻¹ (x_i−μ_k) ]\n(Σ_k = L Lᵀ Cholesky: log det = 2 Σ log L_dd, distance = |L⁻¹(x_i−μ_k)|²)":"log π_k N(x_i|μ_k,σ²_k) = log π_k − ½[ D·log 2π + Σ_d log σ²_kd + Σ_d (x_id−μ_kd)²/σ²_kd ]"}
 r_ik = exp( logp_ik − log_sum_exp_k(logp_ik) )
 ll   = Σ_i log_sum_exp_k(logp_ik)</div>
     <div class="kv"><span>log-likelihood</span><b>${fx(it.ll,4)}</b><span>change</span><b>${prev==null?"—":(it.ll-prev>=0?"+":"")+fe(it.ll-prev)}</b></div>
@@ -334,10 +336,10 @@ ${fe(d)} ${c?"≤":">"} ${fe(th)}   →   ${c?"CONVERGED: stop":"not converged: 
     body=`<p>Now the opposite: the responsibilities become <b>weights</b> to recompute the parameters. Every point counts in proportion to how much it belongs to the cluster. The crosses move (dashed lines) and the ellipses adapt to the points.</p>
     <div class="formula">N_k   = Σ_i r_ik
 μ_k   = Σ_i r_ik x_i / N_k
-σ²_k  = Σ_i r_ik x_i² / N_k − μ_k²     (min 1e-6)
+${R.model==="full"?"Σ_k   = Σ_i r_ik x_i x_iᵀ / N_k − μ_k μ_kᵀ     (+1e-6 on the diagonal)":"σ²_k  = Σ_i r_ik x_i² / N_k − μ_k²     (min 1e-6)"}
 π_k   = N_k / N</div>
     <b style="font-size:13px">New parameters</b>${paramTable(it.next,it.Nk)}
-    ${it.empty?`<p class="warn">⚠ ${it.empty} empty cluster(s): mean and variance are left unchanged.</p>`:""}
+    ${it.empty?`<p class="warn">⚠ ${it.empty} empty cluster(s): mean and ${R.model==="full"?"covariance":"variance"} are left unchanged.</p>`:""}
     <p class="muted">The ellipses show 1σ (thick) and 2σ (thin), projected on the plane.</p>`;
   } else {
     const last=its[its.length-1];
