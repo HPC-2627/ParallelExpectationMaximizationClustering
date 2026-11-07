@@ -19,7 +19,7 @@ Workflow, in order. Phases overlap on purpose: datasets are prepared while the c
 - [X] (mike) Sequential C implementation: `src/PEMC-baseline-sequential-diagonal.c` 
 - [X] (mike) Define the log format (.log text file: version, dataset, ranks, threads, time per phase, iterations, log-likelihood) 
 - [X] (mike) Define visual method to visualize `src/PEMC-baseline-sequential-diagonal.c` 
-- [ ] (gabri) Baseline MPI + OpenMP: `src/PEMC-baseline-MPI-OpenMP-diagonal.c`, checked against `src/PEMC-baseline-sequential-diagonal.c` (same final log-likelihood on a small dataset, correctness reference and serial time)
+- [X] (gabri) Baseline MPI + OpenMP: `src/PEMC-baseline-MPI-OpenMP-diagonal.c`, checked against `src/PEMC-baseline-sequential-diagonal.c` (same final log-likelihood on a small dataset, correctness reference and serial time)
 - [ ] Define the PBS launch script (new file, location to decide)
 - [ ] First test run on the cluster (also on 2 nodes) to find environment problems early
 - [ ] Optimization 1: `src/PEMC-opt1-MPI-OpenMP-diagonal.c` (compared against `src/PEMC-baseline-MPI-OpenMP-diagonal.c`) --> to choose
