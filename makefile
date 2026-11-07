@@ -32,5 +32,19 @@ $(BIN_DIR)/PEMC-baseline-sequential-full: src/PEMC-baseline-sequential-full.c $(
 	@mkdir -p $(BIN_DIR)
 	$(CC) $(CFLAGS) $(INCLUDES) src/PEMC-baseline-sequential-full.c $(COMMON_SRC) -o $@ $(LIBS)
 
+# MPI + OpenMP versions: not part of "all", so a machine without MPI can still build the
+# sequential ones. On the cluster: module load MPICH/3.4.2-GCC-10.3.0, then make mpi-omp.
+# On macOS Apple clang has no OpenMP: use a GCC from Homebrew, e.g.
+#   OMPI_CC=gcc-16 make mpi-omp        (Open MPI)   or   MPICH_CC=gcc-16 make mpi-omp   (MPICH)
+MPICC    ?= mpicc
+MPIFLAGS  = $(CFLAGS) -fopenmp
+
+.PHONY: mpi-omp
+mpi-omp: $(BIN_DIR)/PEMC-baseline-MPI-OpenMP-diagonal
+
+$(BIN_DIR)/PEMC-baseline-MPI-OpenMP-diagonal: src/PEMC-baseline-MPI-OpenMP-diagonal.c $(COMMON_SRC) $(HEADERS)
+	@mkdir -p $(BIN_DIR)
+	$(MPICC) $(MPIFLAGS) $(INCLUDES) src/PEMC-baseline-MPI-OpenMP-diagonal.c $(COMMON_SRC) -o $@ $(LIBS)
+
 clean:
 	rm -rf $(BIN_DIR)
