@@ -51,8 +51,7 @@
  * CHOICES OF THIS VERSION
  * ========================================================================================
  * It is the simple version, written for clarity: it stores the N x K matrix of responsibilities
- * and makes two separate passes over the data (E-step, M-step). The optimizations
- * start from here and must be compared with this one.
+ * and makes two separate passes over the data (E-step, M-step).
  *
  * Stopping: when |ll - ll_prev| <= tol * |ll| or after max_iter iterations.
  * The labels (if the dataset has them) are used only at the end, to compute the adjusted Rand
