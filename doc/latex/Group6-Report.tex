@@ -46,8 +46,82 @@
 \end{IEEEkeywords}
 
 \section{Introduction}
+Clustering groups the points of a dataset so that points in the same group are similar. Here we assume that the data come from a mixture of Gaussian distributions and that the group of each point is unknown; the parameters of the mixture are estimated with the Expectation--Maximization (EM) algorithm. EM is iterative and every iteration scans the whole dataset: its cost grows with the data, which makes it a good candidate for parallelization. The goal of the project is to implement EM in C with a hybrid MPI+OpenMP design, to evaluate optimizations of computation and communication, and to measure their scalability on multiple nodes (strong and weak scaling) on real and synthetic datasets.
 
-\section{Parallel Design Methodology}
+\subsection{The EM algorithm for Gaussian mixtures}
+We distinguish two things: the \emph{model} is the assumption about the shape of the data (a mixture of Gaussians, with still unknown parameters), while \emph{EM} is the iterative procedure that estimates those parameters from the data.
+
+\paragraph{Model.} The input is a matrix $X$ of $N$ points (rows) and $D$ variables (columns); $x_i\in\mathbb{R}^D$ is row $i$. The number of clusters $K$ is chosen by the user and no labels are used. The points are assumed to come from a mixture of $K$ Gaussians:
+\begin{equation}
+p(x)=\sum_{k=1}^{K}\pi_k\,\mathcal{N}(x\mid\mu_k,\sigma_k^2).
+\end{equation}
+For cluster $k$: $\pi_k$ is the \emph{weight} (fraction of points, $\sum_k\pi_k=1$), $\mu_k\in\mathbb{R}^D$ the \emph{mean} (center) and $\sigma^2_k=(\sigma^2_{k1},\dots,\sigma^2_{kD})$ the \emph{variances} of the $D$ variables. We use a \emph{diagonal} covariance: inside a cluster the variables are independent, hence
+\begin{equation}
+\ln\mathcal{N}(x\mid\mu_k,\sigma_k^2)=-\tfrac12\Big[D\ln 2\pi+\sum_{d=1}^{D}\ln\sigma^2_{kd}+m_k(x)\Big],
+\end{equation}
+\begin{equation}
+m_k(x)=\sum_{d=1}^{D}\frac{(x_d-\mu_{kd})^2}{\sigma^2_{kd}},
+\end{equation}
+where $x_d$ and $\mu_{kd}$ are component $d$ of $x$ and $\mu_k$, and $m_k(x)$ measures how far $x$ is from the cluster center (in units of standard deviation). We look for the parameters $\theta=\{\pi_k,\mu_k,\sigma^2_k\}_{k=1}^{K}$ that maximize the log-likelihood, i.e.\ how well the model explains the data:
+\begin{equation}
+\mathcal{L}(\theta)=\sum_{i=1}^{N}\ln\sum_{k=1}^{K}\pi_k\,\mathcal{N}(x_i\mid\mu_k,\sigma_k^2).
+\end{equation}
+Since the cluster of each point is unknown, there is no direct formula: EM~\cite[Sec.~9.2.2]{bishop} starts from an initial guess and alternates two steps (Algorithm~\ref{alg:em}).
+
+\paragraph{E-step.} For every point $i$ and cluster $k$ it computes the \emph{responsibility} $r_{ik}\in[0,1]$, the probability that $x_i$ belongs to cluster $k$ under the current parameters ($\sum_k r_{ik}=1$); $j$ runs over all the clusters:
+\begin{equation}
+r_{ik}=\frac{\pi_k\,\mathcal{N}(x_i\mid\mu_k,\sigma_k^2)}{\sum_{j=1}^{K}\pi_j\,\mathcal{N}(x_i\mid\mu_j,\sigma_j^2)}.
+\end{equation}
+
+\paragraph{M-step.} It recomputes the parameters weighting each point by $r_{ik}$. With $N_k=\sum_{i=1}^{N}r_{ik}$ (effective number of points of cluster $k$):
+\begin{gather}
+\mu_k=\tfrac{1}{N_k}\sum_{i=1}^{N} r_{ik}\,x_i,\qquad
+\pi_k=\tfrac{N_k}{N},\\
+\sigma^2_{kd}=\tfrac{1}{N_k}\sum_{i=1}^{N} r_{ik}\,x_{id}^2-\mu_{kd}^2.
+\end{gather}
+In the code the M-step accumulates in a single pass the sums $N_k$, $\sum_i r_{ik}x_i$ and $\sum_i r_{ik}x_i^2$ (the latter component by component) and then converts them into the parameters.
+
+\paragraph{Initialization and stopping.} The means $\mu_k$ are $K$ distinct rows of $X$ chosen with a seeded generator (so every process obtains the same rows without communicating), $\pi_k=1/K$ and $\sigma^2_{kd}=1$ (the data are standardized: mean 0 and variance 1 per variable). After every E-step $\mathcal{L}$ is computed and EM stops if $|\mathcal{L}-\mathcal{L}_{\mathrm{prev}}|\le\varepsilon|\mathcal{L}|$, where $\mathcal{L}_{\mathrm{prev}}$ is the value of the previous iteration ($-\infty$ at the start) and $\varepsilon$ a relative tolerance, or after $T_{\max}$ iterations (defaults $\varepsilon=10^{-6}$, $T_{\max}=200$). $\mathcal{L}$ never decreases~\cite[Sec.~9.4]{bishop} but only a local maximum is reached: with $R$ restarts the run with the highest $\mathcal{L}$ is kept ($R=1$ in the measurements).
+
+\begin{algorithm}[t]
+\caption{EM for a Gaussian mixture (one run)}\label{alg:em}
+\small
+\KwIn{$X$ ($N\times D$), $K$, $\varepsilon$, $T_{\max}$}
+\KwOut{$\theta$, labels $\arg\max_k r_{ik}$}
+Initialize $\theta$: $\mu_k\leftarrow$ random distinct rows, $\pi_k\leftarrow 1/K$, $\sigma^2_{kd}\leftarrow 1$\;
+$\mathcal{L}_{\mathrm{prev}}\leftarrow-\infty$\;
+\For{$t=1$ \KwTo $T_{\max}$}{
+  E-step: compute $r_{ik}$ for all $i,k$ and $\mathcal{L}$\;
+  \lIf{$|\mathcal{L}-\mathcal{L}_{\mathrm{prev}}|\le\varepsilon|\mathcal{L}|$}{break}
+  M-step: compute $N_k$, $\mu_k$, $\pi_k$, $\sigma^2_{kd}$ for all $k,d$\;
+  $\mathcal{L}_{\mathrm{prev}}\leftarrow\mathcal{L}$\;
+}
+\lIf{$T_{\max}$ reached without convergence}{repeat the E-step (so $\mathcal{L}$ and $r_{ik}$ match $\theta$)}
+\end{algorithm}
+
+\paragraph{Numerical safeguards.} The formulas, implemented literally, produce errors in finite-precision arithmetic; the code adopts three protections.
+\begin{itemize}
+\item Computation in log scale. With large $D$ the densities $\mathcal{N}$ are tiny numbers that the computer rounds to 0, and the normalization of $r_{ik}$ would give $0/0$. For each point we therefore compute the logarithms $v_k=\ln\big(\pi_k\,\mathcal{N}(x_i\mid\mu_k,\sigma_k^2)\big)$ and sum them with
+$\ln\sum_{k}e^{v_k}=m+\ln\sum_{k}e^{v_k-m}$, where $m=\max_k v_k$: the largest term becomes $e^0=1$ and the sum is never zero. The result is $\ln p(x_i)$, which contributes to $\mathcal{L}$ and gives $r_{ik}=e^{v_k-\ln p(x_i)}$.
+\item Non-zero variances. If a cluster shrinks to a few almost identical points, $\sigma^2_{kd}$ tends to 0 and the density to infinity, making $\mathcal{L}$ unstable~\cite[Sec.~9.2.1]{bishop}. We therefore enforce $\sigma^2_{kd}\ge\delta=10^{-6}$ at every M-step.
+\item Empty clusters. If $N_k<10^{-10}$ no point is assigned to the cluster and the formulas would divide by zero: mean and variances stay as before and the weight is set to the minimum $\pi_k=10^{-12}$, never 0, because the E-step uses $\ln\pi_k$.
+\end{itemize}
+
+\subsection{Sequential implementations and cost}
+We wrote two \emph{sequential} versions, \emph{only to understand the algorithm in depth}: they are not the performance baseline, which is the diagonal MPI+OpenMP version, against which all the optimizations (described in the following sections) are evaluated.
+\begin{itemize}
+\item Diagonal: the model described above, with one variance $\sigma^2_{kd}$ per variable.
+\item Full: each cluster has a complete covariance matrix $\Sigma_k\in\mathbb{R}^{D\times D}$, which also models the correlations between variables. The model changes, so its results are compared only with other full-covariance runs.
+\end{itemize}
+
+\paragraph{Cost of one iteration.} With $N$ points, $K$ clusters and $D$ variables:
+\begin{itemize}
+\item Diagonal, $O(NKD)$. For each of the $NK$ pairs $(i,k)$ the E-step computes $m_k(x_i)$ summing $D$ terms, and the M-step accumulates $D$ terms in $\sum_i r_{ik}x_i$ and $D$ in $\sum_i r_{ik}x_i^2$.
+\item Full, $O(NKD^2)$. For each pair $(i,k)$ the Mahalanobis distance and the accumulation of $\Sigma_k$ cost $O(D^2)$ instead of $O(D)$. Factorizing the $K$ matrices $\Sigma_k$ adds $O(KD^3)$, which does not depend on $N$ and is negligible if $N\gg D$.
+\item Common, $O(NK)$. The normalization of the responsibilities and the computation of $\mathcal{L}$ cost $K$ operations per point.
+\end{itemize}
+
+\section{Parallel Design Methodology}\label{sec:design}
 \subsection{Foster's Design Strategy}
 \subsection{Communication}
 
@@ -189,5 +263,10 @@ What it tests & correctness, scaling reference & slow convergence, choice of $K$
 \section{Discussion}
 
 \section{Conclusion}
+
+\clearpage
+\begin{thebibliography}{1}
+\bibitem{bishop} C. M. Bishop, \href{https://www.microsoft.com/en-us/research/uploads/prod/2006/01/Bishop-Pattern-Recognition-and-Machine-Learning-2006.pdf}{\textcolor{blue}{\emph{Pattern Recognition and Machine Learning}}}, Springer, 2006, ch.~9.
+\end{thebibliography}
 
 \end{document}
