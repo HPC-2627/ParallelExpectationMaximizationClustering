@@ -348,6 +348,8 @@ static void assign(const Workspace *w, int N, int K, int *labels)
  * ---------------------------------------------------------------------------------------- */
 int main(int argc, char **argv)
 {
+    /* In short: read arguments -> load data -> for each restart: pick K rows as initial means and
+     * run EM -> keep the best run -> compute ARI -> write the log and print the summary. */
     /* 0. Command-line arguments (-h prints the help and terminates successfully) */
     RunArgs a;
     args_defaults(&a, VERSION_NAME);

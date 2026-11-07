@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>EM Clustering Visualizer</title>
 <style>
+/* STYLE SECTION (looks only, no logic). Colours are variables (--bg, --ink, ...) so that the
+   light and dark themes only have to redefine them. */
 :root{
   --bg:#fafaf8; --panel:#ffffff; --ink:#1c1c1a; --muted:#6b6b66; --line:#e2e2dc; --accent:#2a5bd7; --warn:#b4540a; --ok:#1a7f4b;
   --grid:#ececE6;
@@ -13,11 +15,13 @@
   :root:not([data-theme="light"]){ --bg:#141413; --panel:#1d1d1b; --ink:#ecece6; --muted:#9a9a92; --line:#33332f; --accent:#7aa2ff; --warn:#f0a35e; --ok:#58c98b; --grid:#2a2a27; }
 }
 :root[data-theme="dark"]{ --bg:#141413; --panel:#1d1d1b; --ink:#ecece6; --muted:#9a9a92; --line:#33332f; --accent:#7aa2ff; --warn:#f0a35e; --ok:#58c98b; --grid:#2a2a27; }
+/* page and header */
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
 header{padding:14px 16px 6px}
 h1{font-size:18px;margin:0 0 2px}
 .sub{color:var(--muted);font-size:13px}
+/* top bar with the run settings */
 .bar{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:end;padding:10px 16px;border-bottom:1px solid var(--line);background:var(--panel)}
 .bar label{display:flex;flex-direction:column;font-size:12px;color:var(--muted);gap:2px}
 .bar input,.bar select{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:5px 7px;min-width:70px}
@@ -25,15 +29,18 @@ h1{font-size:18px;margin:0 0 2px}
 button{font:inherit;cursor:pointer;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:6px 12px}
 button:hover{border-color:var(--accent)}
 button.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+/* two columns (plot | explanation); one column on narrow screens */
 main{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(320px,1fr);gap:14px;padding:14px 16px;max-width:1500px;margin:auto}
 @media (max-width:900px){main{grid-template-columns:1fr}}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px}
+/* plot, playback buttons and timeline */
 #plot{width:100%;aspect-ratio:1.15/1;display:block;border-radius:6px}
 .controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:10px}
 .controls input[type=range]{accent-color:var(--accent)}
 #timeline{width:100%;display:flex;gap:2px;margin-top:10px;height:14px}
 #timeline div{flex:1;border-radius:2px;background:var(--line);cursor:pointer}
 #timeline div.cur{outline:2px solid var(--ink)}
+/* right panel: coloured phase badge, formulas, key/value lines, tables */
 .phase{display:inline-block;font-size:12px;font-weight:600;padding:2px 9px;border-radius:99px;color:#fff;margin-right:6px}
 h2{font-size:17px;margin:2px 0 6px}
 .formula{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px;background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:7px 9px;margin:8px 0;overflow-x:auto;white-space:pre}
@@ -44,6 +51,7 @@ th,td{padding:3px 6px;text-align:right;border-bottom:1px solid var(--line)}
 th:first-child,td:first-child{text-align:left}
 .sw{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px;vertical-align:middle}
 .muted{color:var(--muted)} .ok{color:var(--ok)} .warn{color:var(--warn)}
+/* log-likelihood chart and the small bars of the clicked point */
 #llchart{width:100%;height:140px;display:block}
 .bars .row{display:grid;grid-template-columns:70px 1fr 110px;gap:6px;align-items:center;font-size:12.5px;margin:2px 0}
 .bars .b{height:10px;border-radius:5px;background:var(--line);overflow:hidden}.bars .b i{display:block;height:100%}
@@ -52,7 +60,10 @@ details{margin-top:8px} summary{cursor:pointer;color:var(--muted);font-size:13px
 #msg{padding:30px;text-align:center;color:var(--muted)}
 </style>
 </head>
+<!-- PAGE STRUCTURE: header, settings bar, a waiting message, then <main> with the plot on
+     the left and the explanation + chart on the right. The script at the bottom fills it. -->
 <body>
+<!-- the two <span> in the title are filled by the script with the model of the run (diagonal / full) -->
 <header>
   <h1>How EM works for a Gaussian Mixture Model (<span id="modeltitle">diagonal</span> covariance)</h1>
   <div class="sub">The same steps as <code>PEMC-baseline-sequential-<span id="modelfile">diagonal</span>.c</code>, animated one at a time. Data and iterations come from the local server; the log-likelihood is checked against your C binary.</div>
@@ -71,6 +82,7 @@ details{margin-top:8px} summary{cursor:pointer;color:var(--muted);font-size:13px
   <span id="status" class="muted"></span>
 </div>
 
+<!-- message shown until the first run; <main> stays hidden until there is a trace to play -->
 <div id="msg">Choose a dataset and press <b>Run</b>.</div>
 
 <main id="app" hidden>
@@ -103,7 +115,7 @@ details{margin-top:8px} summary{cursor:pointer;color:var(--muted);font-size:13px
 </main>
 
 <script>
-"use strict";
+"use strict";   /* strict mode: JavaScript refuses some silent mistakes (e.g. undeclared variables) */
 
 /* ==========================================================================================
  * EM visualizer (client side)
@@ -119,7 +131,7 @@ details{margin-top:8px} summary{cursor:pointer;color:var(--muted);font-size:13px
 const PAL = ["#2f6fe4","#e8590c","#2f9e44","#c2255c","#7048e8","#e0a100","#0c8599","#862e9c","#5c940d","#d6336c","#495057","#a5522a"];
 /* Name and colour of every phase (the colour is also used in the timeline) */
 const PHASE = {init:["Initialization","#6b6b66"], e:["E-step","#2f6fe4"], check:["Convergence test","#e0a100"], m:["M-step","#2f9e44"], done:["Done","#1a7f4b"]};
-const $ = id => document.getElementById(id);
+const $ = id => document.getElementById(id);   /* short helper: $("run") = the element with id="run" */
 
 /* State: R = trace returned by the server, frames = list of phases, cur = current frame,
  * playing = autoplay on/off, frameStart = time when the current frame began (for animations),
@@ -133,8 +145,10 @@ let respCache = {};   /* responsibilities already computed, per iteration */
 async function boot(){
   const ds = await (await fetch("/api/datasets")).json();
   const sel_ = $("ds");
+  /* one <option> per dataset: its value is the path, data-k remembers the suggested K */
   ds.forEach(d => { const o = document.createElement("option"); o.value = d.path; o.dataset.k = d.K;
     o.textContent = `${d.path.replace("data/","")}  (N=${d.N}, D=${d.D})`; sel_.appendChild(o); });
+  /* start with cardiotocography selected if present (small and quick), else the first one */
   const pref = [...sel_.options].find(o => o.value.includes("cardiotocography")) || sel_.options[0];
   sel_.value = pref.value; $("k").value = pref.dataset.k;
   /* choosing a dataset suggests its number of true classes as K */
@@ -143,9 +157,11 @@ async function boot(){
 
 /* "Run": asks the server for the trace and starts the visualization */
 $("run").onclick = async () => {
+  /* read the settings from the bar and build the query string: ?path=..&model=..&k=..  */
   const q = new URLSearchParams({path:$("ds").value,model:$("model").value,k:$("k").value,n:$("n").value,seed:$("seed").value,max_iter:$("maxit").value,tol:$("tol").value});
   $("status").textContent = "computing…"; playing = false;
   try{
+    /* ask the server (fetch = HTTP request), wait for the answer (await), read it as JSON */
     const r = await fetch("/api/run?"+q); const j = await r.json();
     if(j.error) throw new Error(j.error);
     setup(j); $("status").textContent = "";
@@ -160,13 +176,16 @@ function setup(j){
   $("expl").textContent = (100*j.explained).toFixed(0)+"%"; $("dd").textContent = j.D;
   /* frames: init, then for every iteration E-step + convergence test (+ M-step if not stopped), then done */
   frames = [{t:"init"}];
+  /* it.next exists only if an M-step followed; when it converged there is no M-step frame */
   j.iters.forEach((it,i) => { frames.push({t:"e",i}); frames.push({t:"check",i}); if(it.next) frames.push({t:"m",i}); });
   frames.push({t:"done"});
   /* timeline: one coloured block per frame, clickable */
   const tl = $("timeline"); tl.innerHTML = "";
+  /* clicking a block jumps to that frame (go(idx)); its colour is the colour of the phase */
   frames.forEach((f,idx) => { const d = document.createElement("div"); d.style.background = PHASE[f.t][1]; d.style.opacity = .55;
     d.title = PHASE[f.t][0]+(f.i!=null?" "+f.i:""); d.onclick = () => go(idx); tl.appendChild(d); });
   /* bounds of the plot = bounding box of the projected points, plus an 8% margin */
+  /* find the smallest and largest x and y among the points (start from absurd values) */
   let x0=1e99,x1=-1e99,y0=1e99,y1=-1e99;
   j.points.forEach(p => { x0=Math.min(x0,p[0]);x1=Math.max(x1,p[0]);y0=Math.min(y0,p[1]);y1=Math.max(y1,p[1]); });
   const px=(x1-x0)*.08||1, py=(y1-y0)*.08||1; view = {x0:x0-px,x1:x1+px,y0:y0-py,y1:y1+py};
@@ -181,6 +200,8 @@ function setup(j){
  * (same computation as the E-step in the C code; the maximum is subtracted to avoid underflow) */
 function resp(i){
   if(respCache[i]) return respCache[i];
+  /* for each point n: m = largest log-density; s = sum of exp(v - m); lse = m + log(s);
+   * r = exp(v - lse). Subtracting m before exp() keeps the numbers from underflowing to 0. */
   const lp = R.iters[i].logp, out = new Array(lp.length), lse = new Array(lp.length);
   for(let n=0;n<lp.length;n++){ const m=Math.max(...lp[n]); let s=0; for(const v of lp[n]) s+=Math.exp(v-m); const l=m+Math.log(s); lse[n]=l; out[n]=lp[n].map(v=>Math.exp(v-l)); }
   return respCache[i] = {r:out,lse};
@@ -190,15 +211,19 @@ function resp(i){
  * During the M-step they are interpolated from the old to the new values, so the means
  * and the ellipses visibly move; in the other frames they are the current ones. */
 function params(f,t){
+  /* P = parameters shown in this frame: the ones USED by the E-step of iteration f.i
+   * (at init: those of iteration 0; at the end: those of the last iteration) */
   const P = (f.t==="init"||f.t==="e"||f.t==="check") ? R.iters[f.i??0].params
           : f.t==="m" ? R.iters[f.i].params : R.iters[R.iters.length-1].params;
   if(f.t!=="m") return P;
+  /* Q = parameters after the M-step; mix(a,b) = a + (b-a)*e goes smoothly from a (e=0) to b (e=1) */
   const Q = R.iters[f.i].next, e = ease(t), mix=(a,b)=>a+(b-a)*e;
   return {pi:P.pi.map((v,k)=>mix(v,Q.pi[k])), mu:P.mu.map((m,k)=>[mix(m[0],Q.mu[k][0]),mix(m[1],Q.mu[k][1])]),
           cov:P.cov.map((c,k)=>c.map((v,q)=>mix(v,Q.cov[k][q]))), var_mean:P.var_mean};
 }
 /* smooth start and end of the animations (ease-in-out) */
 const ease = t => t<.5 ? 2*t*t : 1-Math.pow(-2*t+2,2)/2;
+/* "#2f6fe4" -> [47,111,228]: colours are mixed as numbers, so they must be split in r,g,b */
 function hex2rgb(h){return [parseInt(h.slice(1,3),16),parseInt(h.slice(3,5),16),parseInt(h.slice(5,7),16)];}
 
 /* Principal axes of a 2x2 covariance c = [xx, xy, yy]: semi-axes (square roots of the
@@ -213,6 +238,7 @@ function ellipse(c){
 const cv = $("plot"), ctx = cv.getContext("2d");
 
 /* Adapts the canvas resolution to its size on screen (sharp on high-DPI displays) */
+/* (the canvas has a size in pixels and a size on screen; dpr = pixels per screen unit, 2 on retina) */
 function fit(canvas){ const r=canvas.getBoundingClientRect(), dpr=devicePixelRatio||1;
   if(canvas.width!==Math.round(r.width*dpr)||canvas.height!==Math.round(r.height*dpr)){canvas.width=Math.round(r.width*dpr);canvas.height=Math.round(r.height*dpr);}
   return {w:canvas.width,h:canvas.height,dpr}; }
@@ -235,19 +261,21 @@ function draw(f,t){
   const P = params(f,t), K=R.K, N=R.N;
   const it = f.t==="done" ? R.iters.length-1 : (f.i??0);
   const showR = f.t!=="init", rr = resp(it).r;
-  /* points */
+  /* points: one small circle for each row of the data */
   const grey=hex2rgb("#9a9a92");
   for(let n=0;n<N;n++){
     const p=R.points[n], x=sx(p[0],W), y=sy(p[1],H);
     let col;
     if(!showR) col=`rgba(${grey[0]},${grey[1]},${grey[2]},.65)`;
     else{
+      /* colour = sum over clusters of (responsibility x cluster colour): r=[0.7,0.3] -> 70% colour 0 + 30% colour 1 */
       let rgb=[0,0,0]; for(let k=0;k<K;k++){const c=hex2rgb(PAL[k%PAL.length]);rgb[0]+=rr[n][k]*c[0];rgb[1]+=rr[n][k]*c[1];rgb[2]+=rr[n][k]*c[2];}
       const a = f.t==="e" ? ease(Math.min(t,1)) : 1;      /* fade-in during the E-step */
       const g = f.t==="e" ? [grey[0]+(rgb[0]-grey[0])*a,grey[1]+(rgb[1]-grey[1])*a,grey[2]+(rgb[2]-grey[2])*a] : rgb;
       col=`rgb(${g.map(Math.round).join(",")})`;
     }
-    ctx.beginPath(); ctx.arc(x,y,3.2*dpr,0,6.283); ctx.fillStyle=col; ctx.fill();
+    ctx.beginPath(); ctx.arc(x,y,3.2*dpr,0,6.283); ctx.fillStyle=col; ctx.fill();   /* 6.283 = 2*pi: full circle */
+    /* optional bigger ring in the colour of the TRUE class, to compare with what EM found */
     if($("showtruth").checked && R.truth){ ctx.lineWidth=1.4*dpr; ctx.strokeStyle=PAL[R.truth[n]%PAL.length]; ctx.beginPath(); ctx.arc(x,y,5.6*dpr,0,6.283); ctx.stroke(); }
   }
   /* ellipses (1 and 2 sigma) */
@@ -258,6 +286,7 @@ function draw(f,t){
      * Doing the eigen-decomposition AFTER the scaling keeps the ellipse correct even when
      * the two axes of the plot have different scales. */
     const e=ellipse([c[0]*sxs*sxs, -c[1]*sxs*sys, c[2]*sys*sys]);
+    /* draw the ellipse twice: s=1 -> 1 standard deviation (thick), s=2 -> 2 standard deviations (thin) */
     [1,2].forEach(s=>{ctx.save();ctx.translate(sx(m[0],W),sy(m[1],H));ctx.rotate(e.ang);
       ctx.beginPath();ctx.ellipse(0,0,e.r1*s,e.r2*s,0,0,6.283);ctx.restore();
       ctx.lineWidth=(s===1?2.4:1.2)*dpr;ctx.strokeStyle=col;ctx.globalAlpha=s===1?.95:.45;ctx.stroke();ctx.globalAlpha=1;});
@@ -275,9 +304,11 @@ function draw(f,t){
   /* clicked point */
   if(sel>=0){ const p=R.points[sel], x=sx(p[0],W), y=sy(p[1],H); ctx.lineWidth=2.4*dpr; ctx.strokeStyle=css("--ink"); ctx.beginPath(); ctx.arc(x,y,8*dpr,0,6.283); ctx.stroke(); }
 }
+/* draws a "+" centred at (x,y), arm length s: marks the mean of a cluster */
 function cross(x,y,s){ctx.beginPath();ctx.moveTo(x-s,y);ctx.lineTo(x+s,y);ctx.moveTo(x,y-s);ctx.lineTo(x,y+s);ctx.stroke();}
 
 /* ---------- information panel ---------- */
+/* fx = number with d decimals; fe = scientific notation (for very small differences); swatch = coloured dot */
 const fx = (v,d=2) => Number(v).toLocaleString("en-US",{maximumFractionDigits:d,minimumFractionDigits:d});   /* fixed decimals */
 const fe = v => Number(v).toExponential(2);                                                                  /* scientific notation */
 function swatch(k){return `<span class="sw" style="background:${PAL[k%PAL.length]}"></span>`;}
@@ -358,11 +389,13 @@ ${R.model==="full"?"Σ_k   = Σ_i r_ik x_i x_iᵀ / N_k − μ_k μ_kᵀ     (+1
 /* Line chart of the log-likelihood: only the iterations up to the current frame are drawn,
  * so the curve grows while the algorithm is played. */
 function llChart(f){
+  /* X(i) and Y(v) convert an iteration number and a log-likelihood value into pixels */
   const c=$("llchart"), {w:W,h:H,dpr}=fit(c), g=c.getContext("2d"); g.clearRect(0,0,W,H);
   const ys=R.iters.map(x=>x.ll), n=ys.length; if(n<1) return;
   let lo=Math.min(...ys), hi=Math.max(...ys); if(hi===lo){hi=lo+1;}
   const padL=8*dpr,padR=8*dpr,padT=10*dpr,padB=18*dpr, X=i=>padL+(n===1?0:i/(n-1))*(W-padL-padR), Y=v=>padT+(1-(v-lo)/(hi-lo))*(H-padT-padB);
   g.strokeStyle=css("--grid"); g.lineWidth=1*dpr; g.beginPath(); g.moveTo(padL,H-padB); g.lineTo(W-padR,H-padB); g.stroke();
+  /* upto = last iteration to draw: the curve grows as the animation advances */
   const upto = f.t==="done" ? n-1 : (f.i??-1);
   g.lineWidth=2*dpr; g.strokeStyle=css("--accent"); g.beginPath();
   for(let i=0;i<=upto;i++){ i?g.lineTo(X(i),Y(ys[i])):g.moveTo(X(i),Y(ys[i])); } g.stroke();
@@ -394,6 +427,7 @@ function go(i){ cur=Math.max(0,Math.min(frames.length-1,i)); frameStart=performa
 
 /* Animation loop (every screen refresh): draws the current frame with its progress t and,
  * if autoplay is on, moves to the next frame when its duration is over. */
+/* (requestAnimationFrame calls tick again before every screen repaint, about 60 times a second) */
 function tick(now){
   if(R){ const f=frames[cur], sp=+$("speed").value, dur=DUR[f.t]/sp, el=now-frameStart;
     const animDur = Math.min(dur*.7, 2200/sp);       /* the movement ends before the phase does */
@@ -410,6 +444,7 @@ $("first").onclick=()=>{playing=false;$("play").textContent="▶ Play";go(0);};
 $("last").onclick=()=>{playing=false;$("play").textContent="▶ Play";go(frames.length-1);};
 $("speed").oninput=()=>{$("speedv").textContent=$("speed").value+"×";};
 
+/* (getBoundingClientRect = position and size of the canvas on screen, to convert the mouse position) */
 /* Click on the plot: selects the nearest point (within ~14 px) to show its calculations */
 cv.addEventListener("click",e=>{ if(!R) return; const r=cv.getBoundingClientRect(), mx=e.clientX-r.left, my=e.clientY-r.top;
   let best=-1,bd=14*14; R.points.forEach((p,n)=>{const x=(p[0]-view.x0)/(view.x1-view.x0)*r.width,y=r.height-(p[1]-view.y0)/(view.y1-view.y0)*r.height,d=(x-mx)**2+(y-my)**2; if(d<bd){bd=d;best=n;}});

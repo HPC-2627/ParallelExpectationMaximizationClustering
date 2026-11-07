@@ -287,6 +287,8 @@ typedef struct
     double t_mstep;    /* seconds in the M-step */
 } EMResult;
 
+/* run_em is identical to the diagonal version: the loop does not care about the model, it
+ * only calls e_step() and m_step(). Order: E-step -> test -> M-step, repeated. */
 static EMResult run_em(const Dataset *ds, GMMParams *p, Workspace *w, const RunArgs *a)
 {
     EMResult res;
@@ -371,6 +373,10 @@ static void assign(const Workspace *w, int N, int K, int *labels)
  * ---------------------------------------------------------------------------------------- */
 int main(int argc, char **argv)
 {
+    /* main is the same as in the diagonal version, with two differences: the workspace now holds
+     * the K covariance matrices (w.cov), and after choosing the initial means the covariances
+     * are set to the identity (cov_init_identity). Everything else (arguments, reading, restarts,
+     * ARI, log, summary) is unchanged. */
     /* 0. Command-line arguments (-h prints the help and terminates successfully) */
     RunArgs a;
     args_defaults(&a, VERSION_NAME);
