@@ -12,11 +12,12 @@ High Performance Computing (HPC) project (University of Trento): parallel Expect
 .
 ├── src/
 │   ├── PEMC-baseline-sequential-diagonal.c    # Sequential version (correctness reference and serial time)
+│   ├── PEMC-baseline-sequential-full.c        # Sequential version with full covariance (Cholesky; reference for the full model)
 │   ├── PEMC-baseline-MPI-OpenMP-diagonal.c    # Hybrid MPI + OpenMP baseline
 │   ├── PEMC-opt1-MPI-OpenMP-diagonal.c        # Optimization 1 of the baseline
 │   ├── PEMC-opt2-MPI-OpenMP-diagonal.c        # Optimization 2 of the baseline
 │   ├── PEMC-opt3-MPI-OpenMP-diagonal.c        # Optimization 3 of the baseline
-│   ├── PEMC-baseline-MPI-OpenMP-full.c        # Baseline variant with full covariance (extension)
+│   ├── PEMC-baseline-MPI-OpenMP-full.c        # Baseline variant with full covariance (extension, to be written)
 │   ├── dataset-managed/                       # Scripts that create and check the datasets
 │   │   ├── generate-synthetic-dataset.py      # Generator of the synthetic datasets (3 profiles, one file per number of processes) -> data/synthetic/
 │   │   ├── generate-real-datasets.py          # Downloads the real datasets -> data/real/<name>/raw/
@@ -65,7 +66,7 @@ High Performance Computing (HPC) project (University of Trento): parallel Expect
 └── README.md
 ```
 
-The `-diagonal` files use a Gaussian mixture with diagonal covariance (the main line of the project: sequential reference, baseline and 3 optimizations). The `-full` file is a variant with full covariance: it changes the model, so its results are compared only with runs of the same model.
+The `-diagonal` files use a Gaussian mixture with diagonal covariance (the main line of the project: sequential reference, baseline and 3 optimizations). The `-full` files are a variant with full covariance (each cluster has a complete $D \times D$ matrix, so correlated variables are modelled): it changes the model, so its results are compared only with runs of the same model (`-full` with `-full`, `-diagonal` with `-diagonal`). A full iteration costs $O(NKD^2)$ instead of $O(NKD)$.
 
 ## Data (required step before running the experiments)
 
@@ -199,7 +200,7 @@ raw/*.nii.gz  --gunzip-->  nifti/*.nii  --nibabel + numpy-->  brainweb.bin, brai
 ## Build
 
 ```
-make              # builds bin/PEMC-baseline-sequential-diagonal (gcc, -O3)
+make              # builds bin/PEMC-baseline-sequential-diagonal and bin/PEMC-baseline-sequential-full (gcc, -O3)
 make clean
 ```
 
@@ -213,6 +214,15 @@ Sequential version (correctness reference and serial time). It needs the dataset
 ./bin/PEMC-baseline-sequential-diagonal -d data/synthetic/synth_clean/synth_clean_p01.bin -k 4
 ./bin/PEMC-baseline-sequential-diagonal -d data/real/heart_failure/heart_failure.bin -k 3
 ```
+
+Sequential version with **full covariance**: same options and same log format, only the executable changes (the log goes to `results/logs/baseline-sequential-full.log`):
+
+```
+./bin/PEMC-baseline-sequential-full -d data/synthetic/synth_overlap/synth_overlap_p01.bin -k 5
+./bin/PEMC-baseline-sequential-full -d data/real/heart_failure/heart_failure.bin -k 2
+```
+
+It is much slower than the diagonal one when $D$ is large (cost $O(NKD^2)$ per iteration; `gene_rnaseq`, $D = 20\,531$, is not feasible: $K D^2$ doubles would not fit in memory), so for the big files start with `-n ROWS`. Its log-likelihood is comparable only with other `-full` runs, and on correlated data (`synth_overlap`) it is clearly higher than the diagonal one.
 
 **Run on all the synthetic datasets.** $K$ is the number of true clusters of each profile (`synth_clean` 4, `synth_overlap` 5, `synth_rare` 6); `p01 … p16` are the five sizes of the scaling tests:
 
@@ -234,7 +244,7 @@ for x in brainweb:12 cardiotocography:10 cardiovascular:2 cdc_diabetes:2 \
 done
 ```
 
-`parkinson` has no labels (continuous targets), so $K = 2$ is an arbitrary choice there. The biggest files (`synth_rare_p16.bin` 1.6 GB, `synth_overlap_p16.bin` 640 MB, `brainweb.bin` 95 MB) take the longest and need enough RAM; add `-n ROWS` to use only the first rows. The same two loops work for the other versions: change only the executable name.
+`parkinson` has no labels (continuous targets), so $K = 2$ is an arbitrary choice there. The biggest files (`synth_rare_p16.bin` 1.6 GB, `synth_overlap_p16.bin` 640 MB, `brainweb.bin` 95 MB) take the longest and need enough RAM; add `-n ROWS` to use only the first rows. The same two loops work for the other versions (including `bin/PEMC-baseline-sequential-full`, except `gene_rnaseq`): change only the executable name.
 
 Run it from the root of the repository: the only file written is the log `results/logs/baseline-sequential-diagonal.log` (a block is appended at every run; the folder is created if missing).
 
@@ -281,7 +291,7 @@ t_iteration    : 0.079643
 
 Times are in seconds. `hostname` and `cpu_model` identify the node (the nodes of the cluster are not all equal). `ari` (adjusted Rand index against the true labels) is `n/a` if the dataset has no labels. `t_iteration` is `(t_estep + t_mstep + t_comm) / iterations` (only with one restart). To read it in Python, split the file on `==== run ====` and every line on the first `:`.
 
-**Correctness check between versions:** run them with the same dataset, `-k` and `-s`: they must end with the same log-likelihood (up to rounding) and the same number of iterations.
+**Correctness check between versions:** run them with the same dataset, `-k` and `-s`: they must end with the same log-likelihood (up to rounding) and the same number of iterations. Compare only versions of the same model: `-diagonal` with `-diagonal`, `-full` with `-full`.
 
 ## Visualization of the algorithm
 

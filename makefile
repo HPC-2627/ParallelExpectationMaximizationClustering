@@ -21,12 +21,16 @@ HEADERS    = $(wildcard include/*.h)
 
 all: sequential
 
-sequential: $(BIN_DIR)/PEMC-baseline-sequential-diagonal
+sequential: $(BIN_DIR)/PEMC-baseline-sequential-diagonal $(BIN_DIR)/PEMC-baseline-sequential-full
 
 # It is rebuilt if the main source, a shared file or a header changes
 $(BIN_DIR)/PEMC-baseline-sequential-diagonal: src/PEMC-baseline-sequential-diagonal.c $(COMMON_SRC) $(HEADERS)
 	@mkdir -p $(BIN_DIR)
 	$(CC) $(CFLAGS) $(INCLUDES) src/PEMC-baseline-sequential-diagonal.c $(COMMON_SRC) -o $@ $(LIBS)
+
+$(BIN_DIR)/PEMC-baseline-sequential-full: src/PEMC-baseline-sequential-full.c $(COMMON_SRC) $(HEADERS)
+	@mkdir -p $(BIN_DIR)
+	$(CC) $(CFLAGS) $(INCLUDES) src/PEMC-baseline-sequential-full.c $(COMMON_SRC) -o $@ $(LIBS)
 
 clean:
 	rm -rf $(BIN_DIR)

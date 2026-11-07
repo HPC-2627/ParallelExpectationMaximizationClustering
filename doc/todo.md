@@ -59,6 +59,6 @@ Run all the versions (`src/PEMC-baseline-sequential-diagonal.c`, `src/PEMC-basel
 - [ ] Both team members ready for the oral exam
 
 ## Nice to have
-- [ ] Full covariance variant: `src/PEMC-baseline-MPI-OpenMP-full.c` (after the diagonal baseline works; check it by running with 1 rank and 1 thread, compare only within the same model)
+- [X] Full covariance variant: `src/PEMC-baseline-MPI-OpenMP-full.c` (after the diagonal baseline works; check it by running with 1 rank and 1 thread, compare only within the same model)
 - [ ] Segmentation map visualization on a medical image dataset
 - [ ] Interactive visualization for the presentation
