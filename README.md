@@ -11,13 +11,17 @@ High Performance Computing (HPC) project (University of Trento): parallel Expect
 ```
 .
 ├── src/
-│   ├── PEMC-baseline-sequential-diagonal.c    # Sequential version (correctness reference and serial time)
-│   ├── PEMC-baseline-sequential-full.c        # Sequential version with full covariance (Cholesky; reference for the full model)
-│   ├── PEMC-baseline-MPI-OpenMP-diagonal.c    # Hybrid MPI + OpenMP baseline
-│   ├── PEMC-opt1-MPI-OpenMP-diagonal.c        # Optimization 1 of the baseline
-│   ├── PEMC-opt2-MPI-OpenMP-diagonal.c        # Optimization 2 of the baseline
-│   ├── PEMC-opt3-MPI-OpenMP-diagonal.c        # Optimization 3 of the baseline
-│   ├── PEMC-baseline-MPI-OpenMP-full.c        # Baseline variant with full covariance (extension, to be written)
+│   ├── diagonal/                              # Diagonal covariance (main line of the project)
+│   │   ├── PEMC-baseline-sequential-diagonal.c    #   Sequential version (correctness reference and serial time)
+│   │   ├── PEMC-baseline-MPI-OpenMP-diagonal.c    #   Hybrid MPI + OpenMP baseline
+│   │   ├── PEMC-opt1-MPI-OpenMP-diagonal.c        #   Optimization 1 of the baseline (to be written)
+│   │   ├── PEMC-opt2-MPI-OpenMP-diagonal.c        #   Optimization 2 of the baseline (to be written)
+│   │   └── PEMC-opt3-MPI-OpenMP-diagonal.c        #   Optimization 3 of the baseline (to be written)
+│   ├── full/                                  # Full covariance (extension)
+│   │   ├── PEMC-baseline-sequential-full.c        #   Sequential version (Cholesky; reference for the full model)
+│   │   └── PEMC-baseline-MPI-OpenMP-full.c        #   Baseline variant with full covariance (to be written)
+│   ├── script/                                # Launchers for the cluster
+│   │   └── PEMC-baseline-MPI-OpenMP-diagonal.sh   #   PBS job of the MPI + OpenMP baseline (qsub from the repo root)
 │   ├── dataset-managed/                       # Scripts that create and check the datasets
 │   │   ├── generate-synthetic-dataset.py      # Generator of the synthetic datasets (3 profiles, one file per number of processes) -> data/synthetic/
 │   │   ├── generate-real-datasets.py          # Downloads the real datasets -> data/real/<name>/raw/
@@ -201,10 +205,11 @@ raw/*.nii.gz  --gunzip-->  nifti/*.nii  --nibabel + numpy-->  brainweb.bin, brai
 
 ```
 make              # builds bin/PEMC-baseline-sequential-diagonal and bin/PEMC-baseline-sequential-full (gcc, -O3)
+make mpi-omp      # builds bin/PEMC-baseline-MPI-OpenMP-diagonal (mpicc -fopenmp)
 make clean
 ```
 
-The shared code in `src/common/` does not use MPI: the MPI + OpenMP versions will compile it with the same rule (`mpicc -fopenmp`). The `bin/` folder is not versioned.
+The sources of the versions are in `src/diagonal/` and `src/full/`; the shared code in `src/common/` does not use MPI, so the same files are compiled by both rules. Every executable goes flat in `bin/` with the name of its source (`src/diagonal/PEMC-xxx.c` -> `bin/PEMC-xxx`). To add a version (e.g. `opt1`), append its name to `MPI_BINS` in the [makefile](makefile). On the cluster, before `make mpi-omp`: `module load MPICH/3.4.2-GCC-10.3.0`. The `bin/` folder is not versioned.
 
 ## Usage
 
@@ -246,7 +251,13 @@ done
 
 `parkinson` has no labels (continuous targets), so $K = 2$ is an arbitrary choice there. The biggest files (`synth_rare_p16.bin` 1.6 GB, `synth_overlap_p16.bin` 640 MB, `brainweb.bin` 95 MB) take the longest and need enough RAM; add `-n ROWS` to use only the first rows. The same two loops work for the other versions (including `bin/PEMC-baseline-sequential-full`, except `gene_rnaseq`): change only the executable name.
 
-Run it from the root of the repository: the only file written is the log `results/logs/baseline-sequential-diagonal.log` (a block is appended at every run; the folder is created if missing).
+**MPI + OpenMP baseline on the cluster.** Build with `make mpi-omp`, then edit the layout (nodes, ranks, threads, dataset, `K`) at the top of the PBS script and submit it from the root of the repository:
+
+```
+qsub src/script/PEMC-baseline-MPI-OpenMP-diagonal.sh
+```
+
+Run the sequential versions from the root of the repository: the only file written is the log `results/logs/baseline-sequential-diagonal.log` (a block is appended at every run; the folder is created if missing).
 
 | Option | Meaning |
 |---|---|

@@ -130,7 +130,7 @@ We wrote two \emph{sequential} versions, \emph{only to understand the algorithm 
 \subsection{Hardware Infrastructure}
 \subsection{Dataset}
 
-\begin{table*}[t]
+\begin{table*}[p]
 \centering
 \caption{Real datasets. $N$ and $D$ are the values actually used by the EM after preprocessing; $K$ is the number of ground-truth classes (used only for evaluation).}
 \label{tab:real}
@@ -154,8 +154,9 @@ We wrote two \emph{sequential} versions, \emph{only to understand the algorithm 
 \bottomrule
 \end{tabular}}
 \end{table*}
+\clearpage
 
-\begin{table*}[t]
+\begin{table*}[p]
 \centering
 \caption{Synthetic profiles. $\delta$ is the distance between cluster means in units of the within-cluster standard deviation.}
 \label{tab:synth-profiles}
@@ -179,8 +180,9 @@ What it tests & correctness, scaling reference & slow convergence, choice of $K$
 \bottomrule
 \end{tabular}
 \end{table*}
+\clearpage
 
-\begin{table*}[t]
+\begin{table*}[p]
 \centering
 \caption{Clinical variables used to build the synthetic data (typical mean $\pm$ std and physiological limits).}
 \label{tab:synth-vars}
@@ -213,8 +215,9 @@ What it tests & correctness, scaling reference & slow convergence, choice of $K$
 \bottomrule
 \end{tabular}
 \end{table*}
+\clearpage
 
-\begin{table*}[t]
+\begin{table*}[p]
 \centering
 \caption{Weak scaling: rows and data file size for each profile ($N_0 = 250\,000$ rows per process; labels file of $4N$ bytes for every profile). MB $= 10^6$ bytes.}
 \label{tab:weak}
@@ -234,8 +237,9 @@ What it tests & correctness, scaling reference & slow convergence, choice of $K$
 \bottomrule
 \end{tabular}
 \end{table*}
+\clearpage
 
-\begin{table*}[t]
+\begin{table*}[p]
 \centering
 \caption{Strong scaling (fixed $N = 4\,000\,000$): data per rank and work per rank $N \cdot K \cdot D / p$. The work is an operation count proportional to the cost of an iteration, not a measured time.}
 \label{tab:strong}
@@ -255,6 +259,7 @@ What it tests & correctness, scaling reference & slow convergence, choice of $K$
 \bottomrule
 \end{tabular}
 \end{table*}
+\clearpage
 
 \section{Performance Evaluation}
 \subsection{Execution Time and Throughput}

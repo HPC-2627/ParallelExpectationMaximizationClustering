@@ -1,12 +1,14 @@
 # Build rules.
 #
-#   make              builds the sequential version  (bin/PEMC-baseline-sequential-diagonal)
+#   make              builds the sequential versions  (bin/PEMC-baseline-sequential-{diagonal,full})
 #   make sequential   same as above
+#   make mpi-omp      builds the MPI + OpenMP versions (needs mpicc)
 #   make clean        removes bin/
 #
-# The code shared by all the versions is in src/common/*.c (the headers are in include/).
-# It does not use MPI, so the same rule compiles it both for the sequential version (gcc) and,
-# later, for the MPI + OpenMP versions (mpicc -fopenmp): their targets must be added below.
+# Layout: src/diagonal/ and src/full/ hold one main file per version (diagonal or full covariance),
+# src/common/ the code shared by all of them (no MPI), include/ the headers. Every executable goes
+# flat in bin/ with the same name as its source file (PEMC-xxx.c -> bin/PEMC-xxx).
+# To add a version, append its name to SEQ_BINS or MPI_BINS: the pattern rules find the source.
 
 CC       ?= gcc
 CFLAGS   ?= -O3 -std=gnu11 -Wall -Wextra
@@ -17,34 +19,38 @@ BIN_DIR    = bin
 COMMON_SRC = $(wildcard src/common/*.c)
 HEADERS    = $(wildcard include/*.h)
 
-.PHONY: all sequential clean
+# make looks for PEMC-xxx.c in these folders
+vpath %.c src/diagonal src/full
+
+SEQ_BINS = $(BIN_DIR)/PEMC-baseline-sequential-diagonal \
+           $(BIN_DIR)/PEMC-baseline-sequential-full
+
+# MPI + OpenMP versions. Not yet written (empty files): opt1/opt2/opt3-diagonal, baseline-full.
+# Add them here when they are ready.
+MPI_BINS = $(BIN_DIR)/PEMC-baseline-MPI-OpenMP-diagonal
+
+.PHONY: all sequential mpi-omp clean
 
 all: sequential
 
-sequential: $(BIN_DIR)/PEMC-baseline-sequential-diagonal $(BIN_DIR)/PEMC-baseline-sequential-full
+sequential: $(SEQ_BINS)
 
-# It is rebuilt if the main source, a shared file or a header changes
-$(BIN_DIR)/PEMC-baseline-sequential-diagonal: src/PEMC-baseline-sequential-diagonal.c $(COMMON_SRC) $(HEADERS)
-	@mkdir -p $(BIN_DIR)
-	$(CC) $(CFLAGS) $(INCLUDES) src/PEMC-baseline-sequential-diagonal.c $(COMMON_SRC) -o $@ $(LIBS)
-
-$(BIN_DIR)/PEMC-baseline-sequential-full: src/PEMC-baseline-sequential-full.c $(COMMON_SRC) $(HEADERS)
-	@mkdir -p $(BIN_DIR)
-	$(CC) $(CFLAGS) $(INCLUDES) src/PEMC-baseline-sequential-full.c $(COMMON_SRC) -o $@ $(LIBS)
-
-# MPI + OpenMP versions: not part of "all", so a machine without MPI can still build the
-# sequential ones. On the cluster: module load MPICH/3.4.2-GCC-10.3.0, then make mpi-omp.
+# On the cluster: module load MPICH/3.4.2-GCC-10.3.0, then make mpi-omp.
 # On macOS Apple clang has no OpenMP: use a GCC from Homebrew, e.g.
 #   OMPI_CC=gcc-16 make mpi-omp        (Open MPI)   or   MPICH_CC=gcc-16 make mpi-omp   (MPICH)
 MPICC    ?= mpicc
 MPIFLAGS  = $(CFLAGS) -fopenmp
 
-.PHONY: mpi-omp
-mpi-omp: $(BIN_DIR)/PEMC-baseline-MPI-OpenMP-diagonal
+mpi-omp: $(MPI_BINS)
 
-$(BIN_DIR)/PEMC-baseline-MPI-OpenMP-diagonal: src/PEMC-baseline-MPI-OpenMP-diagonal.c $(COMMON_SRC) $(HEADERS)
+# Rebuilt if the main source, a shared file or a header changes.
+$(SEQ_BINS): $(BIN_DIR)/%: %.c $(COMMON_SRC) $(HEADERS)
 	@mkdir -p $(BIN_DIR)
-	$(MPICC) $(MPIFLAGS) $(INCLUDES) src/PEMC-baseline-MPI-OpenMP-diagonal.c $(COMMON_SRC) -o $@ $(LIBS)
+	$(CC) $(CFLAGS) $(INCLUDES) $< $(COMMON_SRC) -o $@ $(LIBS)
+
+$(MPI_BINS): $(BIN_DIR)/%: %.c $(COMMON_SRC) $(HEADERS)
+	@mkdir -p $(BIN_DIR)
+	$(MPICC) $(MPIFLAGS) $(INCLUDES) $< $(COMMON_SRC) -o $@ $(LIBS)
 
 clean:
 	rm -rf $(BIN_DIR)

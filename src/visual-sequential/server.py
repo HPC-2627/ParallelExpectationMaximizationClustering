@@ -8,8 +8,8 @@ What it does for every run requested by the page:
   1. reads the first n rows of a .bin dataset (header int32 N, int32 D + float64 row-major);
   2. chooses the K initial rows with the SAME libc srand()/rand() calls used by gmm_init_indices()
      in src/common/gmm.c (through ctypes), so the starting point is the one of the C program;
-  3. runs the same EM as src/PEMC-baseline-sequential-diagonal.c or
-     src/PEMC-baseline-sequential-full.c (model=diagonal | full: same floors, same convergence
+  3. runs the same EM as src/diagonal/PEMC-baseline-sequential-diagonal.c or
+     src/full/PEMC-baseline-sequential-full.c (model=diagonal | full: same floors, same convergence
      test) and records every iteration;
   4. runs the REAL binary bin/PEMC-baseline-sequential-<model> with -v on the same data and
      returns its log-likelihood per iteration, so the page can show that the two agree.
@@ -95,7 +95,7 @@ def list_datasets():
 
 
 # ---------------------------------------------------------------------------------------------
-# EM (same maths as src/PEMC-baseline-sequential-diagonal.c, written with NumPy)
+# EM (same maths as src/diagonal/PEMC-baseline-sequential-diagonal.c, written with NumPy)
 # ---------------------------------------------------------------------------------------------
 
 def init_indices(N, K, seed):

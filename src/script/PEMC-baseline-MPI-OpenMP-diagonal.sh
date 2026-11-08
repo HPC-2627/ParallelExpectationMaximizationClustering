@@ -4,7 +4,7 @@
 # Layout: NODES nodes x RANKS_PER_NODE MPI processes x THREADS OpenMP threads per process.
 # ncpus must be RANKS_PER_NODE * THREADS (cores reserved on every node).
 # Change the three numbers below and the three #PBS lines together. Submit from the repo root:
-#   qsub src/PEMC-baseline-MPI-OpenMP-diagonal.sh
+#   qsub src/script/PEMC-baseline-MPI-OpenMP-diagonal.sh
 #PBS -l select=2:ncpus=8:mpiprocs=2:mem=4gb
 #PBS -l place=scatter
 #PBS -l walltime=0:10:00
