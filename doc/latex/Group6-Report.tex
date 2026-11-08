@@ -63,7 +63,7 @@ where $\pi_k$ is the mixing weight of component $k$, and $\mu_k$, $\Sigma_k$ are
 \end{equation}
 The logarithm of a sum prevents a closed-form maximizer: the parameters of the components cannot be separated (they would be, if the $z_i$ were known). We therefore use the EM algorithm, which iteratively increases $\mathcal{L}(\theta)$.
 
-In this work the covariance is \emph{diagonal}, $\Sigma_k=\mathrm{diag}(\sigma_{k1}^2,\dots,\sigma_{kD}^2)$, so the density factorizes over the features:
+In the main line of this work the covariance is \emph{diagonal}, $\Sigma_k=\mathrm{diag}(\sigma_{k1}^2,\dots,\sigma_{kD}^2)$, so the density factorizes over the features:
 \begin{equation}
   \mathcal{N}(x \mid \mu_k,\Sigma_k) = \prod_{d=1}^{D} \frac{1}{\sqrt{2\pi\sigma_{kd}^2}} \exp\!\left(-\frac{(x_d-\mu_{kd})^2}{2\sigma_{kd}^2}\right).
 \end{equation}
@@ -109,10 +109,10 @@ $\ln\sum_{k}e^{v_k}=m+\ln\sum_{k}e^{v_k-m}$, where $m=\max_k v_k$: the largest t
 \end{itemize}
 
 \subsection{Sequential implementations and cost}
-We wrote two \emph{sequential} versions, \emph{only to understand the algorithm in depth}: they are not the performance baseline, which is the diagonal MPI+OpenMP version, against which all the optimizations (described in the following sections) are evaluated.
+We wrote two \emph{sequential} versions, \emph{only to understand the algorithm in depth}: they are not the performance baseline, which is the diagonal MPI+OpenMP version, against which the diagonal optimizations (described in the following sections) are evaluated; optimization~1 of the full model is evaluated against the full MPI+OpenMP baseline.
 \begin{itemize}
 \item Diagonal: the model described above, with one variance $\sigma^2_{kd}$ per variable.
-\item Full: each cluster has a complete covariance matrix $\Sigma_k\in\mathbb{R}^{D\times D}$, which also models the correlations between variables. The model changes, so its results are compared only with other full-covariance runs.
+\item Full: each cluster has a complete covariance matrix $\Sigma_k\in\mathbb{R}^{D\times D}$, which also models the correlations between variables. The model changes, so its results are compared only with other full-covariance runs. The algorithm does not change (Algorithm~\ref{alg:em} is the same, with the same safeguards): only $\sigma^2_{kd}$ is replaced by $\Sigma_k$ in the density of the E-step and in the covariance update of the M-step. Besides the sequential version, the full model also exists in MPI+OpenMP form: baseline and optimization~1.
 \end{itemize}
 
 \paragraph{Cost of one iteration.} With $N$ points, $K$ clusters and $D$ variables:

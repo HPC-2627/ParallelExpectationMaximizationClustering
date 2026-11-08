@@ -19,7 +19,8 @@ High Performance Computing (HPC) project (University of Trento): parallel Expect
 │   │   └── PEMC-opt3-MPI-OpenMP-diagonal.c        #   Optimization 3 of the baseline (to be written)
 │   ├── full/                                  # Full covariance (extension)
 │   │   ├── PEMC-baseline-sequential-full.c        #   Sequential version (Cholesky; reference for the full model)
-│   │   └── PEMC-baseline-MPI-OpenMP-full.c        #   Baseline variant with full covariance (to be written)
+│   │   ├── PEMC-baseline-MPI-OpenMP-full.c        #   Baseline variant with full covariance (to be written)
+│   │   └── PEMC-opt1-MPI-OpenMP-full.c            #   Optimization 1 with full covariance (to be written)
 │   ├── script/                                # Launchers for the cluster
 │   │   └── PEMC-baseline-MPI-OpenMP-diagonal.sh   #   PBS job of the MPI + OpenMP baseline (qsub from the repo root)
 │   ├── dataset-managed/                       # Scripts that create and check the datasets

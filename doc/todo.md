@@ -23,6 +23,7 @@ Workflow, in order. Phases overlap on purpose: datasets are prepared while the c
 - [ ] Define the PBS launch script (new file, location to decide)
 - [ ] First test run on the cluster (also on 2 nodes) to find environment problems early
 - [ ] Optimization 1: `src/diagonal/PEMC-opt1-MPI-OpenMP-diagonal.c` (compared against `src/diagonal/PEMC-baseline-MPI-OpenMP-diagonal.c`) --> to choose
+- [ ] Optimization 1, full covariance: `src/full/PEMC-opt1-MPI-OpenMP-full.c` (same optimization as the diagonal one, compared against `src/full/PEMC-baseline-MPI-OpenMP-full.c`)
 - [ ] Optimization 2: `src/diagonal/PEMC-opt2-MPI-OpenMP-diagonal.c` (compared against `src/diagonal/PEMC-baseline-MPI-OpenMP-diagonal.c`) --> to choose
 - [ ] Optimization 3: `src/diagonal/PEMC-opt3-MPI-OpenMP-diagonal.c` (compared against `src/diagonal/PEMC-baseline-MPI-OpenMP-diagonal.c`) --> to choose
 - [ ] Build rules for all the versions in `makefile`
