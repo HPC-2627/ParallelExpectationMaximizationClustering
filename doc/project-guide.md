@@ -15,7 +15,7 @@ Everything needed for the project, based on the course slides (project template,
 
 ### 2.1 Introduction
 - Accurate description of the assigned problem (EM clustering).
-- Analysis of the **sequential algorithm** (complexity, cost per phase).
+- Analysis of the **sequential algorithm** (complexity, cost per phase), for both models (diagonal and full covariance, 4 versions each: sequential, baseline, 2 optimizations).
 - Pseudo-code, examples, graphs, figures, application instances.
 
 ### 2.2 Parallel design

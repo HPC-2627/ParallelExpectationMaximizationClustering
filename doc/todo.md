@@ -9,7 +9,7 @@ Workflow, in order. Phases overlap on purpose: datasets are prepared while the c
 ## 1. Preparation
 - [X] Find papers on parallel Expectation-Maximization clustering
 - [X] Find papers where this was already done on a single node and on multiple nodes (to cite in the report)
-- [ ] Write Introduction, sequential algorithm and state of the art in the report (`doc/latex/Group6-Report.tex`, as soon as the papers are read)
+- [X] Write Introduction and sequential algorithm in the report (two models, diagonal and full, 4 versions each); [ ] state of the art (`doc/latex/Group6-Report.tex`, as soon as the papers are read)
 - [X] Find about 10 real datasets (as many as possible medical) and write down their sources (to cite them), saved in `data/real/`
 - [X] Write the generator (new script, location to decide) and create 3 synthetic datasets saved in `data/synthetic/`
 - [X] Preprocessing of the datasets: normalization, missing values, common input format
@@ -20,18 +20,18 @@ Workflow, in order. Phases overlap on purpose: datasets are prepared while the c
 - [X] (mike) Define the log format (.log text file: version, dataset, ranks, threads, time per phase, iterations, log-likelihood) 
 - [X] (mike) Define visual method to visualize `src/diagonal/PEMC-baseline-sequential-diagonal.c` 
 - [X] (gabri) Baseline MPI + OpenMP: `src/diagonal/PEMC-baseline-MPI-OpenMP-diagonal.c`, checked against `src/diagonal/PEMC-baseline-sequential-diagonal.c` (same final log-likelihood on a small dataset, correctness reference and serial time)
-- [X] (mike) Baseline MPI + OpenMP, full covariance: `src/full/PEMC-baseline-MPI-OpenMP-full.c` (variant of the diagonal baseline, checked against `src/full/PEMC-baseline-sequential-full.c`)
-- [ ] Define the PBS launch script (new file, location to decide)
+- [X] (mike) Baseline MPI + OpenMP, full covariance (equal in importance to the diagonal model; 4 versions per model: sequential, baseline, opt1, opt2): `src/full/PEMC-baseline-MPI-OpenMP-full.c` (variant of the diagonal baseline, checked against `src/full/PEMC-baseline-sequential-full.c`)
+- [X] Define the PBS launch script (new file, location to decide)
 - [ ] First test run on the cluster (also on 2 nodes) to find environment problems early
-- [ ] Optimization 1: `src/diagonal/PEMC-opt1-MPI-OpenMP-diagonal.c` (compared against `src/diagonal/PEMC-baseline-MPI-OpenMP-diagonal.c`) --> to choose
+- [ ] Optimization 1, diagonal: `src/diagonal/PEMC-opt1-MPI-OpenMP-diagonal.c` (compared against `src/diagonal/PEMC-baseline-MPI-OpenMP-diagonal.c`) --> to choose
 - [ ] Optimization 1, full covariance: `src/full/PEMC-opt1-MPI-OpenMP-full.c` (same optimization as the diagonal one, compared against `src/full/PEMC-baseline-MPI-OpenMP-full.c`)
-- [ ] Optimization 2: `src/diagonal/PEMC-opt2-MPI-OpenMP-diagonal.c` (compared against `src/diagonal/PEMC-baseline-MPI-OpenMP-diagonal.c`) --> to choose
+- [ ] Optimization 2, diagonal: `src/diagonal/PEMC-opt2-MPI-OpenMP-diagonal.c` (compared against `src/diagonal/PEMC-baseline-MPI-OpenMP-diagonal.c`) --> to choose
 - [ ] Optimization 2, full covariance: `src/full/PEMC-opt2-MPI-OpenMP-full.c` (same optimization as the diagonal one, compared against `src/full/PEMC-baseline-MPI-OpenMP-full.c`)
 - [ ] Build rules for all the versions in `makefile`
 - [ ] Correctness test after every version, not only at the end
 
 ## 3. Experiments
-Run all the versions (`src/diagonal/PEMC-baseline-sequential-diagonal.c`, `src/diagonal/PEMC-baseline-MPI-OpenMP-diagonal.c`, `src/diagonal/PEMC-opt1-MPI-OpenMP-diagonal.c`, `src/diagonal/PEMC-opt2-MPI-OpenMP-diagonal.c`) and, as a separate comparison, the full-covariance ones (`src/full/PEMC-baseline-sequential-full.c`, `src/full/PEMC-baseline-MPI-OpenMP-full.c`, `src/full/PEMC-opt1-MPI-OpenMP-full.c`, `src/full/PEMC-opt2-MPI-OpenMP-full.c`) on the datasets in `data/real/` and `data/synthetic/`.
+Run all the versions (`src/diagonal/PEMC-baseline-sequential-diagonal.c`, `src/diagonal/PEMC-baseline-MPI-OpenMP-diagonal.c`, `src/diagonal/PEMC-opt1-MPI-OpenMP-diagonal.c`, `src/diagonal/PEMC-opt2-MPI-OpenMP-diagonal.c`) and, with the same importance but compared only among themselves (different model), the full-covariance ones (`src/full/PEMC-baseline-sequential-full.c`, `src/full/PEMC-baseline-MPI-OpenMP-full.c`, `src/full/PEMC-opt1-MPI-OpenMP-full.c`, `src/full/PEMC-opt2-MPI-OpenMP-full.c`) on the datasets in `data/real/` and `data/synthetic/`.
 - [ ] Single-node runs: threads, ranks and ranks × threads at a fixed number of cores
 - [ ] Multi-node runs, including PBS placement (`pack`, `scatter`, `pack:excl`, `scatter:excl`)
 - [ ] Strong scaling and weak scaling
@@ -61,6 +61,5 @@ Run all the versions (`src/diagonal/PEMC-baseline-sequential-diagonal.c`, `src/d
 - [ ] Both team members ready for the oral exam
 
 ## Nice to have
-- [X] Full covariance variant: `src/full/PEMC-baseline-MPI-OpenMP-full.c` (after the diagonal baseline works; check it by running with 1 rank and 1 thread, compare only within the same model)
 - [ ] Segmentation map visualization on a medical image dataset
 - [ ] Interactive visualization for the presentation

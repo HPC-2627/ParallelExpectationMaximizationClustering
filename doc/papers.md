@@ -1,12 +1,10 @@
 # Papers and references
 ## 1. Theory
-
 | Reference | File | Content | Read |
 |---|---|---|---|
 | C. M. Bishop, *Pattern Recognition and Machine Learning*, Springer 2006, ch. 9 (sections 9.2 and 9.3) | [1-bishop-prml.pdf](papers/1-bishop-prml.pdf) (official free PDF from the Microsoft Research website, complete 758-page book) | Mixture of Gaussians and EM, with the derivation of the formulas | [ ] |
 
 ## 2. EM on a single node
-
 | Reference | File | What it does | Read |
 |---|---|---|---|
 | C. Sanderson, R. Curtin, "An Open Source C++ Implementation of Multi-Threaded Gaussian Mixture Models, k-Means and Expectation Maximisation", arXiv:1707.09094 | [2-sanderson-curtin-multithreaded-gmm.pdf](papers/2-sanderson-curtin-multithreaded-gmm.pdf) | Multi-threaded (OpenMP) EM for GMMs: each thread computes its own accumulators and a reduction combines them. On a synthetic dataset of about 762 MB (1 million samples, 100 dimensions, 100 components), with 16 cores the training time drops from about 272 s to about 27 s; the speedup is below linear because of OpenMP and reduction overhead and memory contention | [ ] |
@@ -20,7 +18,6 @@
 
 
 ## 4. Possible optimizations
-
 | # | Optimization | Reference | File | What it says (checked on the text) | Same result as the baseline? | Read |
 |---|---|---|---|---|---|---|
 | 4.1 | Fusion of E-step and M-step | S. X. Lee, K. L. Leemaqz, G. J. McLachlan, "A simple multithreaded implementation of the EM algorithm for mixture models", arXiv:1606.02054, 2016 | [4.1-lee-multithreaded-em-mixture.pdf](papers/4.1-lee-multithreaded-em-mixture.pdf) | The results of the E-step need not be collected before the M-step: the M-step of a component can be performed straight after the E-step of the same component on the same thread, and the collection across threads happens only at the end of an iteration | yes | [ ] |

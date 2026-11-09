@@ -21,4 +21,3 @@ Licenses marked CC BY 4.0 are the ones stated by the UCI pages; re-check each pa
 ## Citations (to complete in the report)
 - BrainWeb (T1 volume + crisp labels as ground truth): Cocosco et al. 1997; Kwan, Evans, Pike 1999 (IEEE TMI); Aubert-Broche et al. 2006 for the 20 anatomical models.
 - UCI datasets: cite the DOI/page above for each one.
-- Epileptic Seizure Recognition was planned but removed from UCI at the curators' request; replaced by `gene_rnaseq`.

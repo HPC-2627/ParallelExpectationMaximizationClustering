@@ -11,12 +11,12 @@ High Performance Computing (HPC) project (University of Trento): parallel Expect
 ```
 .
 ├── src/
-│   ├── diagonal/                              # Diagonal covariance (main line of the project)
+│   ├── diagonal/                              # Diagonal covariance: sequential, baseline, 2 optimizations
 │   │   ├── PEMC-baseline-sequential-diagonal.c    #   Sequential version (correctness reference and serial time)
 │   │   ├── PEMC-baseline-MPI-OpenMP-diagonal.c    #   Hybrid MPI + OpenMP baseline
 │   │   ├── PEMC-opt1-MPI-OpenMP-diagonal.c        #   Optimization 1 of the baseline (to be written)
 │   │   └── PEMC-opt2-MPI-OpenMP-diagonal.c        #   Optimization 2 of the baseline (to be written)
-│   ├── full/                                  # Full covariance (extension)
+│   ├── full/                                  # Full covariance: sequential, baseline, 2 optimizations
 │   │   ├── PEMC-baseline-sequential-full.c        #   Sequential version (Cholesky; reference for the full model)
 │   │   ├── PEMC-baseline-MPI-OpenMP-full.c        #   Hybrid MPI + OpenMP baseline with full covariance
 │   │   ├── PEMC-opt1-MPI-OpenMP-full.c            #   Optimization 1 with full covariance (to be written)
@@ -74,7 +74,7 @@ High Performance Computing (HPC) project (University of Trento): parallel Expect
 └── README.md
 ```
 
-The `-diagonal` files use a Gaussian mixture with diagonal covariance (the main line of the project: sequential reference, baseline and 2 optimizations). The `-full` files are a variant with full covariance (each cluster has a complete $D \times D$ matrix, so correlated variables are modelled): it changes the model, so its results are compared only with runs of the same model (`-full` with `-full`, `-diagonal` with `-diagonal`). A full iteration costs $O(NKD^2)$ instead of $O(NKD)$.
+The project studies two Gaussian mixture models with the same importance, each with four versions (sequential, MPI + OpenMP baseline, optimization 1, optimization 2), for a total of eight programs. The `-diagonal` files use a diagonal covariance (one variance per variable). The `-full` files use a full covariance (each cluster has a complete $D \times D$ matrix, so correlated variables are modelled). The model is different, so the results are compared only with runs of the same model (`-full` with `-full`, `-diagonal` with `-diagonal`), and every optimization is evaluated against the baseline of its own model. A full iteration costs $O(NKD^2)$ instead of $O(NKD)$.
 
 ## Data (required step before running the experiments)
 
@@ -108,7 +108,7 @@ Three profiles, generated from a known Gaussian mixture (true labels available),
 - **Weak scaling:** one file per number of processes $p \in \{1,2,4,8,16\}$, with $N = 250\,000 \cdot p$ rows (so each rank always has 250 000 rows). The files of a profile are nested (the file for $2p$ contains the one for $p$). Strong scaling uses a fixed file (e.g. `_p16`) with more processes.
 - **Size on disk:** `synth_clean` 620 MB, `synth_overlap` 1 240 MB, `synth_rare` 3 100 MB (about 5 GB in total, labels included). The largest file is 4 000 000 x 50 doubles (1.6 GB).
 - **File format:** binary, an 8-byte header with two `int` (N, D) followed by $N \cdot D$ `double` in row-major order; the labels are in a separate file (`int`, one per row). Reading in C: `fread` of the header, then of the matrix `X[i*D + d]`.
-- **Limits:** `synth_overlap` is correlated while the baseline is diagonal on purpose; nested files are not independent samples.
+- **Limits:** `synth_overlap` is correlated: it is the profile where the diagonal model is mismatched and the full one is not; nested files are not independent samples.
 
 Full details (variables with units and limits, generation procedure, work per rank, C reading code) are in [doc/synthetic-datasets-info.md](doc/synthetic-datasets-info.md).
 
@@ -131,7 +131,7 @@ The real datasets are public and are not versioned: `data/real/*/raw/` is listed
 | `statlog_heart` | Statlog (Heart) | 270 x 13 | [UCI 145](https://archive.ics.uci.edu/dataset/145) |
 | `brainweb` | BrainWeb simulated brain MRI, subject 44 (T1 + ground-truth labels) | 11,862,016 voxels x 1 | [BrainWeb](https://brainweb.bic.mni.mcgill.ca/) |
 
-`cleveland` is downloaded only to document why it is discarded: it has 6 incomplete rows. The other datasets have no missing values in the numeric columns (see [doc/real-datasets-info.md](doc/real-datasets-info.md)).
+None of the datasets has missing values in the numeric columns (see [doc/real-datasets-info.md](doc/real-datasets-info.md)).
 
 ### Download
 
@@ -162,7 +162,6 @@ Each dataset is saved in `data/real/<name>/raw/` as `features.csv` and, when a l
 Notes:
 - The T1 and `crisp` volumes of BrainWeb are on different grids (1 mm and 0.5 mm): `convert-brainweb-to-bin.py` resamples the labels to the T1 grid (see Conversion to binary).
 - The T2 and T2* images of BrainWeb are not used: the download from the BrainWeb server did not complete, so BrainWeb has one feature (D = 1).
-- `epileptic seizure recognition` was planned but is no longer on UCI (removed at the curators' request): it was replaced by `gene_rnaseq`.
 
 ### Verification
 
@@ -178,7 +177,7 @@ The raw CSV files are kept as served by the source. To use the real datasets wit
 
 ```bash
 python3 src/dataset-managed/convert-real-to-bin.py            # all the datasets
-python3 src/dataset-managed/convert-real-to-bin.py wdbc       # only some
+python3 src/dataset-managed/convert-real-to-bin.py heart_failure       # only some
 ```
 
 For each dataset it writes in `data/real/<name>/`:
@@ -186,7 +185,7 @@ For each dataset it writes in `data/real/<name>/`:
 - `<name>_labels.bin`: one `int` per row (classes encoded as 0..C-1), only if the label is categorical (`parkinson` has continuous targets, so no labels);
 - `<name>.json`: columns used and dropped, mean and standard deviation of the standardization, class mapping.
 
-Preprocessing: only the numeric columns are kept (identifiers removed), constant columns are dropped, every column is standardized (z-score). The datasets marked `DISCARD` (`cleveland`) are skipped: nothing is imputed. `brainweb` is not CSV and has its own script (below).
+Preprocessing: only the numeric columns are kept (identifiers removed), constant columns are dropped, every column is standardized (z-score). A dataset with empty cells (`DISCARD`) would be skipped: nothing is imputed. `brainweb` is not CSV and has its own script (below).
 
 #### BrainWeb (NIfTI volumes)
 

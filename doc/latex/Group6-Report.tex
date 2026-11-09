@@ -49,6 +49,8 @@
 \section{Introduction}
 Clustering groups the points of a dataset so that points in the same group are similar. Here we assume that the data come from a mixture of Gaussian distributions and that the group of each point is unknown; the parameters of the mixture are estimated with the Expectation--Maximization (EM) algorithm. EM is iterative and every iteration scans the whole dataset: its cost grows with the data, which makes it a good candidate for parallelization. The goal of the project is to implement EM in C with a hybrid MPI+OpenMP design, to evaluate optimizations of computation and communication, and to measure their scalability on multiple nodes (strong and weak scaling) on real and synthetic datasets.
 
+We study two variants of the model, which differ in the covariance matrix of each Gaussian: \emph{diagonal} (one variance per variable) and \emph{full} (a complete $D\times D$ matrix, which also captures the correlations between variables). The two variants have the same importance and the same structure: for each of them we developed a sequential version, a hybrid MPI+OpenMP baseline and two optimizations of the baseline, for a total of eight programs (Section~\ref{sec:versions}). The two variants are never compared with each other on the likelihood, since they are different models: every optimization is evaluated against the baseline of its own variant.
+
 \subsection{The EM algorithm for Gaussian mixtures}
 We distinguish two things: the \emph{model} is the assumption about the shape of the data (a mixture of Gaussians, with still unknown parameters), while \emph{EM} is the iterative procedure that estimates those parameters from the data.
 
@@ -63,11 +65,11 @@ where $\pi_k$ is the mixing weight of component $k$, and $\mu_k$, $\Sigma_k$ are
 \end{equation}
 The logarithm of a sum prevents a closed-form maximizer: the parameters of the components cannot be separated (they would be, if the $z_i$ were known). We therefore use the EM algorithm, which iteratively increases $\mathcal{L}(\theta)$.
 
-In the main line of this work the covariance is \emph{diagonal}, $\Sigma_k=\mathrm{diag}(\sigma_{k1}^2,\dots,\sigma_{kD}^2)$, so the density factorizes over the features:
+We consider two choices for the covariance. In the \emph{diagonal} model, $\Sigma_k=\mathrm{diag}(\sigma_{k1}^2,\dots,\sigma_{kD}^2)$, so the density factorizes over the features:
 \begin{equation}
   \mathcal{N}(x \mid \mu_k,\Sigma_k) = \prod_{d=1}^{D} \frac{1}{\sqrt{2\pi\sigma_{kd}^2}} \exp\!\left(-\frac{(x_d-\mu_{kd})^2}{2\sigma_{kd}^2}\right).
 \end{equation}
-This costs $O(D)$ per point and component instead of the $O(D^3)$ matrix inversion (plus $O(D^2)$ per evaluation) of a full covariance, and needs only $2D$ instead of $D+D(D+1)/2$ parameters per component.
+This costs $O(D)$ per point and component instead of the $O(D^3)$ matrix inversion (plus $O(D^2)$ per evaluation) of a full covariance, and needs only $2D$ instead of $D+D(D+1)/2$ parameters per component. The \emph{full} model keeps the complete matrix $\Sigma_k\in\mathbb{R}^{D\times D}$: it is more expressive (the ellipsoids of the components can be tilted) but more expensive. The rest of this section describes the algorithm for the diagonal model; the full model differs only where stated.
 
 \paragraph{E-step.} For every point $i$ and cluster $k$ it computes the \emph{responsibility} $r_{ik}\in[0,1]$, the probability that $x_i$ belongs to cluster $k$ under the current parameters ($\sum_k r_{ik}=1$); $j$ runs over all the clusters:
 \begin{equation}
@@ -89,16 +91,34 @@ In the code the M-step accumulates in a single pass the sums $N_k$, $\sum_i r_{i
 \small
 \KwIn{$X$ ($N\times D$), $K$, $\varepsilon$, $T_{\max}$}
 \KwOut{$\theta$, labels $\arg\max_k r_{ik}$}
-Initialize $\theta$: $\mu_k\leftarrow$ random distinct rows, $\pi_k\leftarrow 1/K$, $\sigma^2_{kd}\leftarrow 1$\;
+Initialize $\theta$: $\mu_k\leftarrow$ random distinct rows, $\pi_k\leftarrow 1/K$, $\sigma^2_{kd}\leftarrow 1$ (full: $\Sigma_k\leftarrow I$)\;
 $\mathcal{L}_{\mathrm{prev}}\leftarrow-\infty$\;
 \For{$t=1$ \KwTo $T_{\max}$}{
-  E-step: compute $r_{ik}$ for all $i,k$ and $\mathcal{L}$\;
+  E-step: compute $r_{ik}$ for all $i,k$ and $\mathcal{L}$ (full: with the Cholesky factor of $\Sigma_k$)\;
   \lIf{$|\mathcal{L}-\mathcal{L}_{\mathrm{prev}}|\le\varepsilon|\mathcal{L}|$}{break}
-  M-step: compute $N_k$, $\mu_k$, $\pi_k$, $\sigma^2_{kd}$ for all $k,d$\;
+  M-step: compute $N_k$, $\mu_k$, $\pi_k$, $\sigma^2_{kd}$ for all $k,d$ (full: $\Sigma_k$)\;
   $\mathcal{L}_{\mathrm{prev}}\leftarrow\mathcal{L}$\;
 }
 \lIf{$T_{\max}$ reached without convergence}{repeat the E-step (so $\mathcal{L}$ and $r_{ik}$ match $\theta$)}
 \end{algorithm}
+
+\begin{table}[t]
+\centering
+\caption{Differences between the two models in Algorithm~\ref{alg:em}.}\label{tab:models}
+\footnotesize
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{lll}
+\toprule
+& \textbf{Diagonal} & \textbf{Full} \\
+\midrule
+Parameters per cluster & $\mu_k,\ \sigma_k^2$ ($2D$) & $\mu_k,\ \Sigma_k$ ($D+D(D+1)/2$) \\
+Log-density & $-\tfrac12\sum_d\big[\ln(2\pi\sigma_{kd}^2)+(x_d-\mu_{kd})^2/\sigma_{kd}^2\big]$ & $-\tfrac12\big[D\ln 2\pi+\ln\det\Sigma_k+\|L_k^{-1}(x-\mu_k)\|^2\big]$ \\
+Covariance update & $\sigma^2_{kd}=\tfrac1{N_k}\sum_i r_{ik}x_{id}^2-\mu_{kd}^2$ & $\Sigma_k=\tfrac1{N_k}\sum_i r_{ik}x_ix_i^\top-\mu_k\mu_k^\top$ \\
+Safeguard & $\sigma^2_{kd}\ge\delta$ & $\delta$ on the diagonal of $\Sigma_k$ \\
+Cost per iteration & $O(NKD)$ & $O(NKD^2)$ \\
+\bottomrule
+\end{tabular}}
+\end{table}
 
 \paragraph{Numerical safeguards.} The formulas, implemented literally, produce errors in finite-precision arithmetic; the code adopts three protections.
 \begin{itemize}
@@ -108,12 +128,16 @@ $\ln\sum_{k}e^{v_k}=m+\ln\sum_{k}e^{v_k-m}$, where $m=\max_k v_k$: the largest t
 \item Empty clusters. If $N_k<10^{-10}$ no point is assigned to the cluster and the formulas would divide by zero: mean and variances stay as before and the weight is set to the minimum $\pi_k=10^{-12}$, never 0, because the E-step uses $\ln\pi_k$.
 \end{itemize}
 
-\subsection{Sequential implementations and cost}
-We wrote two \emph{sequential} versions, \emph{only to understand the algorithm in depth}: they are not the performance baseline, which is the diagonal MPI+OpenMP version, against which the diagonal optimizations (described in the following sections) are evaluated; optimization~1 of the full model is evaluated against the full MPI+OpenMP baseline.
+\subsection{Implemented versions and cost}\label{sec:versions}
+The EM algorithm is the same for both covariance models (Algorithm~\ref{alg:em}, with the same safeguards): only $\sigma^2_{kd}$ is replaced by $\Sigma_k$ in the density of the E-step and in the covariance update of the M-step. Each model has four versions, for a total of eight programs:
 \begin{itemize}
-\item Diagonal: the model described above, with one variance $\sigma^2_{kd}$ per variable.
-\item Full: each cluster has a complete covariance matrix $\Sigma_k\in\mathbb{R}^{D\times D}$, which also models the correlations between variables. The model changes, so its results are compared only with other full-covariance runs. The algorithm does not change (Algorithm~\ref{alg:em} is the same, with the same safeguards): only $\sigma^2_{kd}$ is replaced by $\Sigma_k$ in the density of the E-step and in the covariance update of the M-step. Besides the sequential version, the full model also exists in MPI+OpenMP form: baseline and optimization~1.
+\item \emph{Sequential}: single process, single thread. It is the correctness reference (the parallel versions must reach the same final log-likelihood) and gives the serial time used to compute speedup and efficiency.
+\item \emph{Baseline MPI+OpenMP}: the straightforward hybrid parallelization, without optimizations. It is the reference against which the optimizations are measured.
+\item \emph{Optimization 1} and \emph{Optimization 2}: two different optimizations of the baseline of the same model, of computation or of communication (described in the following sections).
 \end{itemize}
+The two models are compared only within themselves: \emph{diagonal} with \emph{diagonal} and \emph{full} with \emph{full}, because the log-likelihood of different models is not comparable. The same optimizations are applied to both models, so that the effect of the cost per point, $O(D)$ against $O(D^2)$, on the scalability can be observed.
+
+\paragraph{Full model: Cholesky factorization.} The full density needs $(x-\mu_k)^\top\Sigma_k^{-1}(x-\mu_k)$ and $\ln\det\Sigma_k$. The code never inverts $\Sigma_k$: once per cluster and iteration it computes the Cholesky factorization $\Sigma_k=L_kL_k^\top$ ($L_k$ lower triangular, cost $D^3/6$). Then, for each point, the Mahalanobis distance is $\|z\|^2$ with $L_kz=x_i-\mu_k$ solved by forward substitution ($D^2/2$ operations), and $\ln\det\Sigma_k=2\sum_d\ln L_{k,dd}$ comes from the diagonal of $L_k$. The M-step accumulates the lower triangle of $\sum_i r_{ik}x_ix_i^\top$ instead of $\sum_i r_{ik}x_i^2$. As safeguard, $\delta$ is added to the diagonal of every $\Sigma_k$; if a pivot is still not positive, the added value is multiplied by 10 until the factorization succeeds (the program stops if it exceeds $10^6$).
 
 \paragraph{Cost of one iteration.} With $N$ points, $K$ clusters and $D$ variables:
 \begin{itemize}
@@ -129,6 +153,12 @@ We wrote two \emph{sequential} versions, \emph{only to understand the algorithm 
 \section{Experimental Setup \& Dataset}
 \subsection{Hardware Infrastructure}
 \subsection{Dataset}
+We use two groups of datasets, both stored in the same binary format: an 8-byte header with two \texttt{int} ($N$, $D$), followed by $N\cdot D$ \texttt{double} in row-major order, with the labels in a separate file (one \texttt{int} per row). The labels are used only to evaluate the clustering (adjusted Rand index and purity), never by EM.
+
+\paragraph{Real datasets.} Ten public datasets, mostly medical (Table~\ref{tab:real}), from UCI, OpenML and BrainWeb, with sizes from 270 points to almost $12\cdot10^6$ voxels and from $D=1$ to $D=20\,264$, to compare small, medium and large inputs. Preprocessing is the same for all: only numeric columns are kept (identifiers removed), constant columns are dropped and every column is standardized (z-score), which justifies the initialization $\sigma^2_{kd}=1$. Missing values are not imputed: a dataset with incomplete rows is discarded. \texttt{parkinson} has continuous targets, so it has no labels and $K$ is chosen arbitrarily.
+
+\paragraph{Synthetic datasets.} The real datasets are too small to show scaling, so we generate three profiles from a known Gaussian mixture, with true labels available (Table~\ref{tab:synth-profiles}): \texttt{synth\_clean} ($K=4$, $D=10$) satisfies the model and is the correctness reference; \texttt{synth\_overlap} ($K=5$, $D=20$) has overlapping clusters, correlated and skewed variables, so the diagonal model is mismatched and the full one is not; \texttt{synth\_rare} ($K=6$, $D=50$) has a rare cluster (1\,\%) and 2\,\% of outliers, and tests numerical stability. The first 20 variables mimic clinical measurements (Table~\ref{tab:synth-vars}), the others are generic biomarkers. For the weak scaling there is one file per number of processes $p\in\{1,2,4,8,16\}$ with $N=250\,000\,p$ rows (Table~\ref{tab:weak}); the files of a profile are nested, so they are not independent samples. The strong scaling uses a fixed file ($N=4\,000\,000$, Table~\ref{tab:strong}) with more processes. Generation is deterministic (seed 42).
+
 
 \begin{table*}[p]
 \centering
@@ -270,6 +300,9 @@ What it tests & correctness, scaling reference & slow convergence, choice of $K$
 \section{Discussion}
 
 \section{Conclusion}
+
+\section*{AI Statement}
+In this project we used an AI assistant (Claude, by Anthropic) for three purposes: (i) support in writing and debugging the code; (ii) searching for sources and papers for the state of the art and for the datasets; (iii) mathematical and grammatical correction of the report. The design choices, the experiments and the analysis of the results are our own, and we reviewed the output of the assistant and take full responsibility for the content of the code and of this report.
 
 \clearpage
 \begin{thebibliography}{1}

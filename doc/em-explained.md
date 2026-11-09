@@ -99,7 +99,7 @@ $$\Sigma = \begin{pmatrix} \mathrm{var}(\text{age}) & \mathrm{cov}(\text{age},\t
 | Cost per iteration | $O(NKD^2)$ + inversions $O(KD^3)$ | $O(NKD)$ |
 | Risk | unstable with high $D$ and few data | assumes independent variables inside the group |
 
-**For the project it is better to start from the diagonal**: simpler formulas and no matrix inverses.
+**The project implements both**, with the same versions each (sequential, baseline, 2 optimizations). It is easier to start from the diagonal (simpler formulas, no matrix inverses) and derive the full one from it.
 
 ### The Gaussian
 **In one dimension**, the bell with mean $\mu$ and variance $\sigma^2$:
