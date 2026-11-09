@@ -10,7 +10,7 @@ The synthetic datasets (generate-synthetic-dataset.py) are used for the weak sca
 N can grow at will. The real ones are small, but they are needed to show that the EM works on
 data that do not come from a Gaussian mixture. They are medical, like the synthetic profiles,
 and cover different shapes: many rows (diabetes130, cardiovascular), high D (gene_rnaseq,
-20531 variables), tiny sets (wdbc, heart_failure) and an image volume (brainweb, D = 1).
+20531 variables), tiny sets (statlog_heart, heart_failure) and an image volume (brainweb, D = 1).
 The raw files are kept untouched: all the choices (which columns, what to discard) are made
 later and are documented by verify-real-datasets.py and convert-real-to-bin.py.
 
@@ -31,16 +31,13 @@ DATASETS = {
     "diabetes130":      ("uci", 296),    # Diabetes 130-US hospitals 1999-2008
     "cdc_diabetes":     ("uci", 891),    # CDC Diabetes Health Indicators
     "cardiovascular":   ("openml", 45547),  # Kaggle cardiovascular disease (70k)
-    # Epileptic Seizure Recognition was removed from UCI at the curators' request:
-    # replaced by the TCGA RNA-Seq cancer dataset (high D, complete).
+    # TCGA RNA-Seq cancer dataset (high D, complete).
     "gene_rnaseq":      ("uci_zip", 401),  # gene expression cancer RNA-Seq (801 x 20531)
     "parkinson":        ("uci", 189),    # Parkinsons Telemonitoring
     "eeg_eye_state":    ("uci", 264),    # EEG Eye State
-    "wdbc":             ("uci", 17),     # Breast Cancer Wisconsin Diagnostic
     "heart_failure":    ("uci", 519),    # Heart Failure Clinical Records
     "cardiotocography": ("uci", 193),    # Cardiotocography
     "statlog_heart":    ("uci", 145),    # Statlog (Heart)
-    "cleveland":        ("uci", 45),     # Heart Disease (Cleveland), for the missing-row count
 }
 
 # Direct zip URLs for UCI datasets that ucimlrepo cannot import.

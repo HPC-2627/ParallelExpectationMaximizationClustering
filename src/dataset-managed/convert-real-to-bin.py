@@ -44,8 +44,8 @@ MAX_CLASSES = 20
 
 # Datasets converted when no name is given on the command line (same list as the verify script).
 DATASETS = ["diabetes130", "cdc_diabetes", "cardiovascular", "parkinson",
-            "eeg_eye_state", "gene_rnaseq", "wdbc", "heart_failure",
-            "cardiotocography", "statlog_heart", "cleveland"]
+            "eeg_eye_state", "gene_rnaseq", "heart_failure",
+            "cardiotocography", "statlog_heart"]
 
 
 def write_bin(path, X):
