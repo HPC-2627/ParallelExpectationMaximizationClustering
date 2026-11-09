@@ -60,7 +60,7 @@ High Performance Computing (HPC) project (University of Trento): parallel Expect
 │   └── plots/       # Generated plots
 ├── doc/
 │   ├── latex/
-│   │   └── Group6-Report.tex         # IEEE-style report
+│   │   └── Group6-Report.tex         # IEEE-style report (AI statement, model, dataset and cost sections written; design and results to do)
 │   ├── em-explained.md   # Study guide on the EM algorithm
 │   ├── papers.md         # Free papers for the state of the art (theory, single node, multiple nodes, 5 candidate optimizations)
 │   ├── papers/           # Local copies of the papers, numbered like papers.md (not versioned, listed in .gitignore)
@@ -208,7 +208,7 @@ raw/*.nii.gz  --gunzip-->  nifti/*.nii  --nibabel + numpy-->  brainweb.bin, brai
 
 ```
 make              # builds bin/PEMC-baseline-sequential-diagonal and bin/PEMC-baseline-sequential-full (gcc, -O3)
-make mpi-omp      # builds bin/PEMC-baseline-MPI-OpenMP-diagonal (mpicc -fopenmp)
+make mpi-omp      # builds bin/PEMC-baseline-MPI-OpenMP-diagonal and bin/PEMC-baseline-MPI-OpenMP-full (mpicc -fopenmp)
 make clean
 ```
 

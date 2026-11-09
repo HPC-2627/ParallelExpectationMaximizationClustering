@@ -9,7 +9,8 @@ Workflow, in order. Phases overlap on purpose: datasets are prepared while the c
 ## 1. Preparation
 - [X] Find papers on parallel Expectation-Maximization clustering
 - [X] Find papers where this was already done on a single node and on multiple nodes (to cite in the report)
-- [X] Write Introduction and sequential algorithm in the report (two models, diagonal and full, 4 versions each); [ ] state of the art (`doc/latex/Group6-Report.tex`, as soon as the papers are read)
+- [X] Write Introduction and sequential algorithm in the report (two models, diagonal and full with Cholesky, 4 versions each, Algorithm 1 for both) and the Dataset section (`doc/latex/Group6-Report.tex`)
+- [ ] Write the state of the art in the report (as soon as the papers are read)
 - [X] Find about 10 real datasets (as many as possible medical) and write down their sources (to cite them), saved in `data/real/`
 - [X] Write the generator (new script, location to decide) and create 3 synthetic datasets saved in `data/synthetic/`
 - [X] Preprocessing of the datasets: normalization, missing values, common input format
@@ -43,9 +44,13 @@ Run all the versions (`src/diagonal/PEMC-baseline-sequential-diagonal.c`, `src/d
 ## 4. Plots and report
 - [ ] Performance plots in `src/plots-generate/plots-performance.py` (time, speedup, efficiency, scaling, communication breakdown, ...), output in `results/plots/`
 - [ ] Clustering plots in `src/plots-generate/plots-cluster.py` (PCA, centroid heatmap, cluster sizes, log-likelihood, ...), output in `results/plots/`
-- [ ] Parallel design, implementation and results sections of the report (`doc/latex/Group6-Report.tex`)
+- [ ] Abstract and keywords of the report (empty)
+- [ ] Parallel design section (Foster, communication): data distribution by blocks of rows, one `MPI_Allreduce` of a contiguous buffer per iteration, per-thread buffers with padding, results equal to the sequential up to rounding, meaning of `t_comm` (includes load imbalance)
+- [ ] Experimental setup section: hardware infrastructure (cluster, nodes, PBS placements)
+- [ ] Implementation and performance evaluation sections of the report (`doc/latex/Group6-Report.tex`)
+- [ ] Report: description of opt1 and opt2 once chosen, and cite the data sources (tables already have the links)
 - [ ] Discussion and conclusions
-- [ ] AI statement (mandatory)
+- [X] AI statement (mandatory): written at the top of the report (code help, search of sources, mathematical and grammatical correction); check that it is accurate before delivery
 - [ ] Repo link and data sources cited
 - [ ] Report at least 10 pages
 
