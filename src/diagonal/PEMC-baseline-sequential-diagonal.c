@@ -321,21 +321,6 @@ static EMResult run_em(const Dataset *ds, GMMParams *p, Workspace *w, const RunA
     return res;
 }
 
-/* Most probable cluster of every row (from the responsibilities): used to compare the result
- * with the true labels (ARI). */
-static void assign(const Workspace *w, int N, int K, int *labels)
-{
-    for (int i = 0; i < N; i++)
-    {
-        const double *ri = w->r + (size_t)i * K;
-        int best = 0;
-        for (int k = 1; k < K; k++)
-            if (ri[k] > ri[best])
-                best = k;
-        labels[i] = best;
-    }
-}
-
 /* ----------------------------------------------------------------------------------------
  * main
  *
@@ -429,7 +414,7 @@ int main(int argc, char **argv)
             have_best = 1;
             best_res = res;
             gmm_copy(&best, &p);
-            assign(&w, N, K, best_labels); /* w.r refers to this run */
+            gmm_assign(w.r, N, K, best_labels); /* w.r refers to this run */
         }
     }
     TIMER_STOP(total);

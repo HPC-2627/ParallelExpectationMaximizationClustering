@@ -70,23 +70,10 @@
 #include "eval.h"
 #include "gmm.h"
 #include "logger.h"
+#include "mpi-common.h"
 
 /* Name of the version: it ends up in the log and in the name of the default log file */
 #define VERSION_NAME "baseline-MPI-OpenMP-diagonal"
-
-/* ----------------------------------------------------------------------------------------
- * Abort the WHOLE job from one rank.
- *
- * If a rank simply returned after an error, the others would wait forever in the next
- * collective call. MPI_Abort terminates all the ranks.
- * ---------------------------------------------------------------------------------------- */
-#define ABORT(...)                                  \
-    do                                              \
-    {                                               \
-        fprintf(stderr, "error: " __VA_ARGS__);     \
-        fprintf(stderr, "\n");                      \
-        MPI_Abort(MPI_COMM_WORLD, EXIT_FAILURE);    \
-    } while (0)
 
 /* ----------------------------------------------------------------------------------------
  * Working memory of EM (of ONE rank)
@@ -358,45 +345,6 @@ static EMResult run_em(const Dataset *ds /* in */, GMMParams *p /* in/out */,
     return res;
 }
 
-/* Most probable cluster of every LOCAL row (from the responsibilities) */
-static void assign(const Workspace *w /* in */, int n_local /* in */, int K /* in */,
-                   int *labels /* out */)
-{
-    for (int i = 0; i < n_local; i++)
-    {
-        const double *ri = w->r + (size_t)i * K;
-        int best = 0;
-        for (int k = 1; k < K; k++)
-            if (ri[k] > ri[best])
-                best = k;
-        labels[i] = best;
-    }
-}
-
-/* ----------------------------------------------------------------------------------------
- * Block distribution of the rows: how many rows the rank owns and where its block starts.
- *
- * N_total rows over P ranks: every rank gets N_total / P rows and the first N_total % P ranks
- * get one more. The blocks are contiguous and cover all the rows with no overlap.
- * Computed locally by every rank (it only needs N_total, P and its own rank): no communication.
- * ---------------------------------------------------------------------------------------- */
-static void block_of_rank(long N_total /* in */, int P /* in */, int rank /* in */,
-                          long *first_row /* out */, long *n_local /* out */)
-{
-    long q = N_total / P, rem = N_total % P;
-    *n_local = q + (rank < rem ? 1 : 0);
-    *first_row = rank * q + (rank < rem ? rank : rem);
-}
-
-/* Maximum over the ranks of a time: the parallel program is as slow as its slowest rank.
- * The result is valid only on rank 0. */
-static double max_over_ranks(double local /* in */)
-{
-    double global = 0.0;
-    MPI_Reduce(&local, &global, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-    return global;
-}
-
 /* ----------------------------------------------------------------------------------------
  * main
  *
@@ -512,7 +460,7 @@ int main(int argc, char **argv)
             have_best = 1;
             best_res = res;
             gmm_copy(&best, &p);
-            assign(&w, n_local, K, best_labels); /* w.r refers to this run */
+            gmm_assign(w.r, n_local, K, best_labels); /* w.r refers to this run */
         }
     }
     double t_total_local = MPI_Wtime() - t_start;

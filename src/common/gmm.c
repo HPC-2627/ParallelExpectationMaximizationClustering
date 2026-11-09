@@ -1,9 +1,11 @@
 /*
  * gmm.c
  *
- * Management of the parameters of the Gaussian mixture (allocation, copy, initialization) and
- * two shared numerical functions (log-sum-exp, convergence test).
- * The meaning of each function and of its parameters is described in gmm.h.
+ * Management of the parameters of the Gaussian mixture (allocation, copy, initialization),
+ * shared numerical functions (log-sum-exp, convergence test), the assignment of the rows to the
+ * clusters and, for the versions with full covariance, Cholesky factorization.
+ * The meaning of each function and of its parameters is described in gmm.h. Same sections as
+ * the header: shared by all the versions, diagonal covariance, full covariance.
  */
 
 #include "gmm.h"
@@ -12,6 +14,10 @@
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>
+
+/* ======================================================================================
+ * 1. SHARED BY ALL THE VERSIONS (diagonal and full)
+ * ====================================================================================== */
 
 void gmm_alloc(GMMParams *p, int K, int D)
 {
@@ -113,4 +119,93 @@ int gmm_converged(double ll, double ll_prev, double tol)
         return 0;
     /* absolute change <= tolerance * absolute value of ll (relative comparison) */
     return fabs(ll - ll_prev) <= tol * fabs(ll);
+}
+
+void gmm_assign(const double *r, int N, int K, int *labels)
+{
+    for (int i = 0; i < N; i++)
+    {
+        const double *ri = r + (size_t)i * K;
+        int best = 0;
+        for (int k = 1; k < K; k++)
+            if (ri[k] > ri[best])
+                best = k;
+        labels[i] = best;
+    }
+}
+
+/* ======================================================================================
+ * 2. DIAGONAL COVARIANCE (only src/diagonal/)
+ * ====================================================================================== */
+
+/* Nothing else: see the note in gmm.h. */
+
+/* ======================================================================================
+ * 3. FULL COVARIANCE (only src/full/)
+ * ====================================================================================== */
+
+void gmm_full_init_identity(double *cov, int K, int D)
+{
+    /* All zeros, then 1 on the diagonal of every matrix (the cast to size_t BEFORE the
+     * multiplication avoids int overflow with large K and D). */
+    memset(cov, 0, (size_t)K * D * D * sizeof(double));
+    for (int k = 0; k < K; k++)
+        for (int d = 0; d < D; d++)
+            cov[(size_t)k * D * D + (size_t)d * D + d] = 1.0;
+}
+
+int gmm_cholesky(const double *A, double *L, int D, double jitter)
+{
+    /* Row by row, left to right, only the lower triangle (j <= i). Every element of L depends
+     * on the elements already computed in the same row (columns m < j) and in the row j. */
+    for (int i = 0; i < D; i++)
+    {
+        for (int j = 0; j <= i; j++)
+        {
+            double s = A[(size_t)i * D + j];
+            if (i == j)
+                s += jitter; /* the jitter goes only on the diagonal */
+            for (int m = 0; m < j; m++)
+                s -= L[(size_t)i * D + m] * L[(size_t)j * D + m];
+            if (i == j)
+            {
+                /* Pivot: it must be positive, otherwise the matrix is not positive definite.
+                 * Written as !(s > 0) so that a NaN is rejected too. */
+                if (!(s > 0.0))
+                    return -1;
+                L[(size_t)i * D + i] = sqrt(s);
+            }
+            else
+                L[(size_t)i * D + j] = s / L[(size_t)j * D + j];
+        }
+    }
+    return 0;
+}
+
+int gmm_full_factorize(const double *cov, const double *pi, int K, int D, double *L, double *c)
+{
+    for (int k = 0; k < K; k++)
+    {
+        const double *S = cov + (size_t)k * D * D; /* Sigma_k */
+        double *Lk = L + (size_t)k * D * D;        /* its factor */
+
+        /* If the factorization fails (rounding errors made Sigma_k not positive definite) a
+         * jitter is added to the diagonal: VAR_FLOOR first, then 10 times larger each time. The
+         * limit stops the loop for a matrix that cannot be repaired (e.g. it contains NaN). */
+        double jitter = 0.0;
+        while (gmm_cholesky(S, Lk, D, jitter) != 0)
+        {
+            jitter = jitter == 0.0 ? VAR_FLOOR : jitter * 10.0;
+            if (jitter > 1e6)
+                return k + 1;
+        }
+
+        /* log det Sigma = 2 sum_d log L_dd, because det Sigma = det(L)^2 and the determinant
+         * of a triangular matrix is the product of its diagonal. */
+        double log_det = 0.0;
+        for (int d = 0; d < D; d++)
+            log_det += 2.0 * log(Lk[(size_t)d * D + d]);
+        c[k] = log(pi[k]) - 0.5 * (D * LOG_2PI + log_det);
+    }
+    return 0;
 }

@@ -18,7 +18,7 @@ High Performance Computing (HPC) project (University of Trento): parallel Expect
 │   │   └── PEMC-opt2-MPI-OpenMP-diagonal.c        #   Optimization 2 of the baseline (to be written)
 │   ├── full/                                  # Full covariance (extension)
 │   │   ├── PEMC-baseline-sequential-full.c        #   Sequential version (Cholesky; reference for the full model)
-│   │   ├── PEMC-baseline-MPI-OpenMP-full.c        #   Baseline variant with full covariance (to be written)
+│   │   ├── PEMC-baseline-MPI-OpenMP-full.c        #   Hybrid MPI + OpenMP baseline with full covariance
 │   │   ├── PEMC-opt1-MPI-OpenMP-full.c            #   Optimization 1 with full covariance (to be written)
 │   │   └── PEMC-opt2-MPI-OpenMP-full.c            #   Optimization 2 with full covariance (to be written)
 │   ├── script/                                # Launchers for the cluster
@@ -37,13 +37,14 @@ High Performance Computing (HPC) project (University of Trento): parallel Expect
 │   │   └── index.html                         #   page that plays the iterations back (E-step, convergence test, M-step)
 │   └── common/                                # Shared code (no MPI): compiled with every version
 │       ├── dataset.c                          #   reading of the .bin datasets (whole file or a block of rows) and of the labels
-│       ├── gmm.c                              #   parameters of the mixture, identical initialization, log-sum-exp, convergence test
+│       ├── gmm.c                              #   parameters of the mixture, initialization, log-sum-exp, convergence test, assignment of the rows; Cholesky for the full covariance (sections: shared / diagonal / full)
 │       ├── args.c                             #   command-line options, the same in all the versions
 │       ├── logger.c                           #   .log text file of the runs (one block per run, with hostname and CPU model)
 │       ├── eval.c                             #   adjusted Rand index and purity against the true labels
 │       └── my-time-lib.c                      #   statistics for the benchmarks (mean, median, standard deviation)
 ├── include/                                   # Headers of src/common (compile with -Iinclude and -lm)
 │   ├── common.h  dataset.h  gmm.h  args.h  logger.h  eval.h
+│   ├── mpi-common.h                           #   helpers shared by the MPI versions only (header-only): ABORT, block_of_rank, max_over_ranks
 │   └── my-time-lib.h                          #   timer macros and statistics prototypes
 ├── data/            # NOT versioned (listed in .gitignore): it is filled locally by the scripts in src/dataset-managed/
 │   ├── real/        # Real (medical) datasets: <name>/raw/features.csv (+ targets.csv), converted to <name>/<name>.bin (+ labels, .json)

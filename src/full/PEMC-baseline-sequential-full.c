@@ -107,44 +107,6 @@ static void workspace_free(Workspace *w)
     free(w->sxx);
 }
 
-/* Initial covariances: identity (the data are standardized), same as var = 1 in the diagonal version */
-static void cov_init_identity(double *cov, int K, int D)
-{
-    memset(cov, 0, (size_t)K * D * D * sizeof(double));
-    for (int k = 0; k < K; k++)
-        for (int d = 0; d < D; d++)
-            cov[(size_t)k * D * D + (size_t)d * D + d] = 1.0;
-}
-
-/* ----------------------------------------------------------------------------------------
- * Cholesky factorization A = L L^T of a symmetric D x D matrix (only the lower triangle of A
- * is read; `jitter` is added to the diagonal). L is written in the lower triangle.
- * Returns 0 on success, -1 if the matrix is not positive definite (a pivot <= 0).
- * ---------------------------------------------------------------------------------------- */
-static int cholesky(const double *A, double *L, int D, double jitter)
-{
-    for (int i = 0; i < D; i++)
-    {
-        for (int j = 0; j <= i; j++)
-        {
-            double s = A[(size_t)i * D + j];
-            if (i == j)
-                s += jitter;
-            for (int m = 0; m < j; m++)
-                s -= L[(size_t)i * D + m] * L[(size_t)j * D + m];
-            if (i == j)
-            {
-                if (!(s > 0.0))
-                    return -1;
-                L[(size_t)i * D + i] = sqrt(s);
-            }
-            else
-                L[(size_t)i * D + j] = s / L[(size_t)j * D + j];
-        }
-    }
-    return 0;
-}
-
 /* ----------------------------------------------------------------------------------------
  * E-step: responsibilities and log-likelihood
  * ---------------------------------------------------------------------------------------- */
@@ -152,24 +114,10 @@ static double e_step(const Dataset *ds, const GMMParams *p, Workspace *w)
 {
     const int N = ds->N, D = ds->D, K = p->K;
 
-    /* Part 1: per-cluster terms. Cholesky of every Sigma_k (with growing jitter if it is not
-     * positive definite) and c[k] = log pi_k - 0.5 (D log 2pi + log det Sigma_k). */
-    for (int k = 0; k < K; k++)
-    {
-        const double *S = w->cov + (size_t)k * D * D;
-        double *L = w->L + (size_t)k * D * D;
-        double jitter = 0.0;
-        while (cholesky(S, L, D, jitter) != 0)
-        {
-            jitter = jitter == 0.0 ? VAR_FLOOR : jitter * 10.0;
-            if (jitter > 1e6)
-                DIE("covariance of cluster %d is not positive definite", k);
-        }
-        double log_det = 0.0;
-        for (int d = 0; d < D; d++)
-            log_det += 2.0 * log(L[(size_t)d * D + d]);
-        w->c[k] = log(p->pi[k]) - 0.5 * (D * LOG_2PI + log_det);
-    }
+    /* Part 1: per-cluster terms: Cholesky factors of the Sigma_k and c[k] (see gmm.h, full covariance section) */
+    int bad = gmm_full_factorize(w->cov, p->pi, K, D, w->L, w->c);
+    if (bad)
+        DIE("covariance of cluster %d is not positive definite", bad - 1);
 
     /* Part 2: for every row the K log-densities, log-sum-exp, responsibilities */
     double ll = 0.0;
@@ -346,21 +294,6 @@ static EMResult run_em(const Dataset *ds, GMMParams *p, Workspace *w, const RunA
     return res;
 }
 
-/* Most probable cluster of every row (from the responsibilities): used to compare the result
- * with the true labels (ARI). */
-static void assign(const Workspace *w, int N, int K, int *labels)
-{
-    for (int i = 0; i < N; i++)
-    {
-        const double *ri = w->r + (size_t)i * K;
-        int best = 0;
-        for (int k = 1; k < K; k++)
-            if (ri[k] > ri[best])
-                best = k;
-        labels[i] = best;
-    }
-}
-
 /* ----------------------------------------------------------------------------------------
  * main
  *
@@ -439,7 +372,7 @@ int main(int argc, char **argv)
         for (int k = 0; k < K; k++)
             memcpy(rows + (size_t)k * D, ds.X + (size_t)idx[k] * D, (size_t)D * sizeof(double));
         gmm_init_from_rows(&p, rows);
-        cov_init_identity(w.cov, K, D);
+        gmm_full_init_identity(w.cov, K, D);
         TIMER_STOP(init);
         t_init += TIMER_ELAPSED(init) / 1e6;
 
@@ -457,7 +390,7 @@ int main(int argc, char **argv)
             have_best = 1;
             best_res = res;
             gmm_copy(&best, &p);
-            assign(&w, N, K, best_labels); /* w.r refers to this run */
+            gmm_assign(w.r, N, K, best_labels); /* w.r refers to this run */
         }
     }
     TIMER_STOP(total);
