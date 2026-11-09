@@ -15,12 +15,12 @@ High Performance Computing (HPC) project (University of Trento): parallel Expect
 │   │   ├── PEMC-baseline-sequential-diagonal.c    #   Sequential version (correctness reference and serial time)
 │   │   ├── PEMC-baseline-MPI-OpenMP-diagonal.c    #   Hybrid MPI + OpenMP baseline
 │   │   ├── PEMC-opt1-MPI-OpenMP-diagonal.c        #   Optimization 1 of the baseline (to be written)
-│   │   ├── PEMC-opt2-MPI-OpenMP-diagonal.c        #   Optimization 2 of the baseline (to be written)
-│   │   └── PEMC-opt3-MPI-OpenMP-diagonal.c        #   Optimization 3 of the baseline (to be written)
+│   │   └── PEMC-opt2-MPI-OpenMP-diagonal.c        #   Optimization 2 of the baseline (to be written)
 │   ├── full/                                  # Full covariance (extension)
 │   │   ├── PEMC-baseline-sequential-full.c        #   Sequential version (Cholesky; reference for the full model)
 │   │   ├── PEMC-baseline-MPI-OpenMP-full.c        #   Baseline variant with full covariance (to be written)
-│   │   └── PEMC-opt1-MPI-OpenMP-full.c            #   Optimization 1 with full covariance (to be written)
+│   │   ├── PEMC-opt1-MPI-OpenMP-full.c            #   Optimization 1 with full covariance (to be written)
+│   │   └── PEMC-opt2-MPI-OpenMP-full.c            #   Optimization 2 with full covariance (to be written)
 │   ├── script/                                # Launchers for the cluster
 │   │   └── PEMC-baseline-MPI-OpenMP-diagonal.sh   #   PBS job of the MPI + OpenMP baseline (qsub from the repo root)
 │   ├── dataset-managed/                       # Scripts that create and check the datasets
@@ -71,7 +71,7 @@ High Performance Computing (HPC) project (University of Trento): parallel Expect
 └── README.md
 ```
 
-The `-diagonal` files use a Gaussian mixture with diagonal covariance (the main line of the project: sequential reference, baseline and 3 optimizations). The `-full` files are a variant with full covariance (each cluster has a complete $D \times D$ matrix, so correlated variables are modelled): it changes the model, so its results are compared only with runs of the same model (`-full` with `-full`, `-diagonal` with `-diagonal`). A full iteration costs $O(NKD^2)$ instead of $O(NKD)$.
+The `-diagonal` files use a Gaussian mixture with diagonal covariance (the main line of the project: sequential reference, baseline and 2 optimizations). The `-full` files are a variant with full covariance (each cluster has a complete $D \times D$ matrix, so correlated variables are modelled): it changes the model, so its results are compared only with runs of the same model (`-full` with `-full`, `-diagonal` with `-diagonal`). A full iteration costs $O(NKD^2)$ instead of $O(NKD)$.
 
 ## Data (required step before running the experiments)
 
