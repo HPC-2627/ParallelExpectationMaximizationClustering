@@ -1,0 +1,90 @@
+#!/bin/bash
+# PBS job body: runs ONE version on ALL the datasets (real and synthetic) with ONE layout.
+# It is not submitted by hand: src/script/pemc-submit.sh calls qsub on it, passing the layout
+# (select, place, walltime) on the qsub command line and the variables below with -v.
+# Submit from the root of the repository (the job starts in $PBS_O_WORKDIR). Build first: make all mpi-omp.
+#
+# Variables (-v):
+#   VERSION         name of the version = bin/PEMC-<VERSION> (e.g. baseline-MPI-OpenMP-full)
+#   NODES           nodes (PBS chunks)                        [MPI versions]
+#   RANKS_PER_NODE  MPI processes per node (= mpiprocs)       [MPI versions]
+#   THREADS         OpenMP threads per process                [MPI versions]
+#   PLACE           pack | scatter | pack:excl | scatter:excl (only for the name of the log)
+#   REPS            repetitions of every (dataset, layout)    [default 1]
+#   SYNTH_P         sizes of the synthetic files, e.g. 01:04:16 [default all = 01:02:04:08:16]
+#   SETS            real | synthetic | all                    [default all]
+#   ONLY            only the datasets whose name contains this text (to test) [default: all]
+#PBS -q shortCPUQ
+
+VERSION=${VERSION:?VERSION is required}
+NODES=${NODES:-1}
+RANKS_PER_NODE=${RANKS_PER_NODE:-1}
+THREADS=${THREADS:-1}
+PLACE=${PLACE:-pack}
+REPS=${REPS:-1}
+SYNTH_P=${SYNTH_P:-all}
+SETS=${SETS:-all}
+ONLY=${ONLY:-}
+
+cd "$PBS_O_WORKDIR" || exit 1
+EXE=./bin/PEMC-$VERSION
+[ -x "$EXE" ] || { echo "error: $EXE not found (run: make all mpi-omp)" >&2; exit 1; }
+
+# ---- datasets: name:path:K ------------------------------------------------------------------
+# K = number of true classes (synthetic: clusters of the profile). parkinson has no classes: K=2 is arbitrary.
+REAL="brainweb:12 cardiotocography:10 cardiovascular:2 cdc_diabetes:2 diabetes130:3 \
+      eeg_eye_state:2 gene_rnaseq:5 heart_failure:2 parkinson:2 statlog_heart:2"
+SYNTH="synth_clean:4 synth_overlap:5 synth_rare:6"
+[ "$SYNTH_P" = all ] && SYNTH_P=01:02:04:08:16
+
+LIST=()
+if [ "$SETS" = real ] || [ "$SETS" = all ]; then
+    for x in $REAL; do LIST+=("${x%%:*}:data/real/${x%%:*}/${x%%:*}.bin:${x##*:}"); done
+fi
+if [ "$SETS" = synthetic ] || [ "$SETS" = all ]; then
+    for x in $SYNTH; do
+        for p in ${SYNTH_P//:/ }; do
+            LIST+=("${x%%:*}_p$p:data/synthetic/${x%%:*}/${x%%:*}_p$p.bin:${x##*:}")
+        done
+    done
+fi
+
+# ---- how to launch ---------------------------------------------------------------------------
+# One log file per job (the jobs run at the same time: a shared file would get mixed blocks).
+# The placement is not stored in the log by the program, so it is in the file name.
+case "$VERSION" in
+    *sequential*)
+        TAG=seq
+        LAUNCH=("$EXE") ;;
+    *)
+        module load MPICH/3.4.2-GCC-10.3.0
+        TAG=${PLACE//:/_}_${NODES}n${RANKS_PER_NODE}r${THREADS}t
+        export OMP_NUM_THREADS=$THREADS
+        # One thread per core, kept on the core of its rank (no migrations)
+        export OMP_PROC_BIND=close
+        export OMP_PLACES=cores
+        # Multi-node runs go through the UCX wrapper (Ethernet interface of the cluster)
+        LAUNCH=(mpiexec -n $((NODES * RANKS_PER_NODE)) ./src/script/mpi_wrapper.sh "$EXE") ;;
+esac
+LOG=results/logs/${VERSION}_${TAG}.log
+mkdir -p results/logs
+
+echo "version $VERSION | layout $TAG | datasets ${#LIST[@]} | reps $REPS | log $LOG"
+echo "nodes assigned by PBS:"; sort "$PBS_NODEFILE" 2>/dev/null | uniq -c
+
+fail=0
+for entry in "${LIST[@]}"; do
+    name=${entry%%:*}; rest=${entry#*:}; path=${rest%%:*}; K=${rest##*:}
+    [ -n "$ONLY" ] && [[ "$name" != *"$ONLY"* ]] && continue
+    # Full covariance needs K*D^2 doubles per rank: gene_rnaseq (D = 20264) does not fit in memory
+    if [[ "$VERSION" == *full ]] && [ "$name" = gene_rnaseq ]; then
+        echo "skip $name (not feasible with full covariance)"; continue
+    fi
+    [ -f "$path" ] || { echo "skip $name: $path not found"; fail=$((fail + 1)); continue; }
+    for ((rep = 1; rep <= REPS; rep++)); do
+        echo "---- $name K=$K rep $rep/$REPS"
+        "${LAUNCH[@]}" -d "$path" -k "$K" -l "$LOG" || { echo "FAILED: $name"; fail=$((fail + 1)); }
+    done
+done
+echo "done, $fail failure(s)"
+[ "$fail" -eq 0 ]

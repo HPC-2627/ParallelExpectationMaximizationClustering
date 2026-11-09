@@ -21,8 +21,10 @@ High Performance Computing (HPC) project (University of Trento): parallel Expect
 │   │   ├── PEMC-baseline-MPI-OpenMP-full.c        #   Hybrid MPI + OpenMP baseline with full covariance
 │   │   ├── PEMC-opt1-MPI-OpenMP-full.c            #   Optimization 1 with full covariance (to be written)
 │   │   └── PEMC-opt2-MPI-OpenMP-full.c            #   Optimization 2 with full covariance (to be written)
-│   ├── script/                                # Launchers for the cluster
-│   │   └── PEMC-baseline-MPI-OpenMP-diagonal.sh   #   PBS job of the MPI + OpenMP baseline (qsub from the repo root)
+│   ├── script/                                # Launchers for the cluster (PBS)
+│   │   ├── pemc-submit.sh                         #   submits the 4 baselines (sequential and MPI + OpenMP, diagonal and full) in all the layouts and placements
+│   │   ├── pemc-job.sh                            #   PBS job body: one version, one layout, ALL the datasets (real and synthetic)
+│   │   └── mpi_wrapper.sh                         #   forces UCX on the Ethernet interface of the cluster (used by mpiexec in multi-node runs)
 │   ├── dataset-managed/                       # Scripts that create and check the datasets
 │   │   ├── generate-synthetic-dataset.py      # Generator of the synthetic datasets (3 profiles, one file per number of processes) -> data/synthetic/
 │   │   ├── generate-real-datasets.py          # Downloads the real datasets -> data/real/<name>/raw/
@@ -253,11 +255,18 @@ done
 
 `parkinson` has no labels (continuous targets), so $K = 2$ is an arbitrary choice there. The biggest files (`synth_rare_p16.bin` 1.6 GB, `synth_overlap_p16.bin` 640 MB, `brainweb.bin` 95 MB) take the longest and need enough RAM; add `-n ROWS` to use only the first rows. The same two loops work for the other versions (including `bin/PEMC-baseline-sequential-full`, except `gene_rnaseq`): change only the executable name.
 
-**MPI + OpenMP baseline on the cluster.** Build with `make mpi-omp`, then edit the layout (nodes, ranks, threads, dataset, `K`) at the top of the PBS script and submit it from the root of the repository:
+**Experiments on the cluster (PBS).** Build everything (`make all mpi-omp`, after `module load MPICH/3.4.2-GCC-10.3.0`) and submit from the root of the repository:
 
 ```
-qsub src/script/PEMC-baseline-MPI-OpenMP-diagonal.sh
+src/script/pemc-submit.sh                # sequential + parallel
+src/script/pemc-submit.sh sequential     # only the 2 sequential versions
+src/script/pemc-submit.sh parallel       # only the 2 MPI + OpenMP baselines
+DRY_RUN=1 src/script/pemc-submit.sh      # prints the qsub commands without submitting
 ```
+
+One job = one version with one layout, and it runs **all the datasets** (10 real + 15 synthetic; `gene_rnaseq` is skipped with full covariance). The sequential jobs use 1 core on an exclusive node. For the MPI + OpenMP baselines the layout is `NODES x RANKS_PER_NODE x THREADS` (`ncpus` per node = `RANKS_PER_NODE x THREADS`, `mpiprocs` = `RANKS_PER_NODE`) and is combined with the 4 PBS placements: `pack`, `scatter`, `pack:excl`, `scatter:excl` (`scatter` puts every chunk on a different node, `pack` on as few nodes as possible, `:excl` reserves the nodes for the job). With one node `pack` and `scatter` coincide, so only `pack` and `pack:excl` are submitted. The layouts, the memory, the walltime, the number of repetitions and the subset of datasets are variables at the top of `pemc-submit.sh`.
+
+Every job writes its own log `results/logs/<version>_<placement>_<nodes>n<ranks>r<threads>t.log` (`<version>_seq.log` for the sequential ones), and its standard output/error in `results/logs/pbs/<job>.out|.err` (not versioned). To test a job without the queue: `PBS_O_WORKDIR=$PWD VERSION=baseline-sequential-full ONLY=heart_failure src/script/pemc-job.sh`.
 
 Run the sequential versions from the root of the repository: the only file written is the log `results/logs/baseline-sequential-diagonal.log` (a block is appended at every run; the folder is created if missing).
 
