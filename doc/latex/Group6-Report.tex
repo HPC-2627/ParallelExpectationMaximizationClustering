@@ -10,6 +10,7 @@
 \newcommand{\srclink}[2]{\href{#1}{\textcolor{blue}{#2}}}
 \usepackage[ruled,vlined]{algorithm2e}
 \usepackage{booktabs}
+\usepackage{float}
 \usepackage{multirow}
 \usepackage[hmargin=2.5cm]{geometry} % side margins (text width = page width - 5 cm)
 
@@ -39,6 +40,9 @@
 }
 
 \maketitle
+
+\section*{AI Statement}
+In this project we used an AI assistant (Claude, by Anthropic) for three purposes: (i) support in writing and debugging the code; (ii) searching for sources and papers for the state of the art and for the datasets; (iii) mathematical and grammatical correction of the report. The design choices, the experiments and the analysis of the results are our own, and we reviewed the output of the assistant.
 
 \begin{abstract}
 \end{abstract}
@@ -153,14 +157,23 @@ The two models are compared only within themselves: \emph{diagonal} with \emph{d
 \section{Experimental Setup \& Dataset}
 \subsection{Hardware Infrastructure}
 \subsection{Dataset}
-We use two groups of datasets, both stored in the same binary format: an 8-byte header with two \texttt{int} ($N$, $D$), followed by $N\cdot D$ \texttt{double} in row-major order, with the labels in a separate file (one \texttt{int} per row). The labels are used only to evaluate the clustering (adjusted Rand index and purity), never by EM.
+\paragraph{Common format.}
+\begin{itemize}
+\item Binary file: 8-byte header with two \texttt{int} ($N$, $D$), then $N\cdot D$ \texttt{double} in row-major order.
+\item Labels in a separate file, one \texttt{int} per row.
+\item Labels are used only to evaluate the clustering (adjusted Rand index, purity), never by EM.
+\end{itemize}
 
-\paragraph{Real datasets.} Ten public datasets, mostly medical (Table~\ref{tab:real}), from UCI, OpenML and BrainWeb, with sizes from 270 points to almost $12\cdot10^6$ voxels and from $D=1$ to $D=20\,264$, to compare small, medium and large inputs. Preprocessing is the same for all: only numeric columns are kept (identifiers removed), constant columns are dropped and every column is standardized (z-score), which justifies the initialization $\sigma^2_{kd}=1$. Missing values are not imputed: a dataset with incomplete rows is discarded. \texttt{parkinson} has continuous targets, so it has no labels and $K$ is chosen arbitrarily.
+\paragraph{Real datasets} (Table~\ref{tab:real}).
+\begin{itemize}
+\item Ten public datasets, mostly medical, from UCI, OpenML and BrainWeb.
+\item Small, medium and large inputs: from 270 points to almost $12\cdot10^6$ voxels, from $D=1$ to $D=20\,264$.
+\item Preprocessing, equal for all: only numeric columns (identifiers removed), constant columns dropped, z-score standardization (hence the initialization $\sigma^2_{kd}=1$).
+\item Missing values are not imputed: a dataset with incomplete rows would be discarded.
+\item \texttt{parkinson} has continuous targets: no labels, $K$ chosen arbitrarily.
+\end{itemize}
 
-\paragraph{Synthetic datasets.} The real datasets are too small to show scaling, so we generate three profiles from a known Gaussian mixture, with true labels available (Table~\ref{tab:synth-profiles}): \texttt{synth\_clean} ($K=4$, $D=10$) satisfies the model and is the correctness reference; \texttt{synth\_overlap} ($K=5$, $D=20$) has overlapping clusters, correlated and skewed variables, so the diagonal model is mismatched and the full one is not; \texttt{synth\_rare} ($K=6$, $D=50$) has a rare cluster (1\,\%) and 2\,\% of outliers, and tests numerical stability. The first 20 variables mimic clinical measurements (Table~\ref{tab:synth-vars}), the others are generic biomarkers. For the weak scaling there is one file per number of processes $p\in\{1,2,4,8,16\}$ with $N=250\,000\,p$ rows (Table~\ref{tab:weak}); the files of a profile are nested, so they are not independent samples. The strong scaling uses a fixed file ($N=4\,000\,000$, Table~\ref{tab:strong}) with more processes. Generation is deterministic (seed 42).
-
-
-\begin{table*}[p]
+\begin{table}[H]
 \centering
 \caption{Real datasets. $N$ and $D$ are the values actually used by the EM after preprocessing; $K$ is the number of ground-truth classes (used only for evaluation).}
 \label{tab:real}
@@ -183,10 +196,18 @@ We use two groups of datasets, both stored in the same binary format: an 8-byte 
 \texttt{brainweb}         & \srclink{https://brainweb.bic.mni.mcgill.ca/}{BrainWeb (subj.~44)} & 11\,862\,016 & 1 & 12 & 95 MB & crisp labels & Simulated T1 brain MRI, one voxel = one point \\
 \bottomrule
 \end{tabular}}
-\end{table*}
-\clearpage
+\end{table}
 
-\begin{table*}[p]
+\paragraph{Synthetic profiles} (Table~\ref{tab:synth-profiles}).
+\begin{itemize}
+\item Real datasets are too small to show scaling: we generate three profiles from a known Gaussian mixture, with true labels.
+\item \texttt{synth\_clean} ($K=4$, $D=10$): satisfies the model, correctness reference.
+\item \texttt{synth\_overlap} ($K=5$, $D=20$): overlapping clusters, correlated and skewed variables; the diagonal model is mismatched, the full one is not.
+\item \texttt{synth\_rare} ($K=6$, $D=50$): rare cluster (1\,\%) and 2\,\% outliers, tests numerical stability.
+\item Generation is deterministic (seed 42).
+\end{itemize}
+
+\begin{table}[H]
 \centering
 \caption{Synthetic profiles. $\delta$ is the distance between cluster means in units of the within-cluster standard deviation.}
 \label{tab:synth-profiles}
@@ -209,10 +230,15 @@ Physiological clipping & no & yes & yes (clinical variables) \\
 What it tests & correctness, scaling reference & slow convergence, choice of $K$, model mismatch & numerical stability \\
 \bottomrule
 \end{tabular}
-\end{table*}
-\clearpage
+\end{table}
 
-\begin{table*}[p]
+\paragraph{Variables of the synthetic data} (Table~\ref{tab:synth-vars}).
+\begin{itemize}
+\item The first 20 variables mimic clinical measurements, with typical mean, standard deviation and physiological limits.
+\item The others (up to 50) are generic biomarkers, $\mathcal{N}(0,1)$.
+\end{itemize}
+
+\begin{table}[H]
 \centering
 \caption{Clinical variables used to build the synthetic data (typical mean $\pm$ std and physiological limits).}
 \label{tab:synth-vars}
@@ -244,10 +270,15 @@ What it tests & correctness, scaling reference & slow convergence, choice of $K$
 21--50 & \texttt{biomarker\_01..30} & -- & $0 \pm 1$ & none & \\
 \bottomrule
 \end{tabular}
-\end{table*}
-\clearpage
+\end{table}
 
-\begin{table*}[p]
+\paragraph{Weak scaling files} (Table~\ref{tab:weak}).
+\begin{itemize}
+\item One file per number of processes $p\in\{1,2,4,8,16\}$, with $N=250\,000\,p$ rows (constant work per process).
+\item The files of a profile are nested, so they are not independent samples.
+\end{itemize}
+
+\begin{table}[H]
 \centering
 \caption{Weak scaling: rows and data file size for each profile ($N_0 = 250\,000$ rows per process; labels file of $4N$ bytes for every profile). MB $= 10^6$ bytes.}
 \label{tab:weak}
@@ -266,10 +297,15 @@ What it tests & correctness, scaling reference & slow convergence, choice of $K$
 \textbf{Total} & & 620 MB & 1\,240 MB & 3\,100 MB & 31 MB \\
 \bottomrule
 \end{tabular}
-\end{table*}
-\clearpage
+\end{table}
 
-\begin{table*}[p]
+\paragraph{Strong scaling} (Table~\ref{tab:strong}).
+\begin{itemize}
+\item Fixed file, $N=4\,000\,000$ rows, run with an increasing number of processes.
+\item The work per rank $NKD/p$ is an operation count, not a measured time.
+\end{itemize}
+
+\begin{table}[H]
 \centering
 \caption{Strong scaling (fixed $N = 4\,000\,000$): data per rank and work per rank $N \cdot K \cdot D / p$. The work is an operation count proportional to the cost of an iteration, not a measured time.}
 \label{tab:strong}
@@ -288,7 +324,7 @@ What it tests & correctness, scaling reference & slow convergence, choice of $K$
 16 & 250\,000    & 20 MB  & 40 MB  & 100 MB    & $1.0 \cdot 10^7$ & $2.5 \cdot 10^7$ & $7.5 \cdot 10^7$ \\
 \bottomrule
 \end{tabular}
-\end{table*}
+\end{table}
 \clearpage
 
 \section{Performance Evaluation}
@@ -300,9 +336,6 @@ What it tests & correctness, scaling reference & slow convergence, choice of $K$
 \section{Discussion}
 
 \section{Conclusion}
-
-\section*{AI Statement}
-In this project we used an AI assistant (Claude, by Anthropic) for three purposes: (i) support in writing and debugging the code; (ii) searching for sources and papers for the state of the art and for the datasets; (iii) mathematical and grammatical correction of the report. The design choices, the experiments and the analysis of the results are our own, and we reviewed the output of the assistant and take full responsibility for the content of the code and of this report.
 
 \clearpage
 \begin{thebibliography}{1}

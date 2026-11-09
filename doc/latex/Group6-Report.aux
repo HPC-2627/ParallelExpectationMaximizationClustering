@@ -5,21 +5,21 @@
 \providecommand \oddpage@label [2]{}
 \@writefile{toc}{\contentsline {section}{\numberline {I}Introduction}{1}{section.1}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {I-A}}The EM algorithm for Gaussian mixtures}{1}{subsection.1.1}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {I-A}0a}Model.}{1}{paragraph.1.1.0.1}\protected@file@percent }
 \citation{bishop}
-\citation{bishop}
+\@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {I-A}0a}Model.}{2}{paragraph.1.1.0.1}\protected@file@percent }
 \@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {I-A}0b}E-step.}{2}{paragraph.1.1.0.2}\protected@file@percent }
 \@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {I-A}0c}M-step.}{2}{paragraph.1.1.0.3}\protected@file@percent }
 \@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {I-A}0d}Initialization and stopping.}{2}{paragraph.1.1.0.4}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {I-A}0e}Numerical safeguards.}{2}{paragraph.1.1.0.5}\protected@file@percent }
+\citation{bishop}
 \@writefile{loa}{\contentsline {algocf}{\numberline {1}{\ignorespaces EM for a Gaussian mixture (one run)}}{3}{algocf.1}\protected@file@percent }
 \providecommand*\caption@xref[2]{\@setref\relax\@undefined{#1}}
 \newlabel{alg:em}{{1}{3}{Initialization and stopping}{algocf.1}{}}
-\@writefile{lot}{\contentsline {table}{\numberline {I}{\ignorespaces Differences between the two models in Algorithm~\ref {alg:em}.}}{3}{table.caption.2}\protected@file@percent }
-\newlabel{tab:models}{{I}{3}{Differences between the two models in Algorithm~\ref {alg:em}}{table.caption.2}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {I}{\ignorespaces Differences between the two models in Algorithm~\ref {alg:em}.}}{3}{table.caption.3}\protected@file@percent }
+\newlabel{tab:models}{{I}{3}{Differences between the two models in Algorithm~\ref {alg:em}}{table.caption.3}{}}
+\@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {I-A}0e}Numerical safeguards.}{3}{paragraph.1.1.0.5}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {I-B}}Implemented versions and cost}{3}{subsection.1.2}\protected@file@percent }
 \newlabel{sec:versions}{{\mbox  {I-B}}{3}{Implemented versions and cost}{subsection.1.2}{}}
-\@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {I-B}0a}Full model: Cholesky factorization.}{3}{paragraph.1.2.0.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {I-B}0a}Full model: Cholesky factorization.}{4}{paragraph.1.2.0.1}\protected@file@percent }
 \@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {I-B}0b}Cost of one iteration.}{4}{paragraph.1.2.0.2}\protected@file@percent }
 \@writefile{toc}{\contentsline {section}{\numberline {II}Parallel Design Methodology}{4}{section.2}\protected@file@percent }
 \newlabel{sec:design}{{II}{4}{Parallel Design Methodology}{section.2}{}}
@@ -28,25 +28,29 @@
 \@writefile{toc}{\contentsline {section}{\numberline {III}Experimental Setup \& Dataset}{4}{section.3}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {III-A}}Hardware Infrastructure}{4}{subsection.3.1}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {III-B}}Dataset}{4}{subsection.3.2}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {III-B}0a}Real datasets.}{4}{paragraph.3.2.0.1}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {III-B}0b}Synthetic datasets.}{4}{paragraph.3.2.0.2}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {II}{\ignorespaces Real datasets. $N$ and $D$ are the values actually used by the EM after preprocessing; $K$ is the number of ground-truth classes (used only for evaluation).}}{5}{table.caption.3}\protected@file@percent }
-\newlabel{tab:real}{{II}{5}{Real datasets. $N$ and $D$ are the values actually used by the EM after preprocessing; $K$ is the number of ground-truth classes (used only for evaluation)}{table.caption.3}{}}
-\@writefile{lot}{\contentsline {table}{\numberline {III}{\ignorespaces Synthetic profiles. $\delta $ is the distance between cluster means in units of the within-cluster standard deviation.}}{6}{table.caption.4}\protected@file@percent }
-\newlabel{tab:synth-profiles}{{III}{6}{Synthetic profiles. $\delta $ is the distance between cluster means in units of the within-cluster standard deviation}{table.caption.4}{}}
-\@writefile{lot}{\contentsline {table}{\numberline {IV}{\ignorespaces Clinical variables used to build the synthetic data (typical mean $\pm $ std and physiological limits).}}{7}{table.caption.5}\protected@file@percent }
-\newlabel{tab:synth-vars}{{IV}{7}{Clinical variables used to build the synthetic data (typical mean $\pm $ std and physiological limits)}{table.caption.5}{}}
-\@writefile{lot}{\contentsline {table}{\numberline {V}{\ignorespaces Weak scaling: rows and data file size for each profile ($N_0 = 250\,000$ rows per process; labels file of $4N$ bytes for every profile). MB $= 10^6$ bytes.}}{8}{table.caption.6}\protected@file@percent }
-\newlabel{tab:weak}{{V}{8}{Weak scaling: rows and data file size for each profile ($N_0 = 250\,000$ rows per process; labels file of $4N$ bytes for every profile). MB $= 10^6$ bytes}{table.caption.6}{}}
-\@writefile{lot}{\contentsline {table}{\numberline {VI}{\ignorespaces Strong scaling (fixed $N = 4\,000\,000$): data per rank and work per rank $N \cdot K \cdot D / p$. The work is an operation count proportional to the cost of an iteration, not a measured time.}}{9}{table.caption.7}\protected@file@percent }
-\newlabel{tab:strong}{{VI}{9}{Strong scaling (fixed $N = 4\,000\,000$): data per rank and work per rank $N \cdot K \cdot D / p$. The work is an operation count proportional to the cost of an iteration, not a measured time}{table.caption.7}{}}
-\@writefile{toc}{\contentsline {section}{\numberline {IV}Performance Evaluation}{10}{section.4}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-A}}Execution Time and Throughput}{10}{subsection.4.1}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-B}}Strong Scaling}{10}{subsection.4.2}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-C}}Weak Scaling}{10}{subsection.4.3}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-D}}Communication vs Computation Breakdown}{10}{subsection.4.4}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {V}Discussion}{10}{section.5}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {VI}Conclusion}{10}{section.6}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {III-B}0a}Common format.}{4}{paragraph.3.2.0.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {III-B}0b}Real datasets}{4}{paragraph.3.2.0.2}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {II}{\ignorespaces Real datasets. $N$ and $D$ are the values actually used by the EM after preprocessing; $K$ is the number of ground-truth classes (used only for evaluation).}}{4}{table.caption.4}\protected@file@percent }
+\newlabel{tab:real}{{II}{4}{Real datasets. $N$ and $D$ are the values actually used by the EM after preprocessing; $K$ is the number of ground-truth classes (used only for evaluation)}{table.caption.4}{}}
+\@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {III-B}0c}Synthetic profiles}{5}{paragraph.3.2.0.3}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {III}{\ignorespaces Synthetic profiles. $\delta $ is the distance between cluster means in units of the within-cluster standard deviation.}}{5}{table.caption.5}\protected@file@percent }
+\newlabel{tab:synth-profiles}{{III}{5}{Synthetic profiles. $\delta $ is the distance between cluster means in units of the within-cluster standard deviation}{table.caption.5}{}}
+\@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {III-B}0d}Variables of the synthetic data}{5}{paragraph.3.2.0.4}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {IV}{\ignorespaces Clinical variables used to build the synthetic data (typical mean $\pm $ std and physiological limits).}}{5}{table.caption.6}\protected@file@percent }
+\newlabel{tab:synth-vars}{{IV}{5}{Clinical variables used to build the synthetic data (typical mean $\pm $ std and physiological limits)}{table.caption.6}{}}
+\@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {III-B}0e}Weak scaling files}{6}{paragraph.3.2.0.5}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {V}{\ignorespaces Weak scaling: rows and data file size for each profile ($N_0 = 250\,000$ rows per process; labels file of $4N$ bytes for every profile). MB $= 10^6$ bytes.}}{6}{table.caption.7}\protected@file@percent }
+\newlabel{tab:weak}{{V}{6}{Weak scaling: rows and data file size for each profile ($N_0 = 250\,000$ rows per process; labels file of $4N$ bytes for every profile). MB $= 10^6$ bytes}{table.caption.7}{}}
+\@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {III-B}0f}Strong scaling}{6}{paragraph.3.2.0.6}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {VI}{\ignorespaces Strong scaling (fixed $N = 4\,000\,000$): data per rank and work per rank $N \cdot K \cdot D / p$. The work is an operation count proportional to the cost of an iteration, not a measured time.}}{6}{table.caption.8}\protected@file@percent }
+\newlabel{tab:strong}{{VI}{6}{Strong scaling (fixed $N = 4\,000\,000$): data per rank and work per rank $N \cdot K \cdot D / p$. The work is an operation count proportional to the cost of an iteration, not a measured time}{table.caption.8}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {IV}Performance Evaluation}{7}{section.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-A}}Execution Time and Throughput}{7}{subsection.4.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-B}}Strong Scaling}{7}{subsection.4.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-C}}Weak Scaling}{7}{subsection.4.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-D}}Communication vs Computation Breakdown}{7}{subsection.4.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {V}Discussion}{7}{section.5}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {VI}Conclusion}{7}{section.6}\protected@file@percent }
 \bibcite{bishop}{1}
-\@writefile{toc}{\contentsline {section}{References}{11}{section*.9}\protected@file@percent }
-\gdef \@abspage@last{11}
+\@writefile{toc}{\contentsline {section}{References}{8}{section*.9}\protected@file@percent }
+\gdef \@abspage@last{8}
