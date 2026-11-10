@@ -104,6 +104,7 @@ int log_run(const char *path, const RunStats *s)
     fprintf(f, "D              : %d\n", s->D);
     fprintf(f, "K              : %d\n", s->K);
     fprintf(f, "restarts       : %d\n", s->restarts);
+    fprintf(f, "warmup_iters   : %d\n", s->warmup_iters);
     fprintf(f, "iterations     : %d\n", s->iterations);
     fprintf(f, "converged      : %d\n", s->converged);
     fprintf(f, "loglik         : %.12g\n", s->loglik);
@@ -119,6 +120,7 @@ int log_run(const char *path, const RunStats *s)
     fprintf(f, "t_estep        : %.9g\n", s->t_estep);
     fprintf(f, "t_mstep        : %.9g\n", s->t_mstep);
     fprintf(f, "t_comm         : %.9g\n", s->t_comm);
+    fprintf(f, "t_warmup       : %.9g\n", s->t_warmup);
 
     /* Time per iteration: defined only with a single run. With several restarts the times are
      * summed over all the runs, but the iterations are only those of the best one: the ratio

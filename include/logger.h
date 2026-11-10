@@ -25,6 +25,7 @@
  *   D              : 10                             variables
  *   K              : 4                              clusters
  *   restarts       : 1                              initializations tried
+ *   warmup_iters   : 3                              warm-up iterations, discarded from the times
  *   iterations     : 12                             of the best run
  *   converged      : 1                              1 = tolerance reached, 0 = max iterations
  *   loglik         : -3087811.89369                 final log-likelihood
@@ -35,6 +36,7 @@
  *   t_estep        : 0.793119                       seconds, summed over the iterations
  *   t_mstep        : 0.162592                       seconds, summed over the iterations
  *   t_comm         : 0                              seconds of communication (0 if sequential)
+ *   t_warmup       : 0.231044                       seconds of the warm-up (not in t_total)
  *   t_iteration    : 0.079643                       (t_estep + t_mstep + t_comm) / iterations
  *
  * Every line is "key : value": it is readable by eye and easy to parse (just split at the
@@ -52,6 +54,7 @@ typedef struct
     int threads;         /* OpenMP threads per process (1 in the sequential version) */
     int N, D, K;         /* rows used, variables, clusters */
     int restarts;        /* number of initializations tried */
+    int warmup_iters;    /* warm-up EM iterations done before the timed run (0 = none) */
     int iterations;      /* EM iterations of the best run */
     int converged;       /* 1 = tolerance reached, 0 = maximum number of iterations */
     double loglik;       /* final log-likelihood */
@@ -62,6 +65,7 @@ typedef struct
     double t_estep;      /* E-step, summed over the iterations (s) */
     double t_mstep;      /* M-step, summed over the iterations (s) */
     double t_comm;       /* communication between processes (s; 0 in the sequential version) */
+    double t_warmup;     /* warm-up iterations (s): NOT included in t_total nor in the other times */
 } RunStats;
 
 /* Appends a block to the .log file at 'path'. Missing folders of the path are created.

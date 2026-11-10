@@ -51,8 +51,8 @@ Run all the versions (`src/diagonal/PEMC-baseline-sequential-diagonal.c`, `src/d
 - [ ] Report: description of opt1 and opt2 once chosen, and cite the data sources (tables already have the links)
 - [ ] Discussion and conclusions
 - [X] AI statement (mandatory): written at the top of the report (code help, search of sources, mathematical and grammatical correction); check that it is accurate before delivery
-- [ ] Repo link and data sources cited
-- [ ] Report at least 10 pages
+- [ ] Repo link (SET TO PUBLIC) and data sources cited
+- [X] Report at least 10 pages
 
 ## Final checks
 - [ ] Code audit (`src/`, `src/common/`, `include/`, `src/visual-sequential/`), version by version, before delivery:

@@ -34,6 +34,8 @@ typedef struct
                              same starting point = reproducible result */
     int restarts;         /* number of different initializations (seed, seed+1, ...): the run
                              with the best log-likelihood is kept */
+    int warmup;           /* warm-up EM iterations done before the timed run and then discarded
+                             (0 = no warm-up). See the warm-up pass in main() of every version */
     int verbose;          /* 1 = print the log-likelihood of every iteration */
     const char *log_path; /* .log file to which the block of results is appended (NULL = no
                              log). After args_parse() it holds the final effective path */

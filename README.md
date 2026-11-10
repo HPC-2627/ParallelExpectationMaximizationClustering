@@ -278,6 +278,7 @@ Run the sequential versions from the root of the repository: the only file writt
 | `-t, --tol X` | relative tolerance on the log-likelihood (default 1e-6) |
 | `-s, --seed S` | seed of the initialization (default 42): the same seed gives the same initialization in every version |
 | `-r, --restarts R` | number of initializations, the best one is kept (default 1); the times are summed over all the restarts |
+| `-w, --warmup N` | warm-up EM iterations done before the timed run and then discarded (default 3, 0 = off). They wake up the OpenMP threads, MPI and the caches; the result is identical with and without warm-up, and their time is not in `t_total` nor in the other times (it is logged as `t_warmup`) |
 | `-l, --log FILE.log` | log file (default `results/logs/<name>.log`) |
 | `--no-log` | do not write the log |
 | `-v, --verbose` | print the log-likelihood at every iteration |
@@ -297,6 +298,7 @@ N              : 250000
 D              : 10
 K              : 4
 restarts       : 1
+warmup_iters   : 3
 iterations     : 12
 converged      : 1
 loglik         : -3087811.89369
@@ -307,10 +309,11 @@ t_init         : 2e-06
 t_estep        : 0.793119
 t_mstep        : 0.162592
 t_comm         : 0
+t_warmup       : 0.231044
 t_iteration    : 0.079643
 ```
 
-Times are in seconds. `hostname` and `cpu_model` identify the node (the nodes of the cluster are not all equal). `ari` (adjusted Rand index against the true labels) is `n/a` if the dataset has no labels. `t_iteration` is `(t_estep + t_mstep + t_comm) / iterations` (only with one restart). To read it in Python, split the file on `==== run ====` and every line on the first `:`.
+Times are in seconds. `hostname` and `cpu_model` identify the node (the nodes of the cluster are not all equal). `ari` (adjusted Rand index against the true labels) is `n/a` if the dataset has no labels. `t_warmup` is the time of the `warmup_iters` throwaway iterations, not included in `t_total`. `t_iteration` is `(t_estep + t_mstep + t_comm) / iterations` (only with one restart). To read it in Python, split the file on `==== run ====` and every line on the first `:`.
 
 **Correctness check between versions:** run them with the same dataset, `-k` and `-s`: they must end with the same log-likelihood (up to rounding) and the same number of iterations. Compare only versions of the same model: `-diagonal` with `-diagonal`, `-full` with `-full`.
 

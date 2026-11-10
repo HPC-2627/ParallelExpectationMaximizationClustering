@@ -372,6 +372,36 @@ static EMResult run_em(const Dataset *ds /* in */, GMMParams *p /* in/out */,
 }
 
 /* ----------------------------------------------------------------------------------------
+ * WARM-UP
+ *
+ * Runs 'iters' complete EM iterations (E-step + M-step) that are thrown away: no convergence
+ * test, no result kept, not counted in any time. Their only purpose is to bring the machine to
+ * the state it has during the real run, so the measured times are not polluted by one-time costs:
+ *   - first touch of the memory (page faults of the workspace and of the dataset)
+ *   - creation of the OpenMP thread pool and first parallel regions
+ *   - CPU frequency ramp-up and warm caches / TLB / branch predictors
+ * In the MPI versions it also runs the same MPI_Allreduce calls as the real run: the first
+ * Allreduce is much slower than the following ones (connections are opened lazily).
+ * It is called from main() in the warm-up pass (restart index -1), right after the
+ * initialization; the parameters it modifies are then re-initialized with the SAME seed of
+ * restart 0, so the final result is identical with and without warm-up.
+ * ---------------------------------------------------------------------------------------- */
+static void warmup_em(const Dataset *ds, GMMParams *p, Workspace *w, int iters, long N_total)
+{
+    EMResult scratch; /* receives (and discards) the times that e_step_global would add */
+    memset(&scratch, 0, sizeof scratch);
+    const int K = p->K;
+    const int len = K + K * p->D + K * p->D * p->D;
+    for (int it = 0; it < iters; it++)
+    {
+        e_step_global(ds, p, w, &scratch);
+        m_step_local_sums(ds, K, w);
+        MPI_Allreduce(MPI_IN_PLACE, w->acc, len, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+        m_step_update(p, w, N_total);
+    }
+}
+
+/* ----------------------------------------------------------------------------------------
  * main
  *
  * Phases, in order (as in the sequential version):
@@ -447,19 +477,28 @@ int main(int argc, char **argv)
 
     /* 2. EM with one or more initializations (restarts), as in the sequential version */
     double t_init_local = 0.0, t_estep = 0.0, t_mstep = 0.0, t_comm = 0.0;
+    double t_warmup_local = 0.0; /* seconds of the warm-up pass on this rank, removed from t_total */
     int have_best = 0, total_iterations = 0;
     EMResult best_res;
     memset(&best_res, 0, sizeof best_res);
 
-    for (int rs = 0; rs < a.restarts; rs++)
+    /* Restart index -1 is the WARM-UP pass (only if --warmup > 0): it initializes like restart 0,
+     * runs a.warmup throwaway EM iterations (warmup_em, with the same MPI calls and OpenMP
+     * regions as the real run) and goes back to the top of the loop. The real restarts 0, 1, ...
+     * then start again from their own initialization, so the results are the same as without
+     * warm-up. The warm-up time is measured apart and subtracted from t_total; the init time of
+     * the warm-up pass is not added to t_init. */
+    for (int rs = (a.warmup > 0 ? -1 : 0); rs < a.restarts; rs++)
     {
+        const int warm = (rs < 0);
+        const double t_pass0 = MPI_Wtime(); /* start of this pass (used by the warm-up pass) */
         /* Initialization, identical to the sequential one. Every rank computes the SAME K
          * indices (same seed, no communication). The rank that owns a chosen row copies it into
          * rows[], the others leave zeros; the Allreduce(SUM) then gives every rank all the K
          * rows (adding zeros is exact). */
         MPI_Barrier(MPI_COMM_WORLD);
         double t0 = MPI_Wtime();
-        gmm_init_indices((uint64_t)N_total, K, a.seed + (uint64_t)rs, idx);
+        gmm_init_indices((uint64_t)N_total, K, a.seed + (uint64_t)(warm ? 0 : rs), idx);
         memset(rows, 0, (size_t)K * D * sizeof(double));
         for (int k = 0; k < K; k++)
         {
@@ -471,7 +510,17 @@ int main(int argc, char **argv)
         MPI_Allreduce(MPI_IN_PLACE, rows, K * D, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
         gmm_init_from_rows(&p, rows);
         gmm_full_init_identity(w.cov, K, D); /* Sigma_k = I, as var = 1 in the diagonal version */
-        t_init_local += MPI_Wtime() - t0;
+        if (!warm)
+            t_init_local += MPI_Wtime() - t0;
+
+        if (warm)
+        {
+            /* WARM-UP: throwaway iterations on the real data and workspace (see warmup_em) */
+            warmup_em(&ds, &p, &w, a.warmup, N_total);
+            t_warmup_local = MPI_Wtime() - t_pass0;
+            continue; /* the next iteration is restart 0; its MPI_Barrier aligns all the ranks
+                       * before the real run starts */
+        }
 
         if (a.verbose && rank == 0)
             printf("run %d (seed %llu)\n", rs, (unsigned long long)(a.seed + (uint64_t)rs));
@@ -490,7 +539,7 @@ int main(int argc, char **argv)
             gmm_assign(w.r, n_local, K, best_labels); /* w.r refers to this run */
         }
     }
-    double t_total_local = MPI_Wtime() - t_start;
+    double t_total_local = MPI_Wtime() - t_start - t_warmup_local; /* warm-up excluded */
 
     /* Times of the whole job = maximum over the ranks (valid on rank 0) */
     const double t_total = max_over_ranks(t_total_local);
@@ -499,6 +548,7 @@ int main(int argc, char **argv)
     const double t_estep_max = max_over_ranks(t_estep);
     const double t_mstep_max = max_over_ranks(t_mstep);
     const double t_comm_max = max_over_ranks(t_comm);
+    const double t_warmup_max = max_over_ranks(t_warmup_local);
 
     /* 3. Evaluation (not timed). The local labels are gathered on rank 0, which loads the true
      *    labels and computes the ARI. The block sizes are known to everyone (block_of_rank), so
@@ -552,6 +602,8 @@ int main(int argc, char **argv)
         st.D = D;
         st.K = K;
         st.restarts = a.restarts;
+        st.warmup_iters = a.warmup;
+        st.t_warmup = t_warmup_max;
         st.iterations = best_res.iterations;
         st.converged = best_res.converged;
         st.loglik = best_res.ll;
@@ -572,6 +624,7 @@ int main(int argc, char **argv)
         printf("rows x columns  : %ld x %d, K = %d\n", N_total, D, K);
         printf("ranks x threads : %d x %d\n", P, n_threads);
         printf("seed / restarts : %llu / %d\n", (unsigned long long)a.seed, a.restarts);
+        printf("warm-up         : %d iterations, %.4f s (not in the times)\n", a.warmup, t_warmup_max);
         printf("iterations      : %d (%s)\n", best_res.iterations,
                best_res.converged ? "converged" : "maximum number of iterations reached");
         printf("log-likelihood  : %.10g\n", best_res.ll);

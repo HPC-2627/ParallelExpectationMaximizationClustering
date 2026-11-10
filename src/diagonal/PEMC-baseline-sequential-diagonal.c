@@ -322,6 +322,28 @@ static EMResult run_em(const Dataset *ds, GMMParams *p, Workspace *w, const RunA
 }
 
 /* ----------------------------------------------------------------------------------------
+ * WARM-UP
+ *
+ * Runs 'iters' complete EM iterations (E-step + M-step) that are thrown away: no convergence
+ * test, no result kept, not counted in any time. Their only purpose is to bring the machine to
+ * the state it has during the real run, so the measured times are not polluted by one-time costs:
+ *   - first touch of the memory (page faults of the workspace and of the dataset)
+ *   - creation of the OpenMP thread pool and first parallel regions
+ *   - CPU frequency ramp-up and warm caches / TLB / branch predictors
+ * It is called from main() in the warm-up pass (restart index -1), right after the
+ * initialization; the parameters it modifies are then re-initialized with the SAME seed of
+ * restart 0, so the final result is identical with and without warm-up.
+ * ---------------------------------------------------------------------------------------- */
+static void warmup_em(const Dataset *ds, GMMParams *p, Workspace *w, int iters)
+{
+    for (int it = 0; it < iters; it++)
+    {
+        e_step(ds, p, w);
+        m_step(ds, p, w); /* the number of empty clusters returned is not needed here */
+    }
+}
+
+/* ----------------------------------------------------------------------------------------
  * main
  *
  * Phases, in order:
@@ -346,6 +368,7 @@ int main(int argc, char **argv)
     TIMER_DEF(total);
     TIMER_DEF(read);
     TIMER_DEF(init);
+    TIMER_DEF(tw); /* time of the warm-up pass */
     TIMER_START(total);
 
     /* 1. Reading of the dataset (the first n_rows rows of the file, or all of them).
@@ -383,22 +406,41 @@ int main(int argc, char **argv)
      *    starts; starting from different points a better solution may be found.
      *    In the performance measurements a single restart is used, to get the time of one EM. */
     double t_init = 0.0, t_estep = 0.0, t_mstep = 0.0;
+    double t_warmup = 0.0; /* seconds of the warm-up pass, removed from t_total */
     int have_best = 0, total_iterations = 0;
     EMResult best_res;
     memset(&best_res, 0, sizeof best_res);
 
-    for (int rs = 0; rs < a.restarts; rs++)
+    /* Restart index -1 is the WARM-UP pass (only if --warmup > 0): it initializes like restart 0,
+     * runs a.warmup throwaway EM iterations (warmup_em) and goes back to the top of the loop.
+     * The real restarts 0, 1, ... then start again from their own initialization, so the results
+     * are the same as without warm-up. The warm-up time is measured apart (t_warmup) and
+     * subtracted from t_total, and the init time of the warm-up pass is not added to t_init. */
+    for (int rs = (a.warmup > 0 ? -1 : 0); rs < a.restarts; rs++)
     {
+        const int warm = (rs < 0);
+        if (warm)
+            TIMER_START(tw);
         /* Initialization: K distinct rows chosen with the seeded generator become the
          * means (same procedure in all the versions: see gmm.h). The seed of every restart is
          * seed, seed+1, ...: same seed = same start = reproducible result. */
         TIMER_START(init);
-        gmm_init_indices((uint64_t)N, K, a.seed + (uint64_t)rs, idx);
+        gmm_init_indices((uint64_t)N, K, a.seed + (uint64_t)(warm ? 0 : rs), idx);
         for (int k = 0; k < K; k++)
             memcpy(rows + (size_t)k * D, ds.X + (size_t)idx[k] * D, (size_t)D * sizeof(double));
         gmm_init_from_rows(&p, rows);
         TIMER_STOP(init);
-        t_init += TIMER_ELAPSED(init) / 1e6;
+        if (!warm)
+            t_init += TIMER_ELAPSED(init) / 1e6;
+
+        if (warm)
+        {
+            /* WARM-UP: throwaway iterations on the real data and workspace (see warmup_em) */
+            warmup_em(&ds, &p, &w, a.warmup);
+            TIMER_STOP(tw);
+            t_warmup = TIMER_ELAPSED(tw) / 1e6;
+            continue; /* the next iteration is restart 0: re-initialization, then the real run */
+        }
 
         if (a.verbose)
             printf("run %d (seed %llu)\n", rs, (unsigned long long)(a.seed + (uint64_t)rs));
@@ -418,7 +460,7 @@ int main(int argc, char **argv)
         }
     }
     TIMER_STOP(total);
-    double t_total = TIMER_ELAPSED(total) / 1e6;
+    double t_total = TIMER_ELAPSED(total) / 1e6 - t_warmup; /* warm-up excluded */
 
     /* 3. Evaluation against the true labels (if the dataset has them): not part of the timing.
      *    The ARI is 1 if the clusters coincide with the true classes, about 0 if random. */
@@ -442,6 +484,8 @@ int main(int argc, char **argv)
     st.D = D;
     st.K = K;
     st.restarts = a.restarts;
+    st.warmup_iters = a.warmup;
+    st.t_warmup = t_warmup;
     st.iterations = best_res.iterations;
     st.converged = best_res.converged;
     st.loglik = best_res.ll;
@@ -461,6 +505,7 @@ int main(int argc, char **argv)
     printf("dataset         : %s\n", a.dataset);
     printf("rows x columns  : %d x %d, K = %d\n", N, D, K);
     printf("seed / restarts : %llu / %d\n", (unsigned long long)a.seed, a.restarts);
+    printf("warm-up         : %d iterations, %.4f s (not in the times)\n", a.warmup, t_warmup);
     printf("iterations      : %d (%s)\n", best_res.iterations, best_res.converged ? "converged" : "maximum number of iterations reached");
     printf("log-likelihood  : %.10g\n", best_res.ll);
     
