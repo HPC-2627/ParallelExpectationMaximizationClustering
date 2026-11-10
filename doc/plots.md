@@ -18,7 +18,7 @@ Rules to decide which plots go in the report and how to keep them readable. Scri
 | Model | diagonal, full | Two panels (a)/(b) of the same figure |
 | Version | sequential, baseline, opt1, opt2 | Lines (or bars) inside a plot. Sequential is only the reference (1 core) |
 | Dataset | 10 real, 3 synthetic | Real: clustering quality and time to convergence. Synthetic: scaling, K, D (we control them). Per plot pick 1 small, 1 medium, 1 large, never all |
-| Placement | pack, scatter, pack:excl, scatter:excl | **Experimental parameter, not a plot dimension.** One dedicated plot (P6), then fixed to the best value everywhere else |
+| Placement | pack, scatter, pack:excl, scatter:excl | **Experimental parameter, not a plot dimension by default.** One dedicated plot (P6), then fixed to the best value everywhere else. Only if P6 shows a visible effect, the key plots (P2, P4) are also drawn as a 2x2 grid, one panel per placement (see 1.1) |
 | Ranks x threads | e.g. 1x16 ... 16x1 | One dedicated heatmap (P7), then fixed to the best split |
 | Cores / nodes | 1 ... max | The x axis of the scaling plots |
 
@@ -30,6 +30,29 @@ Rules to decide which plots go in the report and how to keep them readable. Scri
 4. Only if the best placement changes with the number of nodes, add a speedup plot with one line per placement, **for the best version only**.
 
 Same logic for ranks x threads: find the best split once (P7), then fix it.
+
+### 1.1 Why placement is not simply split into 4 panels in every plot
+
+`excl` means *exclusive* (the nodes are used only by our job), it is not a separate dimension of its own: it is the second factor of a 2x2 design (`pack` / `scatter` x shared / `excl`).
+
+The alternative to the procedure above is to draw **every** plot as a 2x2 grid (small multiples), one panel per placement, with the version lines inside each panel:
+
+|  | shared | excl |
+|---|---|---|
+| **pack** | `pack` | `pack:excl` |
+| **scatter** | `scatter` | `scatter:excl` |
+
+This is valid and respects the rule "one x axis, at most 4 lines" (the placement becomes the panel dimension, not a line). Reading it: along a row you see the effect of `excl`, along a column the effect of `pack` vs `scatter`. The axes must be shared (same x and y range in all the panels), otherwise the comparison is false.
+
+Why it is NOT the default:
+- **Number of panels.** With the two models (diagonal and full are never mixed) it is one 2x2 grid per model: 8 panels per plot. For 10 plots that is 80 panels. The report has limited space and nobody reads 80 panels.
+- **Redundancy.** If placement has a small effect, the 4 panels are almost identical and occupy the space for nothing.
+- **Cost of the experiments.** Every plot would need all the runs repeated for the 4 placements (4x the cluster time), instead of one placement fixed after P6.
+
+What we do instead (compromise):
+1. P6 shows the placement alone and answers "does it matter?". If the effect is negligible, the other plots use one placement and we are done.
+2. If the effect is visible, the 2x2 grid is used only for the plots where it matters most: speedup (P2) and strong scaling (P4). The other plots keep the best placement.
+3. The scripts can generate the 2x2 version of all the plots anyway; those go in the appendix or in the repo, not in the main text.
 
 ## 2. Performance plots (catalog)
 
