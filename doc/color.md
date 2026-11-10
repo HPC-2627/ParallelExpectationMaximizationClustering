@@ -1,14 +1,85 @@
 # Color palette for plots
 
+Colors of the plots, one role per block. The plots never pick colors by hand: they use this file. Hex codes are written as plain text (no backticks) so the editor can show the color preview. The names are only a description of the hex code.
 
-## List
-                Light  |  Base   |   Dark    |   Neon |
+**Rule: a color has exactly one meaning.** The same color is never used for two different things in the report. Strong colors go to lines and points, light ones to filled areas (bars), the last 3 cluster classes use neon colors.
+
+Color-blind safety: the placement `excl` is also marked with a hatch (`//`) and the clusters with a different marker, so no information depends on hue only.
+
+## Versions (lines: speedup, scaling, time per iteration, comparison with the baseline)
+
 ```
-Red:         #FCA5A5  #EF4444  #991B1B  #FF1744
-Orange:      #FDBA74  #F97316  #9A3412  #FF6D00
-Yellow:      #FDE68A  #EAB308  #854D0E  #FFEA00
-Light blue:  #BAE6FD  #38BDF8  #0369A1  #00E5FF
-Blue:        #93C5FD  #3B82F6  #1E3A8A  #2979FF
-Green:       #86EFAC  #22C55E  #166534  #00E676
-Purple:      #D8B4FE  #A855F7  #581C87  #D500F9
+Version     Hex      Name        Marker
+----------  -------  ----------  ------
+sequential  #6B7280  gray        s
+baseline    #2579ff  vivid blue  o
+opt1        #ff2e2e  red         ^
+opt2        #38ffca  aquamarine  D
 ```
+
+The model is never a color: diagonal and full are two panels (a)/(b). If they must share a panel, diagonal = solid line, full = dashed line.
+
+## Placement (bars of P6, and the 2x2 grid)
+
+Hue = pack (blue) / scatter (orange), lightness = shared (light) / excl (dark). The excl bars also get a hatch (`//`). Bars have a thin dark edge.
+
+```
+Placement     Hex      Name
+------------  -------  ---------------
+pack          #627fff  periwinkle blue
+pack:excl     #0600be  dark indigo
+scatter       #ffab76  light orange
+scatter:excl  #af3200  dark rust
+```
+
+## Time breakdown (P8, stacked bars)
+
+```
+Component                           Hex      Name
+----------------------------------  -------  -------------
+E-step                              #6fff2c  mint green
+M-step                              #3415ff  indigo
+t_comm (communication + imbalance)  #ff0000  coral red
+I/O (read)                          #efc000  golden yellow
+```
+
+## Clusters (C3, C4, C5): categorical, up to 12 classes
+
+In this order. Every class also has its own marker in the PCA plot. Classes 10-12 are only needed by the datasets with more than 9 classes (brainweb, K = 12).
+
+```
+Class  Hex      Name          Marker
+-----  -------  ------------  ------
+1      #ff0000  red           o
+2      #22C55E  green         s
+3      #69d2ff  sky blue      ^
+4      #dca500  amber         D
+5      #912603  rust brown    v
+6      #006326  dark green    P
+7      #002fb0  navy          X
+8      #7904d3  dark purple   <
+9      #502B00  dark brown    >
+10     #e44aff  neon magenta  h
+11     #ff8d35  orange        *
+12     #2c79ff  bright blue   p
+```
+
+## Neutrals
+
+```
+Use                                                 Hex      Name
+--------------------------------------------------  -------  ----------
+text, axes                                          #171e26  black
+ideal line (speedup, efficiency, roofline), dashed  #6B7280  gray
+grid                                                #E5E7EB  light gray
+missing / not available                             #656B75  slate gray
+```
+
+## Colormaps (heatmaps)
+
+Continuous scales: they are not part of the hex list above.
+
+| Plot | Colormap | Why |
+|---|---|---|
+| P7 (time, ranks x threads) | `viridis` | sequential, perceptually uniform, readable in grayscale |
+| C4 (standardized centroids, have a sign) | `RdBu_r`, limits symmetric around 0 | diverging: 0 must be the neutral color |
