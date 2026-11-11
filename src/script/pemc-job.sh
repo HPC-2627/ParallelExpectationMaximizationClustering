@@ -86,7 +86,7 @@ case "$VERSION" in
         TAG=seq
         LAUNCH=("$EXE") ;;
     *)
-        module load MPICH/3.4.2-GCC-10.3.0
+        module load OpenMPI/4.1.5-GCC-12.3.0
         TAG=${PLACE//:/_}_${NODES}n${RANKS_PER_NODE}r${THREADS}t
         export OMP_NUM_THREADS=$THREADS
         # One thread per core, kept on the core of its rank (no migrations)

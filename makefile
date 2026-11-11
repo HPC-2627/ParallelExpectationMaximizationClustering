@@ -36,7 +36,7 @@ all: sequential
 
 sequential: $(SEQ_BINS)
 
-# On the cluster: module load MPICH/3.4.2-GCC-10.3.0, then make mpi-omp.
+# On the cluster: module load OpenMPI/4.1.5-GCC-12.3.0, then make mpi-omp.
 # On macOS Apple clang has no OpenMP: use a GCC from Homebrew, e.g.
 #   OMPI_CC=gcc-16 make mpi-omp        (Open MPI)   or   MPICH_CC=gcc-16 make mpi-omp   (MPICH)
 MPICC    ?= mpicc

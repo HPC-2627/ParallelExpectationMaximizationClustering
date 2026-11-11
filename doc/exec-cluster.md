@@ -72,7 +72,7 @@ module purge
 module load OpenMPI/4.1.5-GCC-12.3.0
 ```
 
-> **Note:** [pemc-job.sh](../src/script/pemc-job.sh) and the [makefile](../makefile) still mention `MPICH/3.4.2-GCC-10.3.0`. The module loaded at build time and the one loaded inside the job must be the same, otherwise the executables will not find the right MPI libraries. [mpi_wrapper.sh](../src/script/mpi_wrapper.sh) (UCX over Ethernet) is meant for Open MPI.
+The same module is loaded inside the PBS jobs ([pemc-job.sh](../src/script/pemc-job.sh)), and [mpi_wrapper.sh](../src/script/mpi_wrapper.sh) (UCX over Ethernet) is meant for Open MPI.
 
 ### Grant execution permissions
 
