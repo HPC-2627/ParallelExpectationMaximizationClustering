@@ -1,5 +1,20 @@
 # ParallelExpectationMaximizationClustering
 
+[![Run on the cluster](https://img.shields.io/badge/Run_on_the-Cluster-blue?style=for-the-badge&logo=gnubash&logoColor=white)](doc/exec-cluster.md)
+[![Run locally](https://img.shields.io/badge/Run-Locally-green?style=for-the-badge&logo=linux&logoColor=white)](doc/exec-local.md)
+
+![C](https://img.shields.io/badge/C-A8B9CC?style=flat&logo=c&logoColor=black)
+![MPI](https://img.shields.io/badge/MPI-OpenMPI-0066B3?style=flat)
+![OpenMP](https://img.shields.io/badge/OpenMP-hybrid-orange?style=flat)
+![Python](https://img.shields.io/badge/Python-3776AB?style=flat&logo=python&logoColor=white)
+![NumPy](https://img.shields.io/badge/NumPy-013243?style=flat&logo=numpy&logoColor=white)
+![Matplotlib](https://img.shields.io/badge/Matplotlib-11557C?style=flat)
+![HTML5](https://img.shields.io/badge/HTML5-E34F26?style=flat&logo=html5&logoColor=white)
+![Bash](https://img.shields.io/badge/Bash-4EAA25?style=flat&logo=gnubash&logoColor=white)
+![Make](https://img.shields.io/badge/Make-6D00CC?style=flat&logo=gnu&logoColor=white)
+![PBS](https://img.shields.io/badge/PBS-job_scheduler-lightgrey?style=flat)
+![LaTeX](https://img.shields.io/badge/LaTeX-008080?style=flat&logo=latex&logoColor=white)
+
 High Performance Computing (HPC) project (University of Trento): parallel Expectation-Maximization (EM) clustering.
 
 **Authors:** 
