@@ -121,6 +121,24 @@ int log_run(const char *path, const RunStats *s)
     fprintf(f, "t_mstep        : %.9g\n", s->t_mstep);
     fprintf(f, "t_comm         : %.9g\n", s->t_comm);
     fprintf(f, "t_warmup       : %.9g\n", s->t_warmup);
+    /* Analytic work (perfmodel.h) and per-rank compute times: "n/a" when not provided */
+    if (s->flops > 0)
+        fprintf(f, "flops          : %.9g\n", s->flops);
+    else
+        fprintf(f, "flops          : n/a\n");
+    if (s->bytes > 0)
+        fprintf(f, "bytes          : %.9g\n", s->bytes);
+    else
+        fprintf(f, "bytes          : n/a\n");
+    if (s->rank_compute != NULL && s->n_rank_compute > 0)
+    {
+        fprintf(f, "rank_compute   :");
+        for (int r = 0; r < s->n_rank_compute; r++)
+            fprintf(f, " %.9g", s->rank_compute[r]); /* space-separated, one value per rank */
+        fprintf(f, "\n");
+    }
+    else
+        fprintf(f, "rank_compute   : n/a\n");
 
     /* Time per iteration: defined only with a single run. With several restarts the times are
      * summed over all the runs, but the iterations are only those of the best one: the ratio

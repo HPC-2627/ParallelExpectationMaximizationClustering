@@ -9,7 +9,7 @@
  *
  * The keys are the same for all the versions, so a single script
  * (src/plots-generate/plots-performance.py) can read all the logs to make the performance plots
- * (speedup, efficiency, ...).
+ * (speedup, efficiency, roofline, load imbalance, ...).
  *
  * Example of a block (the comments on the right are NOT in the file):
  *
@@ -37,6 +37,10 @@
  *   t_mstep        : 0.162592                       seconds, summed over the iterations
  *   t_comm         : 0                              seconds of communication (0 if sequential)
  *   t_warmup       : 0.231044                       seconds of the warm-up (not in t_total)
+ *   flops          : 3.1e+09                        analytic FLOP of the timed run (perfmodel.h)
+ *   bytes          : 2.4e+09                        analytic main-memory traffic (perfmodel.h)
+ *   rank_compute   : 0.61 0.60 0.63 0.62            compute seconds (E-step + M-step, no MPI) of
+ *                                                   EACH rank, in rank order; n/a if sequential
  *   t_iteration    : 0.079643                       (t_estep + t_mstep + t_comm) / iterations
  *
  * Every line is "key : value": it is readable by eye and easy to parse (just split at the
@@ -66,6 +70,11 @@ typedef struct
     double t_mstep;      /* M-step, summed over the iterations (s) */
     double t_comm;       /* communication between processes (s; 0 in the sequential version) */
     double t_warmup;     /* warm-up iterations (s): NOT included in t_total nor in the other times */
+    double flops;        /* analytic FLOP of the timed run, see perfmodel.h (<= 0 = not available) */
+    double bytes;        /* analytic main-memory traffic in bytes (<= 0 = not available) */
+    const double *rank_compute; /* compute time of every rank (s), array of n_rank_compute values
+                                   in rank order; NULL if not available (sequential versions) */
+    int n_rank_compute;  /* length of rank_compute (= number of MPI ranks) */
 } RunStats;
 
 /* Appends a block to the .log file at 'path'. Missing folders of the path are created.

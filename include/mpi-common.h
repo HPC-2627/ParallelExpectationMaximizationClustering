@@ -53,4 +53,12 @@ static inline double max_over_ranks(double local /* in */)
     return global;
 }
 
+/* Gathers one double from every rank on rank 0: all[r] = value of rank r. 'all' must have room
+ * for P values on rank 0 (it is not touched on the other ranks, it can be NULL there). Used to
+ * log the compute time of every rank (load imbalance). */
+static inline void gather_over_ranks(double local /* in */, double *all /* out, rank 0 */)
+{
+    MPI_Gather(&local, 1, MPI_DOUBLE, all, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+}
+
 #endif
