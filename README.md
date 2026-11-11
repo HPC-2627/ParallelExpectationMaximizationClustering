@@ -22,18 +22,19 @@ High Performance Computing (HPC) project (University of Trento): parallel Expect
 │   │   ├── PEMC-opt1-MPI-OpenMP-full.c            #   Optimization 1 with full covariance (to be written)
 │   │   └── PEMC-opt2-MPI-OpenMP-full.c            #   Optimization 2 with full covariance (to be written)
 │   ├── script/                                # Launchers for the cluster (PBS)
-│   │   ├── pemc-submit.sh                         #   submits the 4 baselines (sequential and MPI + OpenMP, diagonal and full) in all the layouts and placements
-│   │   ├── pemc-job.sh                            #   PBS job body: one version, one layout, ALL the datasets (real and synthetic)
+│   │   ├── pemc-submit.sh                         #   submits the 4 baselines (sequential and MPI + OpenMP, diagonal and full) in all the layouts and placements; `sweep` submits the K and D sweeps (P1)
+│   │   ├── pemc-job.sh                            #   PBS job body: one version, one layout, ALL the datasets (real and synthetic); SWEEP=K|D for plot P1
+│   │   ├── pemc-cluster.sh                        #   runs the sequential baseline for the clustering plots (K range, saves labels and means at the true K)
 │   │   └── mpi_wrapper.sh                         #   forces UCX on the Ethernet interface of the cluster (used by mpiexec in multi-node runs)
 │   ├── dataset-managed/                       # Scripts that create and check the datasets
-│   │   ├── generate-synthetic-dataset.py      # Generator of the synthetic datasets (3 profiles, one file per number of processes) -> data/synthetic/
+│   │   ├── generate-synthetic-dataset.py      # Generator of the synthetic datasets (3 profiles, one file per number of processes; --sweep adds the D sweep for P1) -> data/synthetic/
 │   │   ├── generate-real-datasets.py          # Downloads the real datasets -> data/real/<name>/raw/
 │   │   ├── verify-real-datasets.py            # Checks size and missing values, writes doc/real-datasets-info.md
 │   │   ├── convert-real-to-bin.py             # Converts the real CSV datasets to the binary format of the synthetic ones -> data/real/<name>/<name>.bin
 │   │   └── convert-brainweb-to-bin.py         # BrainWeb: .nii.gz -> .nii -> .bin (+ labels aligned to the T1 grid) -> data/real/brainweb/
 │   ├── plots-generate/                        # Scripts that generate the plots -> results/plots/
-│   │   ├── plots-performance.py               # Performance plots (time, speedup, efficiency, scaling, ...)
-│   │   └── plots-cluster.py                   # Clustering plots (PCA, centroids, cluster sizes, ...)
+│   │   ├── plots-performance.py               # Performance plots P1-P11 (speedup, efficiency, scaling, placement, roofline, load imbalance, ...)
+│   │   └── plots-cluster.py                   # Clustering plots C1-C6 (convergence, BIC/AIC vs K, PCA, centroids, cluster sizes) + summary table
 │   ├── visual-sequential/                     # Step-by-step web visualization of the EM algorithm (diagonal or full covariance)
 │   │   ├── server.py                          #   local server: runs EM on a dataset, records every iteration, checks it against the C binary
 │   │   └── index.html                         #   page that plays the iterations back (E-step, convergence test, M-step)
@@ -42,11 +43,13 @@ High Performance Computing (HPC) project (University of Trento): parallel Expect
 │       ├── gmm.c                              #   parameters of the mixture, initialization, log-sum-exp, convergence test, assignment of the rows; Cholesky for the full covariance (sections: shared / diagonal / full)
 │       ├── args.c                             #   command-line options, the same in all the versions
 │       ├── logger.c                           #   .log text file of the runs (one block per run, with hostname and CPU model)
+│       ├── perfmodel.c                        #   analytic FLOP and memory-traffic count of a run (keys flops, bytes of the log; roofline P10)
+│       ├── cluster-out.c                      #   saves the clustering result (labels, means, log-likelihood curve) with --save, for the clustering plots
 │       ├── eval.c                             #   adjusted Rand index and purity against the true labels
 │       └── my-time-lib.c                      #   statistics for the benchmarks (mean, median, standard deviation)
 ├── include/                                   # Headers of src/common (compile with -Iinclude and -lm)
-│   ├── common.h  dataset.h  gmm.h  args.h  logger.h  eval.h
-│   ├── mpi-common.h                           #   helpers shared by the MPI versions only (header-only): ABORT, block_of_rank, max_over_ranks
+│   ├── common.h  dataset.h  gmm.h  args.h  logger.h  eval.h  perfmodel.h  cluster-out.h
+│   ├── mpi-common.h                           #   helpers shared by the MPI versions only (header-only): ABORT, block_of_rank, max_over_ranks, gather_over_ranks
 │   └── my-time-lib.h                          #   timer macros and statistics prototypes
 ├── data/            # NOT versioned (listed in .gitignore): it is filled locally by the scripts in src/dataset-managed/
 │   ├── real/        # Real (medical) datasets: <name>/raw/features.csv (+ targets.csv), converted to <name>/<name>.bin (+ labels, .json)
@@ -55,9 +58,10 @@ High Performance Computing (HPC) project (University of Trento): parallel Expect
 │       ├── synth_overlap/   # K=5, D=20: overlapping clusters, correlated variables
 │       └── synth_rare/      # K=6, D=50: rare group (1%), 2% outliers
 ├── results/
-│   ├── logs/        # Raw execution logs
-│   ├── tables/      # Benchmark tables
-│   └── plots/       # Generated plots
+│   ├── logs/        # Raw execution logs of the scaling runs (one file per job); sweep/ = K and D sweeps (P1); cluster/ = runs of the clustering plots; pbs/ = job output
+│   ├── clusters/    # Clustering results saved with --save (labels, means, log-likelihood curve), used by plots-cluster.py
+│   ├── tables/      # Tables (clustering-summary.csv)
+│   └── plots/       # Generated plots (PDF)
 ├── doc/
 │   ├── latex/
 │   │   └── Group6-Report.tex         # IEEE-style report (AI statement, model, dataset and cost sections written; design and results to do)
@@ -281,6 +285,7 @@ Run the sequential versions from the root of the repository: the only file writt
 | `-w, --warmup N` | warm-up EM iterations done before the timed run and then discarded (default 3, 0 = off). They wake up the OpenMP threads, MPI and the caches; the result is identical with and without warm-up, and their time is not in `t_total` nor in the other times (it is logged as `t_warmup`) |
 | `-l, --log FILE.log` | log file (default `results/logs/<name>.log`) |
 | `--no-log` | do not write the log |
+| `--save DIR` | save the clustering result (labels of every row, weights and means, log-likelihood curve) in `DIR`, see `include/cluster-out.h`. Sequential versions only; used by the clustering plots |
 | `-v, --verbose` | print the log-likelihood at every iteration |
 
 **Log format** (`.log`, plain text, the same for all the versions). Every run appends a block of `key : value` lines, separated from the next one by an empty line:
@@ -310,10 +315,13 @@ t_estep        : 0.793119
 t_mstep        : 0.162592
 t_comm         : 0
 t_warmup       : 0.231044
+flops          : 3.1e+09
+bytes          : 2.4e+09
+rank_compute   : 0.61 0.60 0.63 0.62
 t_iteration    : 0.079643
 ```
 
-Times are in seconds. `hostname` and `cpu_model` identify the node (the nodes of the cluster are not all equal). `ari` (adjusted Rand index against the true labels) is `n/a` if the dataset has no labels. `t_warmup` is the time of the `warmup_iters` throwaway iterations, not included in `t_total`. `t_iteration` is `(t_estep + t_mstep + t_comm) / iterations` (only with one restart). To read it in Python, split the file on `==== run ====` and every line on the first `:`.
+Times are in seconds. `hostname` and `cpu_model` identify the node (the nodes of the cluster are not all equal). `ari` (adjusted Rand index against the true labels) is `n/a` if the dataset has no labels. `t_warmup` is the time of the `warmup_iters` throwaway iterations, not included in `t_total`. `flops` and `bytes` are an analytic count of the floating-point operations and of the main-memory traffic of the run (`include/perfmodel.h`, not hardware counters), used for the roofline. `rank_compute` is the compute time (E-step + M-step, no MPI) of every MPI rank in rank order (`n/a` in the sequential versions), used for the load imbalance. `t_iteration` is `(t_estep + t_mstep + t_comm) / iterations` (only with one restart). To read it in Python, split the file on `==== run ====` and every line on the first `:`.
 
 **Correctness check between versions:** run them with the same dataset, `-k` and `-s`: they must end with the same log-likelihood (up to rounding) and the same number of iterations. Compare only versions of the same model: `-diagonal` with `-diagonal`, `-full` with `-full`.
 
@@ -335,6 +343,38 @@ How it relates to the C program:
 - The data have D dimensions: the plot is the projection on the first two principal components (the percentage of variance kept is shown), while EM uses all dimensions.
 
 Requirements: Python 3 with NumPy; the browser only needs to reach `127.0.0.1`.
+
+## Plots
+
+Everything is regenerable from the logs: the report uses only the static plots produced by the two scripts in `src/plots-generate/` (rules, catalog and experiment matrix: [doc/plots.md](doc/plots.md); colors: [doc/color.md](doc/color.md)). Python 3 with `numpy`, `pandas` and `matplotlib` (`pip install numpy pandas matplotlib`). Run everything from the root of the repository. A plot whose data is missing is skipped and the reason is printed.
+
+**Performance plots (P1-P11).** First the experiments (cluster, see the PBS section above), then:
+
+```
+make all mpi-omp                         # rebuild: the new binaries write flops, bytes and rank_compute in the log
+src/script/pemc-submit.sh                # scaling runs -> results/logs/<version>_<tag>.log (P2-P9, P10, P11)
+python3 src/dataset-managed/generate-synthetic-dataset.py --sweep    # D sweep files for P1 (K = 4, D = 5 ... 160)
+src/script/pemc-submit.sh sweep          # K and D sweeps -> results/logs/sweep/ (P1)
+
+python3 src/plots-generate/plots-performance.py                      # all the performance plots -> results/plots/
+python3 src/plots-generate/plots-performance.py --plots P2 P6        # only some of them
+python3 src/plots-generate/plots-performance.py --placement scatter:excl --large synth_clean_p16 --small cardiotocography
+python3 src/plots-generate/plots-performance.py --peak-gflops 150 --peak-bw 60   # roofline P10 with the node ceilings
+```
+
+Main options: `--placement` (the placement fixed in every plot except P6; choose it after looking at P6, default `pack`), `--large` / `--small` (datasets of P2/P4/..., automatic if missing), `--version` (version of P6/P7/P11, default the most optimized present), `--models`, `--fmt pdf png`, `--logs`, `--out`. Speedup is always against the sequential version of the same model; opt1 and opt2 (P9) are compared with the parallel baseline MPI + OpenMP. The roofline ceilings (`--peak-gflops`, `--peak-bw`) are those of one node: measure the bandwidth with STREAM.
+
+**Clustering plots (C1-C6 and table).** The clustering is the same in every version, so the runs are made with the sequential baseline (both models), on a range of K per dataset; at the true K the result is also saved with `--save`:
+
+```
+make                                     # sequential versions
+src/script/pemc-cluster.sh               # all the datasets; ONLY=heart KMAX=8 src/script/pemc-cluster.sh to test
+                                         # -> results/logs/cluster/ and results/clusters/ (it can also be submitted with qsub)
+python3 src/plots-generate/plots-cluster.py                         # C1-C6 + results/tables/clustering-summary.csv
+python3 src/plots-generate/plots-cluster.py --plots C2 C6 --datasets heart_failure parkinson
+```
+
+Output files, one per model (`diagonal` / `full`) in `results/plots/`: `P1-sweep`, `P2-speedup`, `P4-strong`, `P5-weak`, `P6-placement`, `P7-ranks-threads`, `P8-breakdown`, `P9-opt-gain`, `P10-roofline`, `P11-imbalance`, `C1-convergence`, `C2-choose-k`, `C3-pca`, `C4-centroids`, `C5-sizes` (for example `P2-speedup-full.pdf`); `C6-bic-full-vs-diagonal.pdf` compares the two models.
 
 ## Results
 
