@@ -14,6 +14,16 @@
 #   SYNTH_P         sizes of the synthetic files, e.g. 01:04:16 [default all = 01:02:04:08:16]
 #   SETS            real | synthetic | all                    [default all]
 #   ONLY            only the datasets whose name contains this text (to test) [default: all]
+#   SWEEP           none | K | D   [default none]. Runs for plot P1 (time per iteration vs K or D)
+#                   instead of the normal dataset list; the logs go to results/logs/sweep/ so they
+#                   are not mixed with the scaling runs:
+#                     K  the dataset synth_clean_p$SWEEP_P with every K of K_LIST (-k changes, data is the same)
+#                     D  the datasets synth_sweep_dDDD (D = D_LIST, K = SWEEP_K); generate them with
+#                        generate-synthetic-dataset.py --sweep
+#   K_LIST          values of K for SWEEP=K   [default "2 4 8 16 32 64"]
+#   D_LIST          values of D for SWEEP=D   [default "5 10 20 40 80 160"]
+#   SWEEP_P         size of synth_clean for the K sweep [default 01 = 250000 rows]
+#   SWEEP_K         K used in the D sweep     [default 4]
 #PBS -q shortCPUQ
 
 VERSION=${VERSION:?VERSION is required}
@@ -25,6 +35,11 @@ REPS=${REPS:-1}
 SYNTH_P=${SYNTH_P:-all}
 SETS=${SETS:-all}
 ONLY=${ONLY:-}
+SWEEP=${SWEEP:-none}
+K_LIST=${K_LIST:-2 4 8 16 32 64}
+D_LIST=${D_LIST:-5 10 20 40 80 160}
+SWEEP_P=${SWEEP_P:-01}
+SWEEP_K=${SWEEP_K:-4}
 
 cd "$PBS_O_WORKDIR" || exit 1
 EXE=./bin/PEMC-$VERSION
@@ -49,6 +64,20 @@ if [ "$SETS" = synthetic ] || [ "$SETS" = all ]; then
     done
 fi
 
+# Sweeps for plot P1 replace the list above (one dataset with several K, or several D with one K)
+if [ "$SWEEP" = K ]; then
+    LIST=()
+    for k in $K_LIST; do
+        LIST+=("ksweep_k$k:data/synthetic/synth_clean/synth_clean_p$SWEEP_P.bin:$k")
+    done
+elif [ "$SWEEP" = D ]; then
+    LIST=()
+    for d in $D_LIST; do
+        n=$(printf "synth_sweep_d%03d" "$d")
+        LIST+=("dsweep_d$d:data/synthetic/$n/${n}_p01.bin:$SWEEP_K")
+    done
+fi
+
 # ---- how to launch ---------------------------------------------------------------------------
 # One log file per job (the jobs run at the same time: a shared file would get mixed blocks).
 # The placement is not stored in the log by the program, so it is in the file name.
@@ -66,8 +95,12 @@ case "$VERSION" in
         # Multi-node runs go through the UCX wrapper (Ethernet interface of the cluster)
         LAUNCH=(mpiexec -n $((NODES * RANKS_PER_NODE)) ./src/script/mpi_wrapper.sh "$EXE") ;;
 esac
-LOG=results/logs/${VERSION}_${TAG}.log
-mkdir -p results/logs
+# Sweep logs go in their own folder: the same dataset appears with several K, and plots-performance.py
+# must not mix those runs with the scaling runs of results/logs/
+LOGDIR=results/logs
+[ "$SWEEP" != none ] && LOGDIR=results/logs/sweep
+LOG=$LOGDIR/${VERSION}_${TAG}.log
+mkdir -p "$LOGDIR"
 
 echo "version $VERSION | layout $TAG | datasets ${#LIST[@]} | reps $REPS | log $LOG"
 echo "nodes assigned by PBS:"; sort "$PBS_NODEFILE" 2>/dev/null | uniq -c

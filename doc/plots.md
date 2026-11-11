@@ -58,7 +58,7 @@ What we do instead (compromise):
 
 | ID | Question | Type | x | y | Lines / groups | Fixed |
 |---|---|---|---|---|---|---|
-| P1 | How does time per iteration scale with K and D? | log-log lines | K (or D) | time / iteration | versions | dataset synthetic, placement |
+| P1 | How does time per iteration scale with K and D? | log-log lines, two panels (a) K (b) D, reference slope dashed | K, D | time / iteration | versions | one layout (1 node, 1 rank x 8 threads). K sweep: `synth_clean_p01` with K = 2..64; D sweep: `synth_sweep_dDDD`, K = 4. Data in `results/logs/sweep/` |
 | P2 | How much faster than sequential? (speedup) | lines + ideal | cores | speedup | versions | 1 large + 1 small dataset, placement |
 | P3 | How efficient? | lines | cores | efficiency | versions | same as P2. Put it as a second panel of P2 |
 | P4 | Strong scaling | lines + ideal | cores | time (or speedup) | versions | N fixed |
@@ -66,11 +66,11 @@ What we do instead (compromise):
 | P6 | Does PBS placement matter? | grouped bars | nodes (1, 2, 4) | time / iteration | 4 placements | best version, 1 model, 1 large dataset |
 | P7 | Best ranks x threads at fixed cores? | heatmap | threads | ranks | color = time | 1 node, best version |
 | P8 | Where does the time go? | stacked bars | ranks | time | E-step, M-step, `t_comm`, I/O | 1 version per panel or bars side by side |
-| P9 | What do opt1 and opt2 gain over the baseline? | bars normalized (baseline = 1) | dataset | time / baseline | opt1, opt2 | model per panel, placement |
-| P10 | Is it compute or memory bound? | roofline | FLOP/byte | GFLOPS | one point per version | model per panel, node. Optional |
-| P11 | Load imbalance between ranks | bars min/mean/max | ranks | compute time per rank | none | Optional. `t_comm` includes imbalance |
+| P9 | What do opt1 and opt2 gain over the baseline? | bars normalized (**parallel baseline MPI-OpenMP = 1**, not the sequential) | dataset | time / baseline | opt1, opt2 | model per panel, placement |
+| P10 | Is it compute or memory bound? | roofline | FLOP/byte | GFLOP/s | one point per version | model per file, 1 node. FLOP and bytes are an analytic count (`include/perfmodel.h`, keys `flops`, `bytes` of the log); roofs from `--peak-gflops` and `--peak-bw` (measure the node with STREAM) |
+| P11 | Load imbalance between ranks | bars mean + min-max whisker, % = max/mean - 1 | nodes / ranks x threads | compute time per rank | none | best version. Key `rank_compute` of the log (E-step + M-step of every rank). `t_comm` includes the imbalance, here it is separated |
 
-Priority: P2(+P3), P4, P5, P6, P7, P8, P9 are essential. P1, P10, P11 only if there is time and space.
+Priority: P2(+P3), P4, P5, P6, P7, P8, P9 are essential. P1, P10, P11 only if there is time and space (the data for them is logged anyway).
 
 ## 3. Clustering plots (catalog)
 
@@ -95,7 +95,8 @@ Table instead of plot: the 10 real datasets with N, D, K, log-likelihood, BIC, i
 | P7 | all ranks x threads splits on 1 node x 1 dataset x best version |
 | P2, P3, P4, P8, P9 | 4 versions x 2 models x cores {1, 2, 4, ..., max} x 3 datasets, with the fixed placement and split |
 | P5 | 4 versions x 2 models x cores {...} with N proportional to cores |
-| P1 | synthetic with varying K and D, 4 versions, a fixed core count |
+| P1 | `src/script/pemc-submit.sh sweep` (K sweep on `synth_clean_p01`, D sweep on the files made by `generate-synthetic-dataset.py --sweep`), versions, one fixed layout. Logs go in `results/logs/sweep/` |
+| P10, P11 | no extra runs: `flops`, `bytes` and `rank_compute` are in every log written by the new binaries (rebuild and re-run the scaling jobs) |
 | C1-C6 | 1 run per dataset and model (baseline), saving the clustering output |
 
 Run P6 and P7 **first**: they fix the placement and the split for all the rest, so the other runs are not repeated.

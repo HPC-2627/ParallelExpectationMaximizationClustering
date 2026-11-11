@@ -2,6 +2,7 @@
 # Submits to PBS the experiments of the 4 versions: baseline-sequential and baseline-MPI-OpenMP,
 # diagonal and full. Run from the root of the repository, after "make all mpi-omp":
 #   src/script/pemc-submit.sh [sequential | parallel | all]        (default: all)
+#   src/script/pemc-submit.sh sweep                                 sweeps of K and D for plot P1
 #   DRY_RUN=1 src/script/pemc-submit.sh      only prints the qsub commands
 #
 # One job = one version x one layout; it runs ALL the datasets (pemc-job.sh), so the number of
@@ -47,6 +48,25 @@ submit() {  # submit NAME SELECT PLACE VARS...
 short() { case $1 in baseline-sequential-diagonal) echo sd;; baseline-sequential-full) echo sf;;
                      baseline-MPI-OpenMP-diagonal) echo bd;; baseline-MPI-OpenMP-full) echo bf;; esac; }
 pl() { case $1 in pack) echo pk;; scatter) echo sc;; pack:excl) echo pkx;; scatter:excl) echo scx;; esac; }
+
+# Sweeps (plot P1): time per iteration vs K and vs D, ONE layout (1 node, 1 rank x 8 threads,
+# node used only by this job) so the only thing that changes is K or D. The D sweep needs the
+# files made by: python3 src/dataset-managed/generate-synthetic-dataset.py --sweep
+# The logs go to results/logs/sweep/ (see pemc-job.sh).
+SWEEP_LAYOUT=1:1:8
+if [ "$WHAT" = sweep ]; then
+    for sw in K D; do
+        for v in baseline-sequential-diagonal baseline-sequential-full; do
+            submit "$(short $v)-sw$sw" "1:ncpus=1:mem=$MEM" pack:excl "VERSION=$v,SWEEP=$sw,REPS=$REPS"
+        done
+        for v in baseline-MPI-OpenMP-diagonal baseline-MPI-OpenMP-full; do
+            IFS=: read -r N R T <<< "$SWEEP_LAYOUT"
+            submit "$(short $v)-sw$sw" "$N:ncpus=$((R * T)):mpiprocs=$R:mem=$MEM" pack:excl \
+                   "VERSION=$v,SWEEP=$sw,NODES=$N,RANKS_PER_NODE=$R,THREADS=$T,PLACE=pack:excl,REPS=$REPS"
+        done
+    done
+    exit 0
+fi
 
 COMMON="REPS=$REPS,SYNTH_P=$SYNTH_P,SETS=$SETS"
 

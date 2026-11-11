@@ -48,6 +48,7 @@
 #include "eval.h"
 #include "gmm.h"
 #include "logger.h"
+#include "perfmodel.h"
 #include "my-time-lib.h"
 
 /* Name of the version: it ends up in the log and in the name of the default log file */
@@ -471,6 +472,9 @@ int main(int argc, char **argv)
     st.t_init = t_init;
     st.t_estep = t_estep;
     st.t_mstep = t_mstep;
+    /* Analytic work for the roofline (P10): E-step runs iterations + 1 times per restart */
+    st.flops = pem_flops(PEM_FULL, N, D, K, total_iterations + a.restarts, total_iterations);
+    st.bytes = pem_bytes(0, N, D, K, total_iterations + a.restarts, total_iterations);
     st.t_comm = 0.0; /* no communication in the sequential version */
 
     if (a.log_path != NULL && log_run(a.log_path, &st) != 0)

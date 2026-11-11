@@ -71,6 +71,7 @@
 #include "gmm.h"
 #include "logger.h"
 #include "mpi-common.h"
+#include "perfmodel.h"
 
 /* Name of the version: it ends up in the log and in the name of the default log file */
 #define VERSION_NAME "baseline-MPI-OpenMP-diagonal"
@@ -523,6 +524,13 @@ int main(int argc, char **argv)
     const double t_comm_max = max_over_ranks(t_comm);
     const double t_warmup_max = max_over_ranks(t_warmup_local);
 
+    /* Compute time of EVERY rank (E-step + M-step loops, no MPI calls): the spread between the
+     * ranks is the load imbalance (plot P11). Valid on rank 0. */
+    double *rank_compute = (rank == 0) ? (double *)malloc((size_t)P * sizeof(double)) : NULL;
+    if (rank == 0)
+        CHECK_ALLOC(rank_compute);
+    gather_over_ranks(t_estep + t_mstep, rank_compute);
+
     /* 3. Evaluation (not timed). The local labels are gathered on rank 0, which loads the true
      *    labels and computes the ARI. The block sizes are known to everyone (block_of_rank), so
      *    the counts and displacements of the Gatherv are computed locally. */
@@ -587,6 +595,14 @@ int main(int argc, char **argv)
         st.t_estep = t_estep_max;
         st.t_mstep = t_mstep_max;
         st.t_comm = t_comm_max;
+        /* Analytic work for the roofline (P10). The E-step runs iterations + 1 times per restart
+         * (the last one evaluates the log-likelihood). fused = 0: the baseline makes two passes
+         * over the data and stores the responsibilities. An optimization that fuses the passes
+         * must pass fused = 1 here. */
+        st.flops = pem_flops(PEM_DIAGONAL, N_total, D, K, total_iterations + a.restarts, total_iterations);
+        st.bytes = pem_bytes(0, N_total, D, K, total_iterations + a.restarts, total_iterations);
+        st.rank_compute = rank_compute;
+        st.n_rank_compute = P;
 
         if (a.log_path != NULL && log_run(a.log_path, &st) != 0)
             fprintf(stderr, "warning: the log line was not written\n");
@@ -615,6 +631,7 @@ int main(int argc, char **argv)
     }
 
     /* Release of the memory */
+    free(rank_compute);
     free(idx);
     free(rows);
     free(best_labels);
