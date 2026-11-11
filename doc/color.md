@@ -64,6 +64,13 @@ Class  Hex      Name          Marker
 12     #2c79ff  bright blue   p
 ```
 
+## Datasets and models in the clustering plots
+
+- **C1 (one line per dataset):** the first colors and markers of the cluster list above, in order. In C1 there are no cluster classes, so there is no ambiguity.
+- **C2 (BIC vs AIC):** BIC = black solid line with circles, AIC = gray dashed line with squares (neutrals, no new color). The minimum is a star, the true K a dotted gray line.
+- **C6 (BIC full - diagonal):** light gray fill with a dark edge. The sign is read from the axis, not from the hue.
+- **C3 (PCA):** points colored with the cluster list. The outliers of the synthetic data (label -1) are slate gray with an `x` marker.
+
 ## Neutrals
 
 ```

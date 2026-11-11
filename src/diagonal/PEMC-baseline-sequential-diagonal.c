@@ -67,6 +67,7 @@
 #include <string.h>
 
 #include "args.h"
+#include "cluster-out.h"
 #include "common.h"
 #include "dataset.h"
 #include "eval.h"
@@ -263,9 +264,13 @@ typedef struct
     double ll;         /* final log-likelihood, consistent with the final parameters */
     double t_estep;    /* seconds in the E-step */
     double t_mstep;    /* seconds in the M-step */
+    int n_hist;        /* values written in hist (see run_em) */
 } EMResult;
 
-static EMResult run_em(const Dataset *ds, GMMParams *p, Workspace *w, const RunArgs *a)
+/* hist (may be NULL): if given, it receives the log-likelihood after every E-step (room for
+ * max_iter + 1 values), for the convergence plot C1; res.n_hist says how many were written. */
+static EMResult run_em(const Dataset *ds, GMMParams *p, Workspace *w, const RunArgs *a,
+                       double *hist)
 {
     EMResult res;
     memset(&res, 0, sizeof res);
@@ -288,6 +293,8 @@ static EMResult run_em(const Dataset *ds, GMMParams *p, Workspace *w, const RunA
         ll = e_step(ds, p, w);
         TIMER_STOP(e);
         res.t_estep += TIMER_ELAPSED(e) / 1e6; /* microseconds -> seconds */
+        if (hist != NULL)
+            hist[res.n_hist++] = ll;
 
         if (a->verbose) /* printing is outside the timers (and only with -v) */
             printf("  iteration %3d  log-likelihood %.10g  change %+.3e\n", it, ll,
@@ -317,6 +324,8 @@ static EMResult run_em(const Dataset *ds, GMMParams *p, Workspace *w, const RunA
         ll = e_step(ds, p, w);
         TIMER_STOP(e);
         res.t_estep += TIMER_ELAPSED(e) / 1e6;
+        if (hist != NULL)
+            hist[res.n_hist++] = ll;
     }
     res.ll = ll;
     return res;
@@ -400,6 +409,15 @@ int main(int argc, char **argv)
     CHECK_ALLOC(idx);
     CHECK_ALLOC(rows);
     CHECK_ALLOC(best_labels);
+    /* Log-likelihood curve (only if --save): the current run and the best run so far */
+    double *hist_cur = NULL, *hist_best = NULL;
+    if (a.save_dir != NULL)
+    {
+        hist_cur = (double *)malloc((size_t)(a.max_iter + 1) * sizeof(double));
+        hist_best = (double *)malloc((size_t)(a.max_iter + 1) * sizeof(double));
+        CHECK_ALLOC(hist_cur);
+        CHECK_ALLOC(hist_best);
+    }
 
     /* 2. EM, with one or more initializations (restarts): the run with the best final
      *    log-likelihood is kept. With restarts = 1 (default) there is a single run.
@@ -445,7 +463,7 @@ int main(int argc, char **argv)
 
         if (a.verbose)
             printf("run %d (seed %llu)\n", rs, (unsigned long long)(a.seed + (uint64_t)rs));
-        EMResult res = run_em(&ds, &p, &w, &a);
+        EMResult res = run_em(&ds, &p, &w, &a, hist_cur);
         t_estep += res.t_estep;
         t_mstep += res.t_mstep;
         total_iterations += res.iterations;
@@ -456,6 +474,8 @@ int main(int argc, char **argv)
         {
             have_best = 1;
             best_res = res;
+            if (hist_cur != NULL)
+                memcpy(hist_best, hist_cur, (size_t)res.n_hist * sizeof(double));
             gmm_copy(&best, &p);
             gmm_assign(w.r, N, K, best_labels); /* w.r refers to this run */
         }
@@ -472,6 +492,11 @@ int main(int argc, char **argv)
         ari = adjusted_rand_index(truth, best_labels, N, K);
         pur = purity(truth, best_labels, N, K);
     }
+
+    /* Clustering result for the plots (labels, means, log-likelihood curve): only with --save */
+    if (a.save_dir != NULL && cluster_save(a.save_dir, a.dataset, "diagonal", &best, best_labels, N,
+                                            hist_best, best_res.n_hist) != 0)
+        fprintf(stderr, "warning: the clustering result was not saved\n");
 
     /* 4. Log and summary.
      *    RunStats collects everything that goes into the log: the same format in all the versions. */
@@ -530,6 +555,8 @@ int main(int argc, char **argv)
     free(idx);
     free(rows);
     free(best_labels);
+    free(hist_cur);
+    free(hist_best);
     workspace_free(&w);
     gmm_free(&p);
     gmm_free(&best);

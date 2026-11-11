@@ -85,7 +85,11 @@ The clustering result is the same in every version (we check the final log-likel
 | C5 | Are the clusters balanced? | bars of cluster sizes | same as C3. Can be merged with C4 |
 | C6 | Diagonal or full, which fits better? | bars of the BIC difference (full - diagonal) | all real |
 
-Table instead of plot: the 10 real datasets with N, D, K, log-likelihood, BIC, iterations, for both models.
+Table instead of plot: the 10 real datasets with N, D, K, log-likelihood, BIC, iterations, for both models. It is written by `plots-cluster.py` in `results/tables/clustering-summary.csv`.
+
+How the data is produced: `src/script/pemc-cluster.sh` runs the sequential baseline (both models) on the datasets for every K of a range (default 2..10, plus the true K) and appends to `results/logs/cluster/`. Only at the true K it also passes `--save results/clusters` (`include/cluster-out.h`): labels of every row, weights and means, log-likelihood after every iteration. BIC and AIC are computed by the script from the log (`loglik`, N, D, K, model), with `p = (K-1) + K*D + K*D` free parameters for diagonal and `(K-1) + K*D + K*D*(D+1)/2` for full.
+
+Notes: C3 draws a random sample of at most 5000 rows (PCA on the sample), and a second row colored by the true classes when the dataset has them. `brainweb` has D = 1, so it has no PCA. `gene_rnaseq` has no full covariance run (D = 20531).
 
 ## 4. Experiment matrix (what to run on the cluster for each plot)
 
@@ -97,7 +101,7 @@ Table instead of plot: the 10 real datasets with N, D, K, log-likelihood, BIC, i
 | P5 | 4 versions x 2 models x cores {...} with N proportional to cores |
 | P1 | `src/script/pemc-submit.sh sweep` (K sweep on `synth_clean_p01`, D sweep on the files made by `generate-synthetic-dataset.py --sweep`), versions, one fixed layout. Logs go in `results/logs/sweep/` |
 | P10, P11 | no extra runs: `flops`, `bytes` and `rank_compute` are in every log written by the new binaries (rebuild and re-run the scaling jobs) |
-| C1-C6 | 1 run per dataset and model (baseline), saving the clustering output |
+| C1-C6 | `src/script/pemc-cluster.sh`: sequential baseline, diagonal and full, K range per dataset (C2, C6, table), `--save` at the true K (C1, C3, C4, C5). Logs in `results/logs/cluster/` |
 
 Run P6 and P7 **first**: they fix the placement and the split for all the rest, so the other runs are not repeated.
 

@@ -50,6 +50,8 @@ import numpy as np
 import pandas as pd
 from matplotlib.ticker import FixedLocator, ScalarFormatter
 
+# Root of the repository (this file is in <root>/src/plots-generate/): the default input and
+# output folders are relative to it, so the script works from any current directory
 ROOT = Path(__file__).resolve().parents[2]
 
 # ---------------------------------------------------------------------------------------------
@@ -68,6 +70,8 @@ STEP_COL = {"E-step": "t_estep", "M-step": "t_mstep", "t_comm": "t_comm", "I/O":
 TEXT, IDEAL, GRID, MISSING = "#171e26", "#6B7280", "#E5E7EB", "#656B75"
 MODELS = ["diagonal", "full"]
 
+# Same look in every figure: serif font, light gray grid under the data, no top/right frame,
+# vector output with real fonts (fonttype 42) so the text of the PDF can be searched and edited
 plt.rcParams.update({
     "font.family": "serif", "font.size": 9, "axes.titlesize": 10, "axes.labelsize": 9,
     "text.color": TEXT, "axes.labelcolor": TEXT, "axes.edgecolor": TEXT,
@@ -82,7 +86,11 @@ plt.rcParams.update({
 # ---------------------------------------------------------------------------------------------
 # Reading of the logs
 # ---------------------------------------------------------------------------------------------
+# Tag of a parallel log file name, e.g. "pack_excl_2n2r4t" = placement pack:excl, 2 nodes, 2 ranks
+# per node, 4 threads per rank (written by src/script/pemc-job.sh). Groups: placement, "_excl" or
+# nothing, nodes, ranks per node, threads.
 TAG_RE = re.compile(r"^(pack|scatter)(_excl)?_(\d+)n(\d+)r(\d+)t$")
+# Log keys that are numbers (everything else stays text); "n/a" values become NaN
 NUMERIC = ["ranks", "threads", "N", "D", "K", "restarts", "iterations", "converged", "loglik",
            "ari", "t_total", "t_read", "t_init", "t_estep", "t_mstep", "t_comm", "t_warmup",
            "flops", "bytes"]
@@ -90,9 +98,9 @@ NUMERIC = ["ranks", "threads", "N", "D", "K", "restarts", "iterations", "converg
 
 def parse_blocks(path):
     """Yields one dict per '==== run ====' block ('key : value' lines, split at the first ':')."""
-    run = None
+    run = None  # block being read (None before the first "====" line)
     for line in path.read_text(errors="replace").splitlines():
-        if line.startswith("===="):
+        if line.startswith("===="):  # a new block starts: hand over the previous one
             if run:
                 yield run
             run = {}
@@ -114,8 +122,10 @@ def parse_rank_compute(text):
 
 def load_logs(logdir, required=True):
     """Reads every *.log of logdir (not the subfolders) into one row per run."""
-    rows = []
+    rows = []  # one dict per run, over all the files
     for path in sorted(logdir.glob("*.log")):  # not the pbs/ subfolder (stdout/stderr of the jobs)
+        # file name = <VERSION>_<TAG>.log: the version has no "_", so the first "_" splits them.
+        # The placement and the number of nodes are NOT in the block: they come from the tag
         tag = path.stem.split("_", 1)[1] if "_" in path.stem else "seq"
         m = TAG_RE.match(tag)
         for b in parse_blocks(path):
@@ -131,13 +141,18 @@ def load_logs(logdir, required=True):
             sys.exit(f"no run found in {logdir}/*.log")
         return None
     df = pd.DataFrame(rows)
+    # text -> numbers (errors="coerce": "n/a" or a missing key becomes NaN)
     for c in NUMERIC:
         df[c] = pd.to_numeric(df.get(c), errors="coerce")
+    # compute time of every rank, as an array per run (P11)
     df["rc"] = df["rank_compute"].map(parse_rank_compute) if "rank_compute" in df else None
+    # "baseline-MPI-OpenMP-full" -> model "full"; base = "baseline-MPI-OpenMP"
     df["model"] = df["version"].str.rsplit("-", n=1).str[1]
     base = df["version"].str.rsplit("-", n=1).str[0]
+    # label = the version as shown in the plots: sequential | baseline | opt1 | opt2
     df["label"] = np.where(base.str.contains("sequential"), "sequential", base.str.split("-").str[0])
-    df["dataset"] = df["dataset"].map(lambda p: Path(p).stem)
+    df["dataset"] = df["dataset"].map(lambda p: Path(p).stem)  # path -> file name without ".bin"
+    # total cores of the run (ranks is the TOTAL number of MPI processes, threads is per rank)
     df["cores"] = (df["ranks"] * df["threads"]).astype(int)
     # time per iteration, recomputed (the log writes n/a when restarts > 1)
     df["t_iter"] = np.where((df["restarts"] == 1) & (df["iterations"] > 0),
@@ -148,7 +163,8 @@ def load_logs(logdir, required=True):
 def aggregate(df):
     """Median / min / max over the repetitions of every (version, model, dataset, layout)."""
     key = ["label", "model", "dataset", "K", "D", "placement", "nodes", "ranks", "threads", "cores"]
-    g = df.dropna(subset=["t_iter"]).groupby(key)
+    g = df.dropna(subset=["t_iter"]).groupby(key)  # runs without t_iter (restarts > 1) are skipped
+    # t = median time per iteration, lo / hi = min / max (error bars), reps = number of repetitions
     a = g["t_iter"].agg(t="median", lo="min", hi="max", reps="count")
     for c in ("t_estep", "t_mstep", "t_comm", "t_read", "N", "flops", "bytes"):
         a[c] = g[c].median()
@@ -158,6 +174,8 @@ def aggregate(df):
 def best_split(agg, placement):
     """Placement fixed (sequential always kept); for every core count the best ranks x threads."""
     a = agg[(agg.placement == placement) | (agg.label == "sequential")]
+    # one row per (version, model, dataset, K, cores): the one with the smallest time among the
+    # ranks x threads splits that give those cores
     key = ["label", "model", "dataset", "K", "cores"]
     return a.loc[a.groupby(key)["t"].idxmin()].reset_index(drop=True)
 
@@ -166,20 +184,25 @@ def best_split(agg, placement):
 # Helpers
 # ---------------------------------------------------------------------------------------------
 def versions_in(d):
+    """Versions present in the table d, in the fixed plotting order (sequential first)."""
     return [v for v in VERSION_ORDER if v in set(d.label)]
 
 
 def pick_datasets(best, model, large, small):
+    """[large, small] datasets to draw for a model. The requested names are used if they are in
+    the data, otherwise the dataset with the largest / smallest N among the parallel runs.
+    Returns one name only if large and small coincide, and [] if there is no parallel run."""
     d = best[(best.model == model) & (best.label != "sequential")]
     if d.empty:
         return []
-    n = d.groupby("dataset")["N"].first().sort_values()
+    n = d.groupby("dataset")["N"].first().sort_values()  # datasets ordered by size
     big = large if large in n.index else n.index[-1]
     sml = small if small in n.index else n.index[0]
     return [big] if big == sml else [big, sml]
 
 
 def best_version(agg):
+    """The most optimized version present in the data (opt2 > opt1 > baseline), or None."""
     for v in ("opt2", "opt1", "baseline"):
         if v in set(agg.label):
             return v
@@ -187,6 +210,7 @@ def best_version(agg):
 
 
 def cores_axis(ax, cores):
+    """x axis in cores: log base 2, with ticks exactly at the core counts that were measured."""
     ax.set_xscale("log", base=2)
     ax.xaxis.set_major_locator(FixedLocator(sorted(set(cores))))
     ax.xaxis.set_major_formatter(ScalarFormatter())
@@ -195,15 +219,18 @@ def cores_axis(ax, cores):
 
 
 def line(ax, x, y, lo, hi, v):
+    """Line of version v (its color and marker) with an error bar from lo to hi at every point."""
     ax.errorbar(x, y, yerr=[np.maximum(y - lo, 0), np.maximum(hi - y, 0)], color=VERSION_COLOR[v],
                 marker=VERSION_MARKER[v], ms=5, lw=1.5, capsize=2, label=v)
 
 
 def ideal(ax, x, y, label="ideal"):
+    """Reference line (ideal speedup, efficiency 1, ...): gray and dashed, never a version color."""
     ax.plot(x, y, ls="--", color=IDEAL, lw=1, label=label)
 
 
 def save(fig, out, name, fmts):
+    """Writes the figure in every requested format (pdf, png, ...) and frees its memory."""
     for f in fmts:
         fig.savefig(out / f"{name}.{f}")
     plt.close(fig)
@@ -211,6 +238,8 @@ def save(fig, out, name, fmts):
 
 
 def need(cond, why):
+    """Stops the current plot with a readable reason if its data is missing (main() prints it
+    and goes on with the next plot)."""
     if not cond:
         raise LookupError(why)
 
@@ -228,20 +257,21 @@ def p2_p3_speedup(ctx, model):
         d = best[(best.model == model) & (best.dataset == ds)]
         seq = d[d.label == "sequential"]
         need(not seq.empty, f"no sequential run for {model}/{ds}")
-        t_seq = seq.t.iloc[0]
-        allc = []
+        t_seq = seq.t.iloc[0]  # time per iteration of the sequential run: reference of the speedup
+        allc = []  # every core count drawn in this panel (for the ticks and the ideal line)
         for v in versions_in(d):
             s = d[d.label == v].sort_values("cores")
             if v == "sequential":
                 s = s.assign(cores=1)
             c, sp = s.cores.to_numpy(), t_seq / s.t.to_numpy()
+            # a larger time gives a smaller speedup: the error bar limits swap
             lo, hi = t_seq / s.hi.to_numpy(), t_seq / s.lo.to_numpy()
             allc += list(c)
             line(axs[0, j], c, sp, lo, hi, v)
-            line(axs[1, j], c, sp / c, lo / c, hi / c, v)
+            line(axs[1, j], c, sp / c, lo / c, hi / c, v)  # efficiency = speedup / cores
         c = np.array(sorted(set(allc)))
-        ideal(axs[0, j], c, c)
-        ideal(axs[1, j], c, np.ones_like(c))
+        ideal(axs[0, j], c, c)                 # ideal speedup = number of cores
+        ideal(axs[1, j], c, np.ones_like(c))   # ideal efficiency = 1
         axs[0, j].set_yscale("log", base=2)
         axs[0, j].yaxis.set_major_formatter(ScalarFormatter())
         axs[0, j].set_title(f"{ds} (N={int(d.N.max())})")
@@ -265,13 +295,14 @@ def p4_strong(ctx, model):
         allc = []
         for v in versions_in(d):
             s = d[d.label == v].sort_values("cores")
+            # the sequential version always runs on 1 core
             c = np.ones(len(s), int) if v == "sequential" else s.cores.to_numpy()
             allc += list(c)
             line(axs[0, j], c, s.t.to_numpy(), s.lo.to_numpy(), s.hi.to_numpy(), v)
         seq = d[d.label == "sequential"]
         if not seq.empty:
             c = np.array(sorted(set(allc)))
-            ideal(axs[0, j], c, seq.t.iloc[0] / c)
+            ideal(axs[0, j], c, seq.t.iloc[0] / c)  # ideal: the sequential time divided by the cores
         axs[0, j].set_xscale("log", base=2)
         axs[0, j].set_yscale("log")
         axs[0, j].set_title(f"{ds} (N={int(d.N.max())})")
@@ -287,12 +318,12 @@ def p5_weak(ctx, model):
     best, fam = ctx.best, ctx.args.family
     d = best[(best.model == model) & best.dataset.str.startswith(fam + "_p")].copy()
     need(not d.empty, f"no {fam}_pNN dataset")
-    d["p"] = d.dataset.str.extract(r"_p(\d+)$")[0].astype(int)
+    d["p"] = d.dataset.str.extract(r"_p(\d+)$")[0].astype(int)  # size factor = cores of the weak run
     ref = d[(d.label == "sequential") & (d.p == 1)]
     need(not ref.empty, f"no sequential {fam}_p01")
-    t1 = ref.t.iloc[0]
+    t1 = ref.t.iloc[0]  # time of ONE core on the smallest problem: weak efficiency = t1 / t(p cores, p x data)
     fig, ax = plt.subplots(figsize=(4.2, 3.2))
-    cs = [1]
+    cs = [1]  # core counts drawn (for the ticks and the ideal line)
     for v in versions_in(d):
         s = d[(d.label == v) & (d.cores == d.p)].sort_values("cores")  # N per core constant
         if v == "sequential":
@@ -324,8 +355,10 @@ def p6_placement(ctx, model):
     d = d.loc[d.groupby(["placement", "nodes"])["t"].idxmin()]
     nodes = sorted(d.nodes.unique())
     fig, ax = plt.subplots(figsize=(4.6, 3.2))
-    w = 0.2
+    w = 0.2  # width of one bar: 4 bars per group of nodes
     for i, pl in enumerate(PLACE_ORDER):
+        # reindex puts NaN where a placement has no run for that number of nodes (e.g. scatter on
+        # 1 node does not exist): that bar is simply not drawn
         s = d[d.placement == pl].set_index("nodes").reindex(nodes)
         x = np.arange(len(nodes)) + (i - 1.5) * w
         err = [(s.t - s.lo).fillna(0), (s.hi - s.t).fillna(0)]
@@ -349,9 +382,11 @@ def p7_heatmap(ctx, model):
     d = a[(a.label == v) & (a.model == model) & (a.dataset == ds[0]) & (a.nodes == 1)
           & (a.placement.isin([ctx.args.placement, ctx.args.placement.split(":")[0]]))]
     need(not d.empty, "no single-node runs")
+    # rows = ranks (largest on top), columns = threads, value = time; several repetitions or
+    # nodes for the same cell: the smallest
     pv = d.pivot_table(index="ranks", columns="threads", values="t", aggfunc="min").sort_index(ascending=False)
     cmap = plt.get_cmap("viridis").copy()
-    cmap.set_bad(MISSING)
+    cmap.set_bad(MISSING)  # splits that were not run are drawn in slate gray
     fig, ax = plt.subplots(figsize=(1.0 + 0.8 * pv.shape[1], 0.9 + 0.6 * pv.shape[0]))
     im = ax.imshow(np.ma.masked_invalid(pv.values), cmap=cmap, aspect="auto")
     ax.set_xticks(range(pv.shape[1]), [str(c) for c in pv.columns])
@@ -381,8 +416,8 @@ def p8_breakdown(ctx, model):
     fig, axs = plt.subplots(1, len(vs), figsize=(3.2 * len(vs), 3.0), squeeze=False, sharey=True)
     for ax, v in zip(axs[0], vs):
         s = d[d.label == v].sort_values("cores")
-        x = np.arange(len(s))
-        bottom = np.zeros(len(s))
+        x = np.arange(len(s))          # one bar per core count
+        bottom = np.zeros(len(s))      # height reached by the stack so far
         for name, col in STEP_COL.items():
             y = s[col].fillna(0).to_numpy()
             ax.bar(x, y, 0.65, bottom=bottom, color=STEP_COLOR[name], edgecolor=TEXT, linewidth=0.5,
@@ -407,25 +442,27 @@ def p9_opt_gain(ctx, model):
     opts = [v for v in ("opt1", "opt2") if v in set(d.label)]
     need(opts, "no opt1/opt2 data yet")
     base = d[d.label == "baseline"]
+    # compare at the largest core count that has both the baseline and at least one optimization
     cores = max(set(base.cores) & set(d[d.label.isin(opts)].cores))
     d = d[d.cores == cores]
     dss = sorted(set(d[d.label == "baseline"].dataset))
     fig, ax = plt.subplots(figsize=(max(4.5, 0.7 * len(dss) + 2), 3.2))
     w = 0.8 / len(opts)
     for i, v in enumerate(opts):
-        y = []
+        y = []  # time / baseline time for every dataset (NaN if one of the two runs is missing)
         for ds in dss:
             tb = d[(d.label == "baseline") & (d.dataset == ds)].t
             tv = d[(d.label == v) & (d.dataset == ds)].t
             y.append(tv.iloc[0] / tb.iloc[0] if len(tb) and len(tv) else np.nan)
         ax.bar(np.arange(len(dss)) + (i - (len(opts) - 1) / 2) * w, y, w, color=VERSION_COLOR[v],
                edgecolor=TEXT, linewidth=0.6, label=v)
-    ax.axhline(1, ls="--", color=IDEAL, lw=1, label="baseline")
+    ax.axhline(1, ls="--", color=IDEAL, lw=1, label="baseline")  # the baseline is 1 by definition
     ax.set_xticks(range(len(dss)), dss, rotation=45, ha="right")
     ax.set_ylabel("time / baseline time")
     ax.set_title(f"P9  gain over the baseline, {model}, {cores} cores, placement {ctx.args.placement}")
     ax.legend()
     save(fig, ctx.out, f"P9-opt-gain-{model}", ctx.fmts)
+
 
 def p1_sweeps(ctx, model):
     """P1: time per iteration vs K (panel a) and vs D (panel b), log-log, one line per version.
@@ -530,6 +567,7 @@ PLOTS = {"P1": p1_sweeps, "P2": p2_p3_speedup, "P3": p2_p3_speedup, "P4": p4_str
 
 # ---------------------------------------------------------------------------------------------
 def main():
+    # ---- command line ----
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--logs", type=Path, default=ROOT / "results/logs")
     ap.add_argument("--out", type=Path, default=ROOT / "results/plots")
@@ -549,16 +587,21 @@ def main():
     ap.add_argument("--fmt", nargs="+", default=["pdf"], help="output formats (pdf, png, ...)")
     args = ap.parse_args()
 
+    # ---- data: logs -> one row per run -> one row per layout (median over the repetitions) ->
+    # one row per core count (best ranks x threads split) ----
     args.out.mkdir(parents=True, exist_ok=True)
     df = load_logs(args.logs)
     agg = aggregate(df)
     best = best_split(agg, args.placement)
     sweep_df = load_logs(args.logs / "sweep", required=False)  # P1 only
     sweep = aggregate(sweep_df) if sweep_df is not None else None
+    # everything the plot functions need, in one object (they are called as plot(ctx, model))
     ctx = argparse.Namespace(args=args, df=df, agg=agg, best=best, sweep=sweep, out=args.out,
                              fmts=args.fmt)
     print(f"{len(df)} runs, versions: {sorted(set(df.label))}, placement: {args.placement}")
 
+    # ---- draw: every requested plot, for every model. P2 and P3 are the same function (one
+    # figure with two rows), so "done" avoids drawing it twice if both IDs are requested ----
     done = set()
     for pid in args.plots:
         fn = PLOTS.get(pid)
@@ -571,7 +614,7 @@ def main():
             done.add((fn, model))
             try:
                 fn(ctx, model)
-            except LookupError as e:
+            except LookupError as e:  # missing data (see need()): skip this plot, not the others
                 print(f"skip {pid} {model}: {e}")
 
 

@@ -23,6 +23,7 @@ void args_defaults(RunArgs *a, const char *default_name)
     a->restarts = 1; /* a single run: the measured time is that of a single EM */
     a->warmup = 3; /* few iterations: enough to wake up threads, MPI and caches (see args.h) */
     a->verbose = 0;
+    a->save_dir = NULL; /* by default the clustering result is not saved */
     a->log_path = NULL; /* the default path is decided in args_parse() */
     a->no_log = 0;
     a->name = default_name;
@@ -49,6 +50,8 @@ void args_usage(const char *prog)
             "                       (default: results/logs/<name>.log, created if missing)\n"
             "      --no-log         do not write the log\n"
             "      --name NAME      name of the version written in the log\n"
+            "      --save DIR       save the clustering result (labels, means, log-likelihood curve)\n"
+            "                       in DIR, see include/cluster-out.h (sequential versions only)\n"
             "  -v, --verbose        print the log-likelihood of every iteration\n"
             "  -h, --help           this message\n"
             "\n"
@@ -81,8 +84,8 @@ int args_parse(int argc, char **argv, RunArgs *a)
      * (flag, unused), code returned by getopt_long }.
      *   required_argument = the option needs a value (--rows 1000)
      *   no_argument       = the option is a switch (--verbose)
-     * The returned code is the letter of the equivalent short option. The options --name and
-     * --no-log have no short letter, so they use 'N' and 'L' as internal codes.
+     * The returned code is the letter of the equivalent short option. The options --name,
+     * --no-log and --save have no short letter, so they use 'N', 'L' and 'S' as internal codes.
      * The last row of zeros ends the table (required by getopt_long). */
     static const struct option long_options[] = {
         {"dataset", required_argument, 0, 'd'},
@@ -96,6 +99,7 @@ int args_parse(int argc, char **argv, RunArgs *a)
         {"log", required_argument, 0, 'l'},
         {"name", required_argument, 0, 'N'},
         {"no-log", no_argument, 0, 'L'},
+        {"save", required_argument, 0, 'S'},
         {"verbose", no_argument, 0, 'v'},
         {"help", no_argument, 0, 'h'},
         {0, 0, 0, 0}};
@@ -120,6 +124,7 @@ int args_parse(int argc, char **argv, RunArgs *a)
         case 'l': a->log_path = optarg; break;
         case 'N': a->name = optarg; break;
         case 'L': a->no_log = 1; break;
+        case 'S': a->save_dir = optarg; break;
         case 'v': a->verbose = 1; break;
         case 'h': args_usage(argv[0]); return 1; /* help requested: not an error */
         default: args_usage(argv[0]); return -1; /* unknown option (getopt already warned) */
