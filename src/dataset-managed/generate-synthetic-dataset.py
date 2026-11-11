@@ -94,8 +94,8 @@ USAGE
   python3 src/dataset-managed/generate-synthetic-dataset.py --sweep              # base profiles + D sweep
 
 D SWEEP (plot P1)
-With --sweep the profiles synth_sweep_d005 ... synth_sweep_d160 are also generated: same as
-synth_clean (K=4) but with D = 5, 10, 20, 40, 80, 160 variables, one file each
+With --sweep the profiles synth_sweep_d005 ... synth_sweep_d050 are also generated: same as
+synth_clean (K=4) but with D = 5, 10, 20, 35, 50 variables, one file each
 (data/synthetic/synth_sweep_dDDD/synth_sweep_dDDD_p01.bin, N0 rows). The K sweep needs no new
 files: it runs the same dataset with different -k (see src/script/pemc-submit.sh, "sweep").
 """
@@ -223,7 +223,7 @@ BASE_PROFILES = list(PROFILES)
 # run on a fixed number of cores. They are added AFTER the base profiles, so the random seed
 # index of the base profiles (their position in PROFILES) does not change.
 # Beyond 20 variables the columns are generic biomarkers (see variable_info).
-SWEEP_DIMS = [5, 10, 20, 40, 80, 160]
+SWEEP_DIMS = [5, 10, 20, 35, 50]
 for _d in SWEEP_DIMS:
     PROFILES[f"synth_sweep_d{_d:03d}"] = dict(
         K=4, D=_d, weights=[0.25, 0.25, 0.25, 0.25], delta=6.0,

@@ -353,7 +353,7 @@ Everything is regenerable from the logs: the report uses only the static plots p
 ```
 make all mpi-omp                         # rebuild: the new binaries write flops, bytes and rank_compute in the log
 src/script/pemc-submit.sh                # scaling runs -> results/logs/<version>_<tag>.log (P2-P9, P10, P11)
-python3 src/dataset-managed/generate-synthetic-dataset.py --sweep    # D sweep files for P1 (K = 4, D = 5 ... 160)
+python3 src/dataset-managed/generate-synthetic-dataset.py --sweep    # D sweep files for P1 (K = 4, D = 5 ... 50)
 src/script/pemc-submit.sh sweep          # K and D sweeps -> results/logs/sweep/ (P1)
 
 python3 src/plots-generate/plots-performance.py                      # all the performance plots -> results/plots/

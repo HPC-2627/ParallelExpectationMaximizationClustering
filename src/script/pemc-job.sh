@@ -21,7 +21,7 @@
 #                     D  the datasets synth_sweep_dDDD (D = D_LIST, K = SWEEP_K); generate them with
 #                        generate-synthetic-dataset.py --sweep
 #   K_LIST          values of K for SWEEP=K   [default "2 4 8 16 32 64"]
-#   D_LIST          values of D for SWEEP=D   [default "5 10 20 40 80 160"]
+#   D_LIST          values of D for SWEEP=D   [default "5 10 20 35 50"]
 #   SWEEP_P         size of synth_clean for the K sweep [default 01 = 250000 rows]
 #   SWEEP_K         K used in the D sweep     [default 4]
 #PBS -q shortCPUQ
@@ -37,7 +37,7 @@ SETS=${SETS:-all}
 ONLY=${ONLY:-}
 SWEEP=${SWEEP:-none}
 K_LIST=${K_LIST:-2 4 8 16 32 64}
-D_LIST=${D_LIST:-5 10 20 40 80 160}
+D_LIST=${D_LIST:-5 10 20 35 50}
 SWEEP_P=${SWEEP_P:-01}
 SWEEP_K=${SWEEP_K:-4}
 
