@@ -6,6 +6,37 @@ High Performance Computing (HPC) project (University of Trento): parallel Expect
 - Michael Bernasconi
 - Gabriele Fronzoni
 
+## AI statement
+
+In this project we used an AI assistant (Claude, by Anthropic) for three purposes: (i) support in writing and debugging the code; (ii) searching for sources and papers for the state of the art and for the datasets; (iii) mathematical and grammatical correction of the report. The design choices, the experiments and the analysis of the results are our own, and we reviewed the output of the assistant.
+
+## Objective
+
+The goal of the project is to **parallelize the Expectation-Maximization (EM) algorithm for clustering with Gaussian mixture models (GMM)** with a hybrid **MPI + OpenMP** implementation in C, and to measure how it scales on the cluster of the University of Trento (speedup, efficiency, strong and weak scaling, single and multiple nodes).
+
+EM alternates two steps until the log-likelihood converges: the **E-step** computes for every point the responsibility of each of the $K$ clusters, the **M-step** recomputes weights, means and covariances from those responsibilities. The cost is dominated by the E-step, which is independent for every point, so the rows of the dataset can be split among MPI ranks and OpenMP threads; only the sufficient statistics have to be combined at every iteration. The explanation of the algorithm (formulas, notation, parallelism) is in [doc/em-explained.md](doc/em-explained.md).
+
+### Models
+
+Two Gaussian mixture models, with the same importance:
+- **diagonal** covariance: one variance per variable. An iteration costs $O(NKD)$.
+- **full** covariance: each cluster has a complete $D \times D$ matrix, so correlated variables are modelled. An iteration costs $O(NKD^2)$.
+
+The model is different, so the results are compared only with runs of the same model (`-full` with `-full`, `-diagonal` with `-diagonal`), and every optimization is evaluated against the baseline of its own model.
+
+### Versions
+
+Each model has four versions, for a total of eight programs:
+
+| Version | What it is | State |
+|---|---|---|
+| `sequential` | single process, no parallelism: correctness reference and serial time for the speedup | done |
+| `baseline-MPI-OpenMP` | first hybrid parallelization (rows split among MPI ranks, OpenMP threads inside each rank): the reference of the parallel tests | done |
+| `opt1-MPI-OpenMP` | first optimization of the baseline | **empty, not written yet** |
+| `opt2-MPI-OpenMP` | second optimization of the baseline | **empty, not written yet** |
+
+All the versions of the same model must end with the same log-likelihood and the same number of iterations (same dataset, `-k` and `-s`).
+
 ## Repository structure
 
 ```
@@ -78,19 +109,9 @@ High Performance Computing (HPC) project (University of Trento): parallel Expect
 └── README.md
 ```
 
-The project studies two Gaussian mixture models with the same importance, each with four versions (sequential, MPI + OpenMP baseline, optimization 1, optimization 2), for a total of eight programs. The `-diagonal` files use a diagonal covariance (one variance per variable). The `-full` files use a full covariance (each cluster has a complete $D \times D$ matrix, so correlated variables are modelled). The model is different, so the results are compared only with runs of the same model (`-full` with `-full`, `-diagonal` with `-diagonal`), and every optimization is evaluated against the baseline of its own model. A full iteration costs $O(NKD^2)$ instead of $O(NKD)$.
+## Data
 
-## Data (required step before running the experiments)
-
-The whole `data/` folder is **not versioned** (it is listed in `.gitignore`), because the datasets are large. After cloning the repository the folder is empty, so **it is necessary to run the generator of the synthetic datasets** before any experiment:
-
-```
-python3 src/dataset-managed/generate-synthetic-dataset.py
-```
-
-It needs Python 3 with NumPy and writes about 5 GB in `data/synthetic/`, one folder per profile (`synth_clean/`, `synth_overlap/`, `synth_rare/`), with one file for each number of processes of the weak scaling. The generation is deterministic (default seed 42), so everyone obtains identical files. Options (for example a smaller size) are listed with `python3 src/dataset-managed/generate-synthetic-dataset.py --help`.
-
-The real datasets also have to be downloaded locally into `data/real/` (see below).
+The whole `data/` folder is **not versioned** (it is listed in `.gitignore`), because the datasets are large: they are generated (synthetic) or downloaded (real) on the machine where the experiments run. The procedure is in [doc/exec-cluster.md](doc/exec-cluster.md) (cluster) and [doc/exec-local.md](doc/exec-local.md) (local). The generation of the synthetic datasets is deterministic (default seed 42), so everyone obtains identical files.
 
 ### Synthetic datasets
 
@@ -118,7 +139,7 @@ Full details (variables with units and limits, generation procedure, work per ra
 
 ## Real datasets
 
-The real datasets are public and are not versioned: `data/real/*/raw/` is listed in `.gitignore`. They are downloaded by `src/dataset-managed/generate-real-datasets.py` into `data/real/` and checked by `src/dataset-managed/verify-real-datasets.py`. Sources, licenses and citations are in [doc/real-datasets-source.md](doc/real-datasets-source.md).
+The real datasets are public and are not versioned: `data/real/*/raw/` is listed in `.gitignore`. They are downloaded on the cluster or locally (see [doc/exec-cluster.md](doc/exec-cluster.md) and [doc/exec-local.md](doc/exec-local.md)). Sources, licenses and citations are in [doc/real-datasets-source.md](doc/real-datasets-source.md).
 
 ### Datasets
 
@@ -137,202 +158,25 @@ The real datasets are public and are not versioned: `data/real/*/raw/` is listed
 
 None of the datasets has missing values in the numeric columns (see [doc/real-datasets-info.md](doc/real-datasets-info.md)).
 
-### Download
+**Preprocessing and format of the real datasets.** The raw files are kept as served by the source (`data/real/<name>/raw/`, not versioned) and converted to the same binary format of the synthetic ones (`<name>.bin`, plus `<name>_labels.bin` when the label is categorical and `<name>.json` with the columns and the standardization). Only the numeric columns are kept (identifiers removed), constant columns are dropped, every column is standardized (z-score); a dataset with empty cells would be discarded, nothing is imputed. `brainweb` is a NIfTI volume: the T1 image (181 x 256 x 256) becomes $N$ = 11,862,016 voxels with $D = 1$ (the T2 and T2* images are not used), and the `crisp` labels are resampled to the T1 grid. The labels are used only to measure ARI/Dice.
 
-Requirements: Python 3 and internet access. Use a virtual environment, since the libraries are not installed by default:
+## Running the experiments
 
-```bash
-python3 -m venv .venv
-source .venv/bin/activate
-pip install pandas numpy scikit-learn ucimlrepo brainweb-dl
-```
-
-(`brainweb-dl` also installs `nibabel`, used to read the MRI volumes.)
-
-Download everything (about 250 MB; the largest file is `gene_rnaseq`, about 200 MB):
-
-```bash
-python3 src/dataset-managed/generate-real-datasets.py
-```
-
-Download only some datasets, by folder name:
-
-```bash
-python3 src/dataset-managed/generate-real-datasets.py heart_failure brainweb
-```
-
-Each dataset is saved in `data/real/<name>/raw/` as `features.csv` and, when a label exists, `targets.csv`, exactly as served by the source and without preprocessing. `brainweb` is saved as two `.nii.gz` volumes: the T1 image (the data) and the `crisp` labels (the ground truth). The script is idempotent: a dataset already downloaded is skipped.
-
-Notes:
-- The T1 and `crisp` volumes of BrainWeb are on different grids (1 mm and 0.5 mm): `convert-brainweb-to-bin.py` resamples the labels to the T1 grid (see Conversion to binary).
-- The T2 and T2* images of BrainWeb are not used: the download from the BrainWeb server did not complete, so BrainWeb has one feature (D = 1).
-
-### Verification
-
-```bash
-python3 src/dataset-managed/verify-real-datasets.py
-```
-
-It reports, for each dataset, the size, the number of numeric columns, the empty cells (NaN, empty strings, `?`, `NA`), the duplicate rows and the label distribution. The report is written to [doc/real-datasets-info.md](doc/real-datasets-info.md). A dataset is `COMPLETE` if its numeric columns have no empty cell, otherwise `DISCARD`.
-
-### Conversion to binary
-
-The raw CSV files are kept as served by the source. To use the real datasets with the same C loader of the synthetic ones, convert them:
-
-```bash
-python3 src/dataset-managed/convert-real-to-bin.py            # all the datasets
-python3 src/dataset-managed/convert-real-to-bin.py heart_failure       # only some
-```
-
-For each dataset it writes in `data/real/<name>/`:
-- `<name>.bin`: same format as the synthetic data (8-byte header with two `int` N and D, then $N \cdot D$ `double` row-major);
-- `<name>_labels.bin`: one `int` per row (classes encoded as 0..C-1), only if the label is categorical (`parkinson` has continuous targets, so no labels);
-- `<name>.json`: columns used and dropped, mean and standard deviation of the standardization, class mapping.
-
-Preprocessing: only the numeric columns are kept (identifiers removed), constant columns are dropped, every column is standardized (z-score). A dataset with empty cells (`DISCARD`) would be skipped: nothing is imputed. `brainweb` is not CSV and has its own script (below).
-
-#### BrainWeb (NIfTI volumes)
-
-`brainweb` is converted by a dedicated script, because its raw files are `.nii.gz` volumes, not CSV. It needs `nibabel` (already installed with `brainweb-dl`, otherwise `pip install numpy nibabel`) and the download of the previous step (`generate-real-datasets.py brainweb`):
-
-```bash
-python3 src/dataset-managed/convert-brainweb-to-bin.py            # --force to redo every step
-```
-
-Three steps, each visible on disk in `data/real/brainweb/`:
-
-```
-raw/*.nii.gz  --gunzip-->  nifti/*.nii  --nibabel + numpy-->  brainweb.bin, brainweb_labels.bin, brainweb.json
-```
-
-- **Data:** the T1 volume (181 x 256 x 256) becomes a matrix with $N$ = 11,862,016 voxels (C order) and $D = 1$, standardized (z-score). Same `.bin` format as every other dataset (about 95 MB).
-- **Labels:** the `crisp` labels (0.5 mm, tissue classes 0-11) are subsampled by 2 and placed on the T1 grid at the offset found by cross-correlating the two brain masks; voxels outside get label 0. The NIfTI affines of these files are inconsistent, so they are not used. The script prints $\eta^2$, the share of T1 variance explained by the labels, as a check (0.95 with the estimated offset, 0.18 with the affines). The labels are in `brainweb_labels.bin` (one `int` per voxel), used only to measure ARI/Dice.
-
-## Build
-
-```
-make              # builds bin/PEMC-baseline-sequential-diagonal and bin/PEMC-baseline-sequential-full (gcc, -O3)
-make mpi-omp      # builds bin/PEMC-baseline-MPI-OpenMP-diagonal and bin/PEMC-baseline-MPI-OpenMP-full (mpicc -fopenmp)
-make clean
-```
-
-The sources of the versions are in `src/diagonal/` and `src/full/`; the shared code in `src/common/` does not use MPI, so the same files are compiled by both rules. Every executable goes flat in `bin/` with the name of its source (`src/diagonal/PEMC-xxx.c` -> `bin/PEMC-xxx`). To add a version (e.g. `opt1`), append its name to `MPI_BINS` in the [makefile](makefile). On the cluster, before `make mpi-omp`: `module load MPICH/3.4.2-GCC-10.3.0`. The `bin/` folder is not versioned.
-
-## Usage
-
-Sequential version (correctness reference and serial time). It needs the dataset (`-d`) and the number of clusters (`-k`):
-
-```
-./bin/PEMC-baseline-sequential-diagonal -d data/synthetic/synth_clean/synth_clean_p01.bin -k 4
-./bin/PEMC-baseline-sequential-diagonal -d data/real/heart_failure/heart_failure.bin -k 3
-```
-
-Sequential version with **full covariance**: same options and same log format, only the executable changes (the log goes to `results/logs/baseline-sequential-full.log`):
-
-```
-./bin/PEMC-baseline-sequential-full -d data/synthetic/synth_overlap/synth_overlap_p01.bin -k 5
-./bin/PEMC-baseline-sequential-full -d data/real/heart_failure/heart_failure.bin -k 2
-```
-
-It is much slower than the diagonal one when $D$ is large (cost $O(NKD^2)$ per iteration; `gene_rnaseq`, $D = 20\,531$, is not feasible: $K D^2$ doubles would not fit in memory), so for the big files start with `-n ROWS`. Its log-likelihood is comparable only with other `-full` runs, and on correlated data (`synth_overlap`) it is clearly higher than the diagonal one.
-
-**Run on all the synthetic datasets.** $K$ is the number of true clusters of each profile (`synth_clean` 4, `synth_overlap` 5, `synth_rare` 6); `p01 … p16` are the five sizes of the scaling tests:
-
-```
-for p in 01 02 04 08 16; do
-  ./bin/PEMC-baseline-sequential-diagonal -d data/synthetic/synth_clean/synth_clean_p$p.bin -k 4
-  ./bin/PEMC-baseline-sequential-diagonal -d data/synthetic/synth_overlap/synth_overlap_p$p.bin -k 5
-  ./bin/PEMC-baseline-sequential-diagonal -d data/synthetic/synth_rare/synth_rare_p$p.bin -k 6
-done
-```
-
-**Run on all the real datasets.** Each entry is `name:K`, with $K$ equal to the number of classes in the labels file:
-
-```
-for x in brainweb:12 cardiotocography:10 cardiovascular:2 cdc_diabetes:2 \
-         diabetes130:3 eeg_eye_state:2 gene_rnaseq:5 heart_failure:2 \
-         parkinson:2 statlog_heart:2; do
-  ./bin/PEMC-baseline-sequential-diagonal -d data/real/${x%%:*}/${x%%:*}.bin -k ${x##*:}
-done
-```
-
-`parkinson` has no labels (continuous targets), so $K = 2$ is an arbitrary choice there. The biggest files (`synth_rare_p16.bin` 1.6 GB, `synth_overlap_p16.bin` 640 MB, `brainweb.bin` 95 MB) take the longest and need enough RAM; add `-n ROWS` to use only the first rows. The same two loops work for the other versions (including `bin/PEMC-baseline-sequential-full`, except `gene_rnaseq`): change only the executable name.
-
-**Experiments on the cluster (PBS).** Build everything (`make all mpi-omp`, after `module load MPICH/3.4.2-GCC-10.3.0`) and submit from the root of the repository:
-
-```
-src/script/pemc-submit.sh                # sequential + parallel
-src/script/pemc-submit.sh sequential     # only the 2 sequential versions
-src/script/pemc-submit.sh parallel       # only the 2 MPI + OpenMP baselines
-DRY_RUN=1 src/script/pemc-submit.sh      # prints the qsub commands without submitting
-```
-
-One job = one version with one layout, and it runs **all the datasets** (10 real + 15 synthetic; `gene_rnaseq` is skipped with full covariance). The sequential jobs use 1 core on an exclusive node. For the MPI + OpenMP baselines the layout is `NODES x RANKS_PER_NODE x THREADS` (`ncpus` per node = `RANKS_PER_NODE x THREADS`, `mpiprocs` = `RANKS_PER_NODE`) and is combined with the 4 PBS placements: `pack`, `scatter`, `pack:excl`, `scatter:excl` (`scatter` puts every chunk on a different node, `pack` on as few nodes as possible, `:excl` reserves the nodes for the job). With one node `pack` and `scatter` coincide, so only `pack` and `pack:excl` are submitted. The layouts, the memory, the walltime, the number of repetitions and the subset of datasets are variables at the top of `pemc-submit.sh`.
-
-Every job writes its own log `results/logs/<version>_<placement>_<nodes>n<ranks>r<threads>t.log` (`<version>_seq.log` for the sequential ones), and its standard output/error in `results/logs/pbs/<job>.out|.err` (not versioned). To test a job without the queue: `PBS_O_WORKDIR=$PWD VERSION=baseline-sequential-full ONLY=heart_failure src/script/pemc-job.sh`.
-
-Run the sequential versions from the root of the repository: the only file written is the log `results/logs/baseline-sequential-diagonal.log` (a block is appended at every run; the folder is created if missing).
-
-| Option | Meaning |
-|---|---|
-| `-d, --dataset FILE` | dataset in binary format (header N, D + float64 row-major) |
-| `-k, --clusters K` | number of clusters |
-| `-n, --rows N` | use only the first N rows of the file (default: all) |
-| `-i, --max-iter N` | maximum number of iterations (default 200) |
-| `-t, --tol X` | relative tolerance on the log-likelihood (default 1e-6) |
-| `-s, --seed S` | seed of the initialization (default 42): the same seed gives the same initialization in every version |
-| `-r, --restarts R` | number of initializations, the best one is kept (default 1); the times are summed over all the restarts |
-| `-w, --warmup N` | warm-up EM iterations done before the timed run and then discarded (default 3, 0 = off). They wake up the OpenMP threads, MPI and the caches; the result is identical with and without warm-up, and their time is not in `t_total` nor in the other times (it is logged as `t_warmup`) |
-| `-l, --log FILE.log` | log file (default `results/logs/<name>.log`) |
-| `--no-log` | do not write the log |
-| `--save DIR` | save the clustering result (labels of every row, weights and means, log-likelihood curve) in `DIR`, see `include/cluster-out.h`. Sequential versions only; used by the clustering plots |
-| `-v, --verbose` | print the log-likelihood at every iteration |
-
-**Log format** (`.log`, plain text, the same for all the versions). Every run appends a block of `key : value` lines, separated from the next one by an empty line:
-
-```
-==== run ====
-timestamp      : 2026-11-05T09:53:41Z
-version        : baseline-sequential-diagonal
-dataset        : data/synthetic/synth_clean/synth_clean_p01.bin
-hostname       : HP-Victus
-cpu_model      : 12th Gen Intel(R) Core(TM) i5-12450H
-ranks          : 1
-threads        : 1
-N              : 250000
-D              : 10
-K              : 4
-restarts       : 1
-warmup_iters   : 3
-iterations     : 12
-converged      : 1
-loglik         : -3087811.89369
-ari            : 0.914663
-t_total        : 0.990871
-t_read         : 0.031663
-t_init         : 2e-06
-t_estep        : 0.793119
-t_mstep        : 0.162592
-t_comm         : 0
-t_warmup       : 0.231044
-flops          : 3.1e+09
-bytes          : 2.4e+09
-rank_compute   : 0.61 0.60 0.63 0.62
-t_iteration    : 0.079643
-```
-
-Times are in seconds. `hostname` and `cpu_model` identify the node (the nodes of the cluster are not all equal). `ari` (adjusted Rand index against the true labels) is `n/a` if the dataset has no labels. `t_warmup` is the time of the `warmup_iters` throwaway iterations, not included in `t_total`. `flops` and `bytes` are an analytic count of the floating-point operations and of the main-memory traffic of the run (`include/perfmodel.h`, not hardware counters), used for the roofline. `rank_compute` is the compute time (E-step + M-step, no MPI) of every MPI rank in rank order (`n/a` in the sequential versions), used for the load imbalance. `t_iteration` is `(t_estep + t_mstep + t_comm) / iterations` (only with one restart). To read it in Python, split the file on `==== run ====` and every line on the first `:`.
-
-**Correctness check between versions:** run them with the same dataset, `-k` and `-s`: they must end with the same log-likelihood (up to rounding) and the same number of iterations. Compare only versions of the same model: `-diagonal` with `-diagonal`, `-full` with `-full`.
+- **On the cluster:** [doc/exec-cluster.md](doc/exec-cluster.md) (VPN, clone, datasets, modules, build, PBS jobs, plots).
+- **Locally:** [doc/exec-local.md](doc/exec-local.md) (datasets, build, usage and options, log format, plots). The visualization of the algorithm is described [below](#visualization-of-the-algorithm).
 
 ## Visualization of the algorithm
 
 A small web page shows how EM works step by step on any dataset of `data/`: the initial centroids, then for every iteration the E-step (points coloured by their responsibilities), the convergence test on the log-likelihood and the M-step (means and ellipses moving to their new values). It also shows the formulas with the real numbers of the current iteration, the log-likelihood curve, and the calculation of any point you click.
 
+It runs locally. The page is [src/visual-sequential/index.html](src/visual-sequential/index.html), served by a small Python server ([src/visual-sequential/server.py](src/visual-sequential/server.py)) that runs the EM and the C binary:
+
+```bash
+make                                       # builds the two sequential C binaries (diagonal and full)
+python3 src/visual-sequential/server.py    # then open http://127.0.0.1:8000
 ```
-make                              # builds the two C binaries (diagonal and full)
-python3 src/visual-sequential/server.py   # then open http://127.0.0.1:8000
-```
+
+Requirements: Python 3 with NumPy, a C compiler (`gcc`) and at least one dataset in `data/`; the browser only needs to reach `127.0.0.1`.
 
 Choose the dataset, the covariance (**diagonal** or **full**), `K`, the number of rows (at most 3000), the seed, `max_iter` and `tol`, then press **Run**. Controls: play/pause, back/next phase (also with the arrow keys and space), speed slider, clickable timeline, and a checkbox that draws the true labels as rings.
 
@@ -342,39 +186,10 @@ How it relates to the C program:
 - It also runs the **real binary** of the chosen model with `-v` on the same data and the page compares the log-likelihood of every iteration (expandable section under the chart). A mismatch would mean that the page and the C code have diverged.
 - The data have D dimensions: the plot is the projection on the first two principal components (the percentage of variance kept is shown), while EM uses all dimensions.
 
-Requirements: Python 3 with NumPy; the browser only needs to reach `127.0.0.1`.
 
 ## Plots
 
-Everything is regenerable from the logs: the report uses only the static plots produced by the two scripts in `src/plots-generate/` (rules, catalog and experiment matrix: [doc/plots.md](doc/plots.md); colors: [doc/color.md](doc/color.md)). Python 3 with `numpy`, `pandas` and `matplotlib` (`pip install numpy pandas matplotlib`). Run everything from the root of the repository. A plot whose data is missing is skipped and the reason is printed.
-
-**Performance plots (P1-P11).** First the experiments (cluster, see the PBS section above), then:
-
-```
-make all mpi-omp                         # rebuild: the new binaries write flops, bytes and rank_compute in the log
-src/script/pemc-submit.sh                # scaling runs -> results/logs/<version>_<tag>.log (P2-P9, P10, P11)
-python3 src/dataset-managed/generate-synthetic-dataset.py --sweep    # D sweep files for P1 (K = 4, D = 5 ... 50)
-src/script/pemc-submit.sh sweep          # K and D sweeps -> results/logs/sweep/ (P1)
-
-python3 src/plots-generate/plots-performance.py                      # all the performance plots -> results/plots/
-python3 src/plots-generate/plots-performance.py --plots P2 P6        # only some of them
-python3 src/plots-generate/plots-performance.py --placement scatter:excl --large synth_clean_p16 --small cardiotocography
-python3 src/plots-generate/plots-performance.py --peak-gflops 150 --peak-bw 60   # roofline P10 with the node ceilings
-```
-
-Main options: `--placement` (the placement fixed in every plot except P6; choose it after looking at P6, default `pack`), `--large` / `--small` (datasets of P2/P4/..., automatic if missing), `--version` (version of P6/P7/P11, default the most optimized present), `--models`, `--fmt pdf png`, `--logs`, `--out`. Speedup is always against the sequential version of the same model; opt1 and opt2 (P9) are compared with the parallel baseline MPI + OpenMP. The roofline ceilings (`--peak-gflops`, `--peak-bw`) are those of one node: measure the bandwidth with STREAM.
-
-**Clustering plots (C1-C6 and table).** The clustering is the same in every version, so the runs are made with the sequential baseline (both models), on a range of K per dataset; at the true K the result is also saved with `--save`:
-
-```
-make                                     # sequential versions
-src/script/pemc-cluster.sh               # all the datasets; ONLY=heart KMAX=8 src/script/pemc-cluster.sh to test
-                                         # -> results/logs/cluster/ and results/clusters/ (it can also be submitted with qsub)
-python3 src/plots-generate/plots-cluster.py                         # C1-C6 + results/tables/clustering-summary.csv
-python3 src/plots-generate/plots-cluster.py --plots C2 C6 --datasets heart_failure parkinson
-```
-
-Output files, one per model (`diagonal` / `full`) in `results/plots/`: `P1-sweep`, `P2-speedup`, `P4-strong`, `P5-weak`, `P6-placement`, `P7-ranks-threads`, `P8-breakdown`, `P9-opt-gain`, `P10-roofline`, `P11-imbalance`, `C1-convergence`, `C2-choose-k`, `C3-pca`, `C4-centroids`, `C5-sizes` (for example `P2-speedup-full.pdf`); `C6-bic-full-vs-diagonal.pdf` compares the two models.
+Everything is regenerable from the logs: the report uses only the static plots produced by the two scripts in `src/plots-generate/` (rules, catalog and experiment matrix: [doc/plots.md](doc/plots.md); colors: [doc/color.md](doc/color.md)). The performance plots P1-P11 (sweeps, speedup, strong and weak scaling, placement, ranks vs threads, time breakdown, optimization gain, roofline, load imbalance) come from the cluster runs; the clustering plots C1-C6 (convergence, choice of K with BIC/AIC, PCA, centroids, cluster sizes, full vs diagonal) come from the sequential runs on a range of K. How to produce them: [doc/exec-cluster.md](doc/exec-cluster.md).
 
 ## Results
 
@@ -382,6 +197,8 @@ TODO
 
 ## Documentation
 
+- [doc/exec-local.md](doc/exec-local.md): run locally (datasets, build, usage and options, log format, plots)
+- [doc/exec-cluster.md](doc/exec-cluster.md): step-by-step procedure to run everything on the cluster (VPN, clone, datasets, modules, build, PBS jobs, plots)
 - [doc/todo.md](doc/todo.md): task list and workflow
 - [doc/question.md](doc/question.md): open questions for the instructors
 - [doc/project-guide.md](doc/project-guide.md): project requirements, report outline, evaluation criteria, data tips
