@@ -1,7 +1,13 @@
 # ParallelExpectationMaximizationClustering
 
+### How to run
+
 [![Run on the cluster](https://img.shields.io/badge/Run_on_the-Cluster-blue?style=for-the-badge&logo=gnubash&logoColor=white)](doc/exec-cluster.md)
 [![Run locally](https://img.shields.io/badge/Run-Locally-green?style=for-the-badge&logo=linux&logoColor=white)](doc/exec-local.md)
+
+---
+
+### Technologies
 
 ![C](https://img.shields.io/badge/C-A8B9CC?style=flat&logo=c&logoColor=black)
 ![MPI](https://img.shields.io/badge/MPI-OpenMPI-0066B3?style=flat)
@@ -14,6 +20,10 @@
 ![Make](https://img.shields.io/badge/Make-6D00CC?style=flat&logo=gnu&logoColor=white)
 ![PBS](https://img.shields.io/badge/PBS-job_scheduler-lightgrey?style=flat)
 ![LaTeX](https://img.shields.io/badge/LaTeX-008080?style=flat&logo=latex&logoColor=white)
+
+---
+
+### About
 
 High Performance Computing (HPC) project (University of Trento): parallel Expectation-Maximization (EM) clustering.
 
