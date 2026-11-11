@@ -90,6 +90,14 @@ USAGE
   python3 src/dataset-managed/generate-synthetic-dataset.py                       # the 3 profiles, default parameters
   python3 src/dataset-managed/generate-synthetic-dataset.py --n-per-rank 100000 --procs 1 2 4 8
   python3 src/dataset-managed/generate-synthetic-dataset.py --profiles synth_clean
+  python3 src/dataset-managed/generate-synthetic-dataset.py --profiles synth_sweep_d040     # one sweep file
+  python3 src/dataset-managed/generate-synthetic-dataset.py --sweep              # base profiles + D sweep
+
+D SWEEP (plot P1)
+With --sweep the profiles synth_sweep_d005 ... synth_sweep_d160 are also generated: same as
+synth_clean (K=4) but with D = 5, 10, 20, 40, 80, 160 variables, one file each
+(data/synthetic/synth_sweep_dDDD/synth_sweep_dDDD_p01.bin, N0 rows). The K sweep needs no new
+files: it runs the same dataset with different -k (see src/script/pemc-submit.sh, "sweep").
 """
 
 import argparse
@@ -205,6 +213,23 @@ PROFILES = {
         K=6, D=50, weights=[0.40, 0.25, 0.18, 0.12, 0.04, 0.01], delta=4.0,
         cov="diag", std_range=(0.6, 1.4), outliers=0.02, skew=False, clip=True),
 }
+
+# Names of the three base profiles (the ones of the weak scaling).
+BASE_PROFILES = list(PROFILES)
+
+# D SWEEP (plot P1: time per iteration vs D). One profile per value of D, all identical to
+# synth_clean (K=4, well separated, diagonal covariance) except D, so the ONLY thing that changes
+# between the files is the number of variables. A single file each (p=1, N0 rows): the sweep is
+# run on a fixed number of cores. They are added AFTER the base profiles, so the random seed
+# index of the base profiles (their position in PROFILES) does not change.
+# Beyond 20 variables the columns are generic biomarkers (see variable_info).
+SWEEP_DIMS = [5, 10, 20, 40, 80, 160]
+for _d in SWEEP_DIMS:
+    PROFILES[f"synth_sweep_d{_d:03d}"] = dict(
+        K=4, D=_d, weights=[0.25, 0.25, 0.25, 0.25], delta=6.0,
+        cov="diag", std_range=(1.0, 1.0), outliers=0.0, skew=False, clip=False,
+        procs=[1])   # only the file with p=1 (N0 rows)
+SWEEP_PROFILES = [n for n in PROFILES if n.startswith("synth_sweep_d")]
 
 
 # ----------------------------------------------------------------------------------------
@@ -323,7 +348,8 @@ def update_statistics(sums, counts, Xn, labels):
 def generate_profile(name, index, p, args, out_dir):
     K, D = p["K"], p["D"]
     N0 = args.n_per_rank
-    procs = sorted(set(args.procs))              # numbers of processes of the weak scaling
+    # numbers of processes of the weak scaling (a profile can override them: see the D sweep)
+    procs = sorted(set(p.get("procs", args.procs)))
 
     # One subfolder per profile (data/synthetic/synth_clean/, synth_overlap/, synth_rare/):
     # the files of different profiles are not mixed and every folder is self-contained.
@@ -449,8 +475,11 @@ def main():
     default_out = Path(__file__).resolve().parents[2] / "data" / "synthetic"
 
     ap = argparse.ArgumentParser(description="Generates the synthetic datasets for the weak scaling")
-    ap.add_argument("--profiles", nargs="+", default=list(PROFILES), choices=list(PROFILES),
-                    help="profiles to generate (default: all)")
+    ap.add_argument("--profiles", nargs="+", default=None, choices=list(PROFILES),
+                    help="profiles to generate (default: the 3 base profiles)")
+    ap.add_argument("--sweep", action="store_true",
+                    help="also generate the D sweep for plot P1: synth_sweep_dDDD, "
+                         f"D = {', '.join(map(str, SWEEP_DIMS))} (K=4, one file each)")
     # 250 000 rows per process: enough work per rank for the computation to dominate the
     # communication (a rough estimate is a few tenths of a second per iteration, depending on
     # the profile; it has not been measured), but with files that are still manageable
@@ -470,6 +499,10 @@ def main():
     ap.add_argument("--out-dir", type=Path, default=default_out,
                     help=f"output folder (default: {default_out})")
     args = ap.parse_args()
+    if args.profiles is None:
+        args.profiles = list(BASE_PROFILES)
+    if args.sweep:
+        args.profiles += [n for n in SWEEP_PROFILES if n not in args.profiles]
 
     args.out_dir.mkdir(parents=True, exist_ok=True)
 
