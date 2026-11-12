@@ -1,6 +1,6 @@
 # Running locally
 
-How to run the programs by hand on one machine (laptop or a single node, without PBS): download and conversion of the datasets, build, usage and options of the programs, log format and plots. The commands are the same ones used by the PBS scripts. The step-by-step procedure for the cluster is in [exec-cluster.md](exec-cluster.md); the step-by-step web visualization of the algorithm is in the [README](../README.md#visualization-of-the-algorithm). Run everything from the root of the repository.
+How to run the programs by hand on one machine (laptop or a single node, without PBS): download and conversion of the datasets, build, usage and options of the programs, log format and plots. The commands are the same ones used by the PBS scripts. The step-by-step procedure for the cluster is in [exec-cluster.md](exec-cluster.md); the step-by-step web visualization of the algorithm is in [exec-visual.md](exec-visual.md). Run everything from the root of the repository.
 
 ## Synthetic datasets
 
