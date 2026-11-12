@@ -104,27 +104,18 @@ def verify(name):
                 verdict=verdict)
 
 
-def render(r):
-    """Markdown section of the report for one dataset (r = result of verify())."""
-    lines = [f"### {r['name']} — {r['verdict']}", "",
-             f"- Size: **{r['n']} x {r['d']}** ({r['n_num']} numeric columns, "
-             f"{r['n_binary']} of them binary)",
-             f"- Empty cells (all columns): {r['empty_total']}",
-             f"- Empty cells in numeric columns: **{r['num_empty']}** "
-             f"({r['incomplete_rows']} incomplete rows)"]
-    if len(r["empty_by_col"]):
-        top = ", ".join(f"`{c}`={v}" for c, v in r["empty_by_col"].head(8).items())
-        lines.append(f"- Columns with empties: {top}")
-    if r["suspicious"]:
-        top = ", ".join(f"`{c}`={v}" for c, v in list(r["suspicious"].items())[:8])
-        lines.append(f"- Few exact zeros (possible masked missing): {top}")
+def note(r):
+    """One short line with what is worth knowing about a dataset (r = result of verify()), or ""."""
+    parts = []
+    if len(r["empty_by_col"]):                      # empties only in non-numeric columns (not used by EM)
+        top = ", ".join(f"`{c}`" for c in list(r["empty_by_col"].index)[:3])
+        parts.append(f"empty cells only in non-numeric columns ({top}, ...)")
+    if r["suspicious"]:                             # exact zeros that could be masked missing values
+        top = ", ".join(f"`{c}`" for c in list(r["suspicious"])[:3])
+        parts.append(f"few exact zeros ({top}, ...)")
     if r["const_cols"]:
-        lines.append(f"- Constant columns: {r['const_cols'][:8]}")
-    lines.append(f"- Duplicate rows: {r['n_dup']}")
-    if r["label"]:
-        for col, dist in r["label"].items():
-            lines.append(f"- Label `{col}`: {dist}")
-    return "\n".join(lines) + "\n"
+        parts.append(f"{len(r['const_cols'])} constant columns")
+    return f"- **{r['name']}**: " + "; ".join(parts) if parts else ""
 
 
 def verify_brainweb():
@@ -136,19 +127,12 @@ def verify_brainweb():
     nan_t1 = int(np.isnan(t1.astype(float)).sum())
     n_vox = int(t1.size)
     verdict = "COMPLETE" if nan_t1 == 0 else "DISCARD"
-    md = [f"### brainweb (subject 44, T1 only) — {verdict}", "",
-          f"- `subject44_t1w.nii.gz` (data): shape {' x '.join(map(str, t1.shape))} "
-          f"(1 mm), {t1.dtype}, **{n_vox:,} voxels** with D = 1, {nan_t1} NaN, "
-          f"range {t1.min()}-{t1.max()}",
-          f"- `brainweb_s44_crisp.nii.gz` (ground truth, labels {int(lab.min())}-{int(lab.max())}): "
-          f"shape {' x '.join(map(str, lab.shape))} (0.5 mm), {lab.dtype}",
-          "- The two volumes are on different grids: the labels must be resampled "
-          "to the T1 grid before computing ARI/Dice.",
-          "- Only T1 is used (D = 1). T2/T2* were dropped: the BrainWeb server "
-          "download did not complete.", ""]
+    md = [f"- **brainweb**: T1 only (D = 1), range {t1.min()}-{t1.max()}; the ground-truth labels "
+          f"({int(lab.min())}-{int(lab.max())}, {' x '.join(map(str, lab.shape))}, 0.5 mm) are on a different grid "
+          "than the T1 volume and must be resampled before computing ARI/Dice."]
     # Same keys used by the summary table in main() (the other fields do not apply to a volume)
     row = dict(name="brainweb", n=n_vox, d=1, n_num=1, num_empty=nan_t1,
-               verdict=verdict)
+               verdict=verdict, n_dup="n/a")   # duplicates not computed for a volume
     return row, "\n".join(md)
 
 
@@ -166,25 +150,27 @@ def main():
             print(f"[{brow['verdict']}] brainweb: {brow['n']:,} voxels, D=1, "
                   f"NaN={brow['num_empty']}")
         except Exception as exc:
-            extra.append(f"### brainweb — ERROR\n\n- {exc}\n")
+            extra.append(f"- **brainweb**: ERROR, {exc}")
             print(f"[ERR] brainweb: {exc}")
     for name in names:
         try:
             r = verify(name)
         except Exception as exc:
-            out += [f"### {name} — ERROR", "", f"- {exc}", ""]
+            out += [f"- **{name}**: ERROR, {exc}"]
             print(f"[ERR] {name}: {exc}")
             continue
-        out += [render(r)]
+        out += [note(r)] if note(r) else []
         rows.append(r)                              # kept for the summary table
         print(f"[{r['verdict']}] {name}: {r['n']}x{r['d']}, numeric={r['n_num']}, "
               f"empty(numeric)={r['num_empty']}, dup={r['n_dup']}")
     out += extra
     rows.sort(key=lambda r: r["name"] == "brainweb")   # brainweb last in the table
-    # Summary table inserted at the top of the generated part
-    out.insert(0, "| Dataset | N x D | Numeric | Empty (numeric) | Verdict |\n|---|---|---|---|---|\n"
-               + "\n".join(f"| {('[%s](%s)' % (r['name'], LINKS[r['name']])) if r['name'] in LINKS else r['name']} | {r['n']} x {r['d']} | {r['n_num']} | "
-                           f"{r['num_empty']} | {r['verdict']} |" for r in rows) + "\n")
+    # Summary table first, then the short notes
+    table = ("| Dataset | N x D | Numeric | Empty (numeric) | Duplicate rows | Verdict |\n|---|---|---|---|---|---|\n"
+             + "\n".join(f"| {('[%s](%s)' % (r['name'], LINKS[r['name']])) if r['name'] in LINKS else r['name']} | "
+                         f"{r['n']} x {r['d']} | {r['n_num']} | {r['num_empty']} | {r['n_dup']} | {r['verdict']} |"
+                         for r in rows))
+    out = [table, "", "Notes:", ""] + out
     write_report("\n".join(out).rstrip("\n"))
 
 

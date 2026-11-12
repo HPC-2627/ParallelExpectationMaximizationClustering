@@ -143,8 +143,6 @@ TODO
 - [doc/exec-visual.md](doc/exec-visual.md): run the step-by-step web visualization of the EM algorithm
 - [doc/exec-cluster.md](doc/exec-cluster.md): step-by-step procedure to run everything on the cluster (VPN, clone, datasets, modules, build, PBS jobs, plots)
 - [doc/todo.md](doc/todo.md): task list and workflow
-- [doc/question.md](doc/question.md): open questions for the instructors
-- [doc/project-guide.md](doc/project-guide.md): project requirements, report outline, evaluation criteria, data tips
 - [doc/em-explained.md](doc/em-explained.md): study guide on the EM algorithm (formulas, notation, data, parallelism)
 - [doc/datasets.md](doc/datasets.md): all the datasets (synthetic profiles and variables, sizes and work per rank, file format, real sources and licenses, preprocessing, BrainWeb, verification report), ready to be reused in the report
 - [doc/papers.md](doc/papers.md): free papers for the state of the art (theory, parallel EM on one and several nodes, candidate optimizations); the PDFs are in `doc/papers/`, kept only locally

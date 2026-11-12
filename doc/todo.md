@@ -3,7 +3,7 @@
 Workflow, in order. Phases overlap on purpose: datasets are prepared while the code is written, and the report is written along the way, not at the end.
 
 ## 0. Organization
-- [X] Send the email with the questions (see [question.md](question.md))
+- [X] Send the email with the questions
 - [X] Split the work between team members
 
 ## 1. Preparation

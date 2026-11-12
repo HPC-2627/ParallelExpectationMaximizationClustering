@@ -65,7 +65,7 @@ details{margin-top:8px} summary{cursor:pointer;color:var(--muted);font-size:13px
 <body>
 <!-- the two <span> in the title are filled by the script with the model of the run (diagonal / full) -->
 <header>
-  <h1>How EM works for a Gaussian Mixture Model (<span id="modeltitle">diagonal</span> covariance)</h1>
+  <h1>How EM works for a Gaussian Mixture Model</h1>
   <div class="sub">The same steps as <code>PEMC-baseline-sequential-<span id="modelfile">diagonal</span>.c</code>, animated one at a time. Data and iterations come from the local server; the log-likelihood is checked against your C binary.</div>
 </header>
 
@@ -171,7 +171,7 @@ $("run").onclick = async () => {
 /* Prepares everything for a new trace: list of frames, timeline, plot bounds, legend */
 function setup(j){
   R = j; respCache = {};
-  $("modeltitle").textContent = $("modelfile").textContent = j.model; sel = -1; cur = 0;
+  $("modelfile").textContent = j.model; sel = -1; cur = 0;
   $("msg").hidden = true; $("app").hidden = false;
   $("expl").textContent = (100*j.explained).toFixed(0)+"%"; $("dd").textContent = j.D;
   /* frames: init, then for every iteration E-step + convergence test (+ M-step if not stopped), then done */

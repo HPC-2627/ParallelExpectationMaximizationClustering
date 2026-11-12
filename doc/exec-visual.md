@@ -30,3 +30,9 @@ Controls: play/pause, back/next phase (also with the arrow keys and space), spee
 - The server repeats the same EM as `PEMC-baseline-sequential-diagonal.c` or `PEMC-baseline-sequential-full.c` (depending on the covariance chosen; same floors and convergence test) in NumPy, recording every iteration. With full covariance the ellipses are tilted, because they follow the correlations between variables.
 - It also runs the **real binary** of the chosen model with `-v` on the same data and the page compares the log-likelihood of every iteration (expandable section under the chart). A mismatch would mean that the page and the C code have diverged.
 - The data have D dimensions: the plot is the projection on the first two principal components (the percentage of variance kept is shown), while EM uses all dimensions.
+
+## Example
+
+Run on `synth_clean` (synthetic dataset with 4 true clusters, `K = 4`, `D = 10`, first 200 rows, diagonal covariance, seed 7). The 4 centroids start on 4 arbitrary points; at every iteration the E-step colours each point by how likely it belongs to each cluster, the convergence test checks whether the log-likelihood stopped growing, and the M-step moves means and ellipses to the new values. After 12 M-steps the 4 clusters are stable and the log-likelihood curve (right) is flat. Two of them (blue and green) still overlap in the picture because the plot is a 2D projection that keeps only 51% of the variance; EM separates them using all 10 dimensions.
+
+![EM visualization: diagonal covariance on synth_clean, K = 4](img/exec-visual-demo.gif)
