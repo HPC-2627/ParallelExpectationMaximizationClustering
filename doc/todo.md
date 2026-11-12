@@ -30,6 +30,7 @@ Workflow, in order. Phases overlap on purpose: datasets are prepared while the c
 - [ ] Optimization 2, full covariance: `src/full/PEMC-opt2-MPI-OpenMP-full.c` (same optimization as the diagonal one, compared against `src/full/PEMC-baseline-MPI-OpenMP-full.c`)
 - [ ] Build rules for all the versions in `makefile`
 - [ ] Correctness test after every version, not only at the end
+- [ ] Check performances on course notes.
 
 ## 3. Experiments
 Run all the versions (`src/diagonal/PEMC-baseline-sequential-diagonal.c`, `src/diagonal/PEMC-baseline-MPI-OpenMP-diagonal.c`, `src/diagonal/PEMC-opt1-MPI-OpenMP-diagonal.c`, `src/diagonal/PEMC-opt2-MPI-OpenMP-diagonal.c`) and, with the same importance but compared only among themselves (different model), the full-covariance ones (`src/full/PEMC-baseline-sequential-full.c`, `src/full/PEMC-baseline-MPI-OpenMP-full.c`, `src/full/PEMC-opt1-MPI-OpenMP-full.c`, `src/full/PEMC-opt2-MPI-OpenMP-full.c`) on the datasets in `data/real/` and `data/synthetic/`.
