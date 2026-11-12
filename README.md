@@ -67,70 +67,24 @@ All the versions of the same model must end with the same log-likelihood and the
 ```
 .
 ├── src/
-│   ├── diagonal/                              # Diagonal covariance: sequential, baseline, 2 optimizations
-│   │   ├── PEMC-baseline-sequential-diagonal.c    #   Sequential version (correctness reference and serial time)
-│   │   ├── PEMC-baseline-MPI-OpenMP-diagonal.c    #   Hybrid MPI + OpenMP baseline
-│   │   ├── PEMC-opt1-MPI-OpenMP-diagonal.c        #   Optimization 1 of the baseline (to be written)
-│   │   └── PEMC-opt2-MPI-OpenMP-diagonal.c        #   Optimization 2 of the baseline (to be written)
-│   ├── full/                                  # Full covariance: sequential, baseline, 2 optimizations
-│   │   ├── PEMC-baseline-sequential-full.c        #   Sequential version (Cholesky; reference for the full model)
-│   │   ├── PEMC-baseline-MPI-OpenMP-full.c        #   Hybrid MPI + OpenMP baseline with full covariance
-│   │   ├── PEMC-opt1-MPI-OpenMP-full.c            #   Optimization 1 with full covariance (to be written)
-│   │   └── PEMC-opt2-MPI-OpenMP-full.c            #   Optimization 2 with full covariance (to be written)
-│   ├── script/                                # Launchers for the cluster (PBS)
-│   │   ├── pemc-submit.sh                         #   submits the 4 baselines (sequential and MPI + OpenMP, diagonal and full) in all the layouts and placements; `sweep` submits the K and D sweeps (P1)
-│   │   ├── pemc-job.sh                            #   PBS job body: one version, one layout, ALL the datasets (real and synthetic); SWEEP=K|D for plot P1
-│   │   ├── pemc-cluster.sh                        #   runs the sequential baseline for the clustering plots (K range, saves labels and means at the true K)
-│   │   └── mpi_wrapper.sh                         #   forces UCX on the Ethernet interface of the cluster (used by mpiexec in multi-node runs)
-│   ├── dataset-managed/                       # Scripts that create and check the datasets
-│   │   ├── generate-synthetic-dataset.py      # Generator of the synthetic datasets (3 profiles, one file per number of processes; --sweep adds the D sweep for P1) -> data/synthetic/
-│   │   ├── generate-real-datasets.py          # Downloads the real datasets -> data/real/<name>/raw/
-│   │   ├── verify-real-datasets.py            # Checks size and missing values, writes doc/real-datasets-info.md
-│   │   ├── convert-real-to-bin.py             # Converts the real CSV datasets to the binary format of the synthetic ones -> data/real/<name>/<name>.bin
-│   │   └── convert-brainweb-to-bin.py         # BrainWeb: .nii.gz -> .nii -> .bin (+ labels aligned to the T1 grid) -> data/real/brainweb/
-│   ├── plots-generate/                        # Scripts that generate the plots -> results/plots/
-│   │   ├── plots-performance.py               # Performance plots P1-P11 (speedup, efficiency, scaling, placement, roofline, load imbalance, ...)
-│   │   └── plots-cluster.py                   # Clustering plots C1-C6 (convergence, BIC/AIC vs K, PCA, centroids, cluster sizes) + summary table
-│   ├── visual-sequential/                     # Step-by-step web visualization of the EM algorithm (diagonal or full covariance)
-│   │   ├── server.py                          #   local server: runs EM on a dataset, records every iteration, checks it against the C binary
-│   │   └── index.html                         #   page that plays the iterations back (E-step, convergence test, M-step)
-│   └── common/                                # Shared code (no MPI): compiled with every version
-│       ├── dataset.c                          #   reading of the .bin datasets (whole file or a block of rows) and of the labels
-│       ├── gmm.c                              #   parameters of the mixture, initialization, log-sum-exp, convergence test, assignment of the rows; Cholesky for the full covariance (sections: shared / diagonal / full)
-│       ├── args.c                             #   command-line options, the same in all the versions
-│       ├── logger.c                           #   .log text file of the runs (one block per run, with hostname and CPU model)
-│       ├── perfmodel.c                        #   analytic FLOP and memory-traffic count of a run (keys flops, bytes of the log; roofline P10)
-│       ├── cluster-out.c                      #   saves the clustering result (labels, means, log-likelihood curve) with --save, for the clustering plots
-│       ├── eval.c                             #   adjusted Rand index and purity against the true labels
-│       └── my-time-lib.c                      #   statistics for the benchmarks (mean, median, standard deviation)
-├── include/                                   # Headers of src/common (compile with -Iinclude and -lm)
-│   ├── common.h  dataset.h  gmm.h  args.h  logger.h  eval.h  perfmodel.h  cluster-out.h
-│   ├── mpi-common.h                           #   helpers shared by the MPI versions only (header-only): ABORT, block_of_rank, max_over_ranks, gather_over_ranks
-│   └── my-time-lib.h                          #   timer macros and statistics prototypes
-├── data/            # NOT versioned (listed in .gitignore): it is filled locally by the scripts in src/dataset-managed/
-│   ├── real/        # Real (medical) datasets: <name>/raw/features.csv (+ targets.csv), converted to <name>/<name>.bin (+ labels, .json)
-│   └── synthetic/   # Synthetic datasets, one folder per profile
-│       ├── synth_clean/     # K=4, D=10: files synth_clean_p01.bin ... p16.bin, labels, .json
-│       ├── synth_overlap/   # K=5, D=20: overlapping clusters, correlated variables
-│       └── synth_rare/      # K=6, D=50: rare group (1%), 2% outliers
+│   ├── diagonal/          # Diagonal covariance: PEMC-<version>-diagonal.c (sequential, baseline, opt1, opt2)
+│   ├── full/              # Full covariance (Cholesky): PEMC-<version>-full.c (sequential, baseline, opt1, opt2)
+│   ├── common/            # Shared code (no MPI): dataset I/O, GMM core, CLI options, logging, perf model, evaluation, timing
+│   ├── script/            # PBS launchers for the cluster + UCX wrapper for multi-node mpiexec
+│   ├── dataset-managed/   # Python scripts that generate, download, verify and convert the datasets -> data/
+│   ├── plots-generate/    # Python scripts that generate the performance and clustering plots -> results/plots/
+│   └── visual-sequential/ # Local web visualization of the EM algorithm, step by step (see below)
+├── include/               # Headers of the shared code, plus MPI-only helpers and timer macros (compile with -Iinclude -lm)
+├── data/                  # NOT versioned: filled locally by src/dataset-managed/
+│   ├── real/              #   real datasets, one folder each (raw files + converted .bin)
+│   └── synthetic/         #   synthetic datasets, one folder per profile (see Data)
 ├── results/
-│   ├── logs/        # Raw execution logs of the scaling runs (one file per job); sweep/ = K and D sweeps (P1); cluster/ = runs of the clustering plots; pbs/ = job output
-│   ├── clusters/    # Clustering results saved with --save (labels, means, log-likelihood curve), used by plots-cluster.py
-│   ├── tables/      # Tables (clustering-summary.csv)
-│   └── plots/       # Generated plots (PDF)
-├── doc/
-│   ├── latex/
-│   │   └── Group6-Report.tex         # IEEE-style report (AI statement, model, dataset and cost sections written; design and results to do)
-│   ├── em-explained.md   # Study guide on the EM algorithm
-│   ├── papers.md         # Free papers for the state of the art (theory, single node, multiple nodes, 5 candidate optimizations)
-│   ├── papers/           # Local copies of the papers, numbered like papers.md (not versioned, listed in .gitignore)
-│   ├── project-guide.md  # Project requirements, report outline, evaluation criteria, data tips
-│   ├── question.md       # Open questions for the instructors
-│   ├── synthetic-datasets-info.md  # Characteristics of the synthetic datasets (profiles, variables, sizes, file format), ready for the report
-│   ├── real-datasets-source.md     # Source, license and citation of each real dataset
-│   ├── real-datasets-info.md       # Verification report of the real datasets (size, missing values, labels), generated by verify-real-datasets.py
-│   └── todo.md           # Task list and workflow
-├── makefile         # Build rules (make builds bin/, which is not versioned)
+│   ├── logs/              # Raw execution logs (scaling runs, sweeps, clustering runs, PBS output)
+│   ├── clusters/          # Clustering results saved with --save, used by the clustering plots
+│   ├── tables/            # Summary tables
+│   └── plots/             # Generated plots (PDF)
+├── doc/                   # Documentation: how to run, EM study notes, dataset docs, papers, task list, LaTeX report (see Documentation below)
+├── makefile               # Build rules (make builds bin/, which is not versioned)
 └── README.md
 ```
 
