@@ -10,7 +10,7 @@ python3 src/dataset-managed/generate-synthetic-dataset.py --sweep    # D sweep f
 python3 src/dataset-managed/generate-synthetic-dataset.py --help     # options (e.g. a smaller size)
 ```
 
-It needs Python 3 with NumPy. The generation is deterministic (default seed 42). Details of the datasets: [synthetic-datasets-info.md](synthetic-datasets-info.md).
+It needs Python 3 with NumPy. The generation is deterministic (default seed 42). Details of the datasets: [datasets.md](datasets.md#3-synthetic-datasets).
 
 ## Real datasets: download, verification, conversion
 
@@ -48,7 +48,7 @@ Notes:
 python3 src/dataset-managed/verify-real-datasets.py
 ```
 
-It reports, for each dataset, the size, the number of numeric columns, the empty cells (NaN, empty strings, `?`, `NA`), the duplicate rows and the label distribution. The report is written to [doc/real-datasets-info.md](real-datasets-info.md). A dataset is `COMPLETE` if its numeric columns have no empty cell, otherwise `DISCARD`.
+It reports, for each dataset, the size, the number of numeric columns, the empty cells (NaN, empty strings, `?`, `NA`), the duplicate rows and the label distribution. The report is written to section 5 of [doc/datasets.md](datasets.md#5-verification-of-the-real-datasets), between the markers `BEGIN/END verify-real-datasets` (the rest of the file is not touched). A dataset is `COMPLETE` if its numeric columns have no empty cell, otherwise `DISCARD`.
 
 ### Conversion to binary
 

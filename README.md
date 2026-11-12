@@ -4,6 +4,7 @@
 
 [![Run on the cluster](https://img.shields.io/badge/Run_on_the-Cluster-blue?style=for-the-badge&logo=gnubash&logoColor=white)](doc/exec-cluster.md)
 [![Run locally](https://img.shields.io/badge/Run-Locally-green?style=for-the-badge&logo=linux&logoColor=white)](doc/exec-local.md)
+[![Visualize the algorithm](https://img.shields.io/badge/Visualize-the_Algorithm-purple?style=for-the-badge&logo=python&logoColor=white)](doc/exec-visual.md)
 
 ---
 
@@ -90,37 +91,21 @@ All the versions of the same model must end with the same log-likelihood and the
 
 ## Data
 
-The whole `data/` folder is **not versioned** (it is listed in `.gitignore`), because the datasets are large: they are generated (synthetic) or downloaded (real) on the machine where the experiments run. The procedure is in [doc/exec-cluster.md](doc/exec-cluster.md) (cluster) and [doc/exec-local.md](doc/exec-local.md) (local). The generation of the synthetic datasets is deterministic (default seed 42), so everyone obtains identical files.
+All the datasets are described in **[doc/datasets.md](doc/datasets.md)** (profiles, variables, sizes, file format, sources, licenses, preprocessing, verification). The whole `data/` folder is **not versioned** (listed in `.gitignore`): the datasets are generated (synthetic) or downloaded (real) on the machine where the experiments run, following [doc/exec-cluster.md](doc/exec-cluster.md) or [doc/exec-local.md](doc/exec-local.md). Every dataset is converted to the same binary format (header `int32` N, D + `float64` matrix in row-major order, labels in a separate file) and every column is standardized (z-score).
 
 ### Synthetic datasets
 
-Three profiles, generated from a known Gaussian mixture (true labels available), so that all the versions can be checked against each other and the clustering quality can be measured. Real medical datasets are too small to show any scaling, so these are used for the weak and strong scaling.
+Three profiles generated from a known Gaussian mixture (true labels available, deterministic with seed 42). They are used for correctness checks and for the weak and strong scaling, because the real datasets are too small to show any scaling. Weak scaling: one file per number of processes $p \in \{1,2,4,8,16\}$ with $N = 250\,000 \cdot p$ rows; strong scaling: the `_p16` file. About 5 GB in total.
 
 | | `synth_clean` | `synth_overlap` | `synth_rare` |
 |---|---|---|---|
-| Role | easy, satisfies the model | realistic | hard |
-| Clusters $K$ | 4 | 5 | 6 |
-| Variables $D$ | 10 | 20 | 50 |
-| Cluster weights | 25% each | 30, 25, 20, 15, 10% | 40, 25, 18, 12, 4, 1% |
-| Separation $\delta$ (in standard deviations) | 6.0 | 2.5 | 4.0 |
-| Covariance inside a cluster | diagonal | correlated (factor model) | diagonal |
-| Outliers | 0% | 0% | 2% (label -1) |
-| Skewed variables / clipping | no / no | yes / yes | no / yes |
-| What it tests | correctness, reference for scaling | slow convergence, diagonal model mismatch | numerical stability: rare group, outliers, high $D$ |
+| Clusters $K$ / variables $D$ | 4 / 10 | 5 / 20 | 6 / 50 |
+| Covariance inside a cluster | diagonal | correlated | diagonal |
+| What it tests | correctness, reference for scaling | overlapping clusters, diagonal model mismatch | rare group (1%), 2% outliers, high $D$ |
 
-- **Variables:** the first 20 are clinical (age, bmi, sys_bp, glucose, hba1c, cholesterol, ...), the others (up to 50) are generic biomarkers. The values are generic adult values chosen by us, not from a real cohort. Every column is standardized (z-score).
-- **Weak scaling:** one file per number of processes $p \in \{1,2,4,8,16\}$, with $N = 250\,000 \cdot p$ rows (so each rank always has 250 000 rows). The files of a profile are nested (the file for $2p$ contains the one for $p$). Strong scaling uses a fixed file (e.g. `_p16`) with more processes.
-- **Size on disk:** `synth_clean` 620 MB, `synth_overlap` 1 240 MB, `synth_rare` 3 100 MB (about 5 GB in total, labels included). The largest file is 4 000 000 x 50 doubles (1.6 GB).
-- **File format:** binary, an 8-byte header with two `int` (N, D) followed by $N \cdot D$ `double` in row-major order; the labels are in a separate file (`int`, one per row). Reading in C: `fread` of the header, then of the matrix `X[i*D + d]`.
-- **Limits:** `synth_overlap` is correlated: it is the profile where the diagonal model is mismatched and the full one is not; nested files are not independent samples.
+### Real datasets
 
-Full details (variables with units and limits, generation procedure, work per rank, C reading code) are in [doc/synthetic-datasets-info.md](doc/synthetic-datasets-info.md).
-
-## Real datasets
-
-The real datasets are public and are not versioned: `data/real/*/raw/` is listed in `.gitignore`. They are downloaded on the cluster or locally (see [doc/exec-cluster.md](doc/exec-cluster.md) and [doc/exec-local.md](doc/exec-local.md)). Sources, licenses and citations are in [doc/real-datasets-source.md](doc/real-datasets-source.md).
-
-### Datasets
+Public datasets, mostly medical, used for the clustering quality (none has missing values in the numeric columns):
 
 | Folder | Dataset | N x D | Source |
 |---|---|---|---|
@@ -135,36 +120,14 @@ The real datasets are public and are not versioned: `data/real/*/raw/` is listed
 | `statlog_heart` | Statlog (Heart) | 270 x 13 | [UCI 145](https://archive.ics.uci.edu/dataset/145) |
 | `brainweb` | BrainWeb simulated brain MRI, subject 44 (T1 + ground-truth labels) | 11,862,016 voxels x 1 | [BrainWeb](https://brainweb.bic.mni.mcgill.ca/) |
 
-None of the datasets has missing values in the numeric columns (see [doc/real-datasets-info.md](doc/real-datasets-info.md)).
-
-**Preprocessing and format of the real datasets.** The raw files are kept as served by the source (`data/real/<name>/raw/`, not versioned) and converted to the same binary format of the synthetic ones (`<name>.bin`, plus `<name>_labels.bin` when the label is categorical and `<name>.json` with the columns and the standardization). Only the numeric columns are kept (identifiers removed), constant columns are dropped, every column is standardized (z-score); a dataset with empty cells would be discarded, nothing is imputed. `brainweb` is a NIfTI volume: the T1 image (181 x 256 x 256) becomes $N$ = 11,862,016 voxels with $D = 1$ (the T2 and T2* images are not used), and the `crisp` labels are resampled to the T1 grid. The labels are used only to measure ARI/Dice.
-
 ## Running the experiments
 
 - **On the cluster:** [doc/exec-cluster.md](doc/exec-cluster.md) (VPN, clone, datasets, modules, build, PBS jobs, plots).
-- **Locally:** [doc/exec-local.md](doc/exec-local.md) (datasets, build, usage and options, log format, plots). The visualization of the algorithm is described [below](#visualization-of-the-algorithm).
+- **Locally:** [doc/exec-local.md](doc/exec-local.md) (datasets, build, usage and options, log format, plots).
 
 ## Visualization of the algorithm
 
-A small web page shows how EM works step by step on any dataset of `data/`: the initial centroids, then for every iteration the E-step (points coloured by their responsibilities), the convergence test on the log-likelihood and the M-step (means and ellipses moving to their new values). It also shows the formulas with the real numbers of the current iteration, the log-likelihood curve, and the calculation of any point you click.
-
-It runs locally. The page is [src/visual-sequential/index.html](src/visual-sequential/index.html), served by a small Python server ([src/visual-sequential/server.py](src/visual-sequential/server.py)) that runs the EM and the C binary:
-
-```bash
-make                                       # builds the two sequential C binaries (diagonal and full)
-python3 src/visual-sequential/server.py    # then open http://127.0.0.1:8000
-```
-
-Requirements: Python 3 with NumPy, a C compiler (`gcc`) and at least one dataset in `data/`; the browser only needs to reach `127.0.0.1`.
-
-Choose the dataset, the covariance (**diagonal** or **full**), `K`, the number of rows (at most 3000), the seed, `max_iter` and `tol`, then press **Run**. Controls: play/pause, back/next phase (also with the arrow keys and space), speed slider, clickable timeline, and a checkbox that draws the true labels as rings.
-
-How it relates to the C program:
-- The initial rows are chosen with the **same libc `srand()`/`rand()`** as `gmm_init_indices()` (called through `ctypes`), so the starting point is the same.
-- The server repeats the same EM as `PEMC-baseline-sequential-diagonal.c` or `PEMC-baseline-sequential-full.c` (depending on the covariance chosen; same floors and convergence test) in NumPy, recording every iteration. With full covariance the ellipses are tilted, because they follow the correlations between variables.
-- It also runs the **real binary** of the chosen model with `-v` on the same data and the page compares the log-likelihood of every iteration (expandable section under the chart). A mismatch would mean that the page and the C code have diverged.
-- The data have D dimensions: the plot is the projection on the first two principal components (the percentage of variance kept is shown), while EM uses all dimensions.
-
+A small local web page shows how EM works step by step on any dataset of `data/` (diagonal or full covariance): initial centroids, E-step, convergence test and M-step for every iteration, with the formulas filled with the real numbers and a check against the C binary. How to run it: [doc/exec-visual.md](doc/exec-visual.md).
 
 ## Plots
 
@@ -177,14 +140,13 @@ TODO
 ## Documentation
 
 - [doc/exec-local.md](doc/exec-local.md): run locally (datasets, build, usage and options, log format, plots)
+- [doc/exec-visual.md](doc/exec-visual.md): run the step-by-step web visualization of the EM algorithm
 - [doc/exec-cluster.md](doc/exec-cluster.md): step-by-step procedure to run everything on the cluster (VPN, clone, datasets, modules, build, PBS jobs, plots)
 - [doc/todo.md](doc/todo.md): task list and workflow
 - [doc/question.md](doc/question.md): open questions for the instructors
 - [doc/project-guide.md](doc/project-guide.md): project requirements, report outline, evaluation criteria, data tips
 - [doc/em-explained.md](doc/em-explained.md): study guide on the EM algorithm (formulas, notation, data, parallelism)
-- [doc/synthetic-datasets-info.md](doc/synthetic-datasets-info.md): characteristics of the three synthetic datasets (profiles, variables, weak scaling files and sizes, file format), ready to be reused in the report
-- [doc/real-datasets-source.md](doc/real-datasets-source.md): source, license and citation of each real dataset
-- [doc/real-datasets-info.md](doc/real-datasets-info.md): verification report of the real datasets (size, missing values, labels)
+- [doc/datasets.md](doc/datasets.md): all the datasets (synthetic profiles and variables, sizes and work per rank, file format, real sources and licenses, preprocessing, BrainWeb, verification report), ready to be reused in the report
 - [doc/papers.md](doc/papers.md): free papers for the state of the art (theory, parallel EM on one and several nodes, candidate optimizations); the PDFs are in `doc/papers/`, kept only locally
 - [doc/latex/Group6-Report.tex](doc/latex/Group6-Report.tex): IEEE-style report
 - [Presentation](https://docs.google.com/presentation/d/1nnzwo61ZBHoQlmlYfGVbIb39rVTOexQlnH01uqBfev0/edit?slide=id.g4dfce81f19_0_45#slide=id.g4dfce81f19_0_45): project presentation slides (Google Slides)

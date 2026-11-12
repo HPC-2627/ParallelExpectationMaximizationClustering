@@ -48,7 +48,7 @@ python3 src/dataset-managed/generate-synthetic-dataset.py
 python3 src/dataset-managed/generate-synthetic-dataset.py --sweep    # D sweep files for plot P1 (K = 4, D = 5 ... 50)
 ```
 
-The generation is deterministic (seed 42): the files are identical to the ones generated locally. Details in [synthetic-datasets-info.md](synthetic-datasets-info.md).
+The generation is deterministic (seed 42): the files are identical to the ones generated locally. Details in [datasets.md](datasets.md#3-synthetic-datasets).
 
 ### Real datasets (about 250 MB)
 
@@ -59,7 +59,7 @@ python3 src/dataset-managed/convert-real-to-bin.py        # CSV -> .bin
 python3 src/dataset-managed/convert-brainweb-to-bin.py    # BrainWeb (NIfTI) -> .bin
 ```
 
-If the compute nodes have no internet access, run the downloads on the login node (the job only reads the `.bin` files). Sources and licenses: [real-datasets-source.md](real-datasets-source.md).
+If the compute nodes have no internet access, run the downloads on the login node (the job only reads the `.bin` files). Sources and licenses: [datasets.md](datasets.md#41-sources-and-licenses).
 
 ---
 
