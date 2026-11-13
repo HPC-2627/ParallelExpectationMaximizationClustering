@@ -6,6 +6,10 @@
 #                                           baseline and opt1 MPI-OpenMP) on ALL the datasets
 #   src/script/pemc-submit.sh sweep                                 sweeps of K and D for plot P1
 #   DRY_RUN=1 src/script/pemc-submit.sh      only prints the qsub commands
+#   DIAG_ONLY=opt1 src/script/pemc-submit.sh diagonal   only the versions whose name contains "opt1"
+#   PLACES_LIST="pack scatter" src/script/pemc-submit.sh diagonal   only these placements
+#   SKIP=24 src/script/pemc-submit.sh diagonal   does NOT submit the first 24 jobs (same order as the
+#                                            normal run): to send the rest after "per-user limit" errors
 #
 # One job = one version x one layout; it runs ALL the datasets (pemc-job.sh), so the number of
 # jobs is small. Layout of a parallel job: NODES chunks, each with RANKS_PER_NODE MPI processes
@@ -27,7 +31,9 @@ CONFIGS=(
     # several nodes, 8 cores each: 16 and 32 cores
     2:2:4  4:2:4
 )
-PLACES=(pack scatter pack:excl scatter:excl)
+# Placements. PLACES_LIST overrides them, e.g. PLACES_LIST="pack scatter" (no :excl: on a busy cluster
+# no node is ever completely empty, so the :excl jobs stay queued for a very long time)
+PLACES=(${PLACES_LIST:-pack scatter pack:excl scatter:excl})
 MEM=8gb                  # per chunk (per node)
 WALLTIME=06:00:00        # per job: it runs every dataset; check the limit of shortCPUQ
 REPS=1                   # repetitions of every (dataset, layout)
@@ -43,8 +49,12 @@ WHAT=${1:-all}
 LOGDIR=$PWD/results/logs/pbs
 mkdir -p "$LOGDIR"
 
+SKIP=${SKIP:-0}          # number of jobs, in submission order, not to submit (already submitted)
+NJOB=0
 submit() {  # submit NAME SELECT PLACE VARS...
     local name=$1 select=$2 place=$3; shift 3
+    NJOB=$((NJOB + 1))
+    [ "$NJOB" -le "$SKIP" ] && return 0
     local vars; vars=$(IFS=,; echo "$*")
     local cmd=(qsub -N "$name" -l "select=$select" -l "place=$place" -l "walltime=$WALLTIME"
                -o "$LOGDIR/$name.out" -e "$LOGDIR/$name.err" -v "$vars" src/script/pemc-job.sh)
@@ -94,9 +104,13 @@ submit_parallel() {  # submit_parallel VERSION
 # Whole diagonal folder: sequential + every parallel version, all the datasets
 if [ "$WHAT" = diagonal ]; then
     for v in "${DIAG_SEQ[@]}"; do
+        [[ "$v" == *"$DIAG_ONLY"* ]] || continue
         submit "$(short $v)-seq" "1:ncpus=1:mem=$MEM" pack:excl "VERSION=$v,$COMMON"
     done
-    for v in "${DIAG_PAR[@]}"; do submit_parallel "$v"; done
+    for v in "${DIAG_PAR[@]}"; do
+        [[ "$v" == *"$DIAG_ONLY"* ]] || continue
+        submit_parallel "$v"
+    done
     exit 0
 fi
 
