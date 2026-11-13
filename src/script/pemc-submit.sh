@@ -37,7 +37,7 @@ CONFIGS=(
 PLACES=(${PLACES_LIST:-pack scatter pack:excl scatter:excl})
 MEM=8gb                  # per chunk (per node)
 WALLTIME=06:00:00        # per job: it runs every dataset; check the limit of shortCPUQ
-REPS=1                   # repetitions of every (dataset, layout)
+REPS=${REPS:-3}          # repetitions of every (dataset, layout); override: REPS=1 src/script/pemc-submit.sh ...
 SYNTH_P=all              # sizes of the synthetic files: all | e.g. 01:16
 SETS=all                 # real | synthetic | all
 # -----------------------------------------------------------------------------------------------

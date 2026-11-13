@@ -10,7 +10,7 @@
 #   RANKS_PER_NODE  MPI processes per node (= mpiprocs)       [MPI versions]
 #   THREADS         OpenMP threads per process                [MPI versions]
 #   PLACE           pack | scatter | pack:excl | scatter:excl (only for the name of the log)
-#   REPS            repetitions of every (dataset, layout)    [default 1]
+#   REPS            repetitions of every (dataset, layout)    [default 3]
 #   SYNTH_P         sizes of the synthetic files, e.g. 01:04:16 [default all = 01:02:04:08:16]
 #   SETS            real | synthetic | all                    [default all]
 #   ONLY            only the datasets whose name contains this text (to test) [default: all]
@@ -31,7 +31,7 @@ NODES=${NODES:-1}
 RANKS_PER_NODE=${RANKS_PER_NODE:-1}
 THREADS=${THREADS:-1}
 PLACE=${PLACE:-pack}
-REPS=${REPS:-1}
+REPS=${REPS:-3}
 SYNTH_P=${SYNTH_P:-all}
 SETS=${SETS:-all}
 ONLY=${ONLY:-}
@@ -92,8 +92,14 @@ case "$VERSION" in
         # One thread per core, kept on the core of its rank (no migrations)
         export OMP_PROC_BIND=close
         export OMP_PLACES=cores
+        # Binding: every rank gets THREADS cores (PE=THREADS), RANKS_PER_NODE ranks per node.
+        # Without it OpenMPI binds each rank to ONE core (default with np <= 2) and all its
+        # OpenMP threads end up on that core (no speedup from the threads).
+        # --report-bindings prints the cores of every rank in the .err file (to check it).
         # Multi-node runs go through the UCX wrapper (Ethernet interface of the cluster)
-        LAUNCH=(mpiexec -n $((NODES * RANKS_PER_NODE)) ./src/script/mpi_wrapper.sh "$EXE") ;;
+        LAUNCH=(mpiexec -n $((NODES * RANKS_PER_NODE))
+                --map-by ppr:${RANKS_PER_NODE}:node:PE=${THREADS} --bind-to core --report-bindings
+                ./src/script/mpi_wrapper.sh "$EXE") ;;
 esac
 # Sweep logs go in their own folder: the same dataset appears with several K, and plots-performance.py
 # must not mix those runs with the scaling runs of results/logs/<model>/<stage>/
