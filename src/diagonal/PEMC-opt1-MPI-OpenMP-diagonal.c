@@ -26,6 +26,19 @@
  *               threads), the loop over the rows (E+M fused) and the reductions of ll and of the
  *               sums. One fork/join and one creation of the private copies per iteration.
  *
+ * (3) NO FALSE SHARING ON THE PER-THREAD BUFFER
+ *     baseline: the K values of the row live in ONE malloc'ed array w->logp, one slice per thread
+ *               (stride K rounded to 8 doubles = 64 bytes). malloc aligns only to 16 bytes, so the
+ *               slice of a thread shares a 64-byte cache line with the slice of its neighbour:
+ *               every write of one thread invalidates the line in the cache of the other
+ *               (false sharing), at every row. The fused loop uses the buffer much more (written,
+ *               overwritten with r_ik, read K*D times by the M-step part), so with this layout
+ *               opt1 measured on the cluster was ~2x SLOWER than the baseline with 2-4 threads
+ *               per rank (and as fast or faster with 1 thread per rank, where no sharing exists).
+ *     opt1    : the buffer is a local array of the thread (double buf[K], declared inside the
+ *               parallel region): it lives on the stack of that thread, no line is shared.
+ *               Measured with an OpenMP replica of the loop, 8 threads: 1.7-2x faster.
+ *
  * Communication is the same as the baseline on purpose (two MPI_Allreduce per iteration: ll, then
  * the packed sums), so the effect of (1) and (2) is measured alone.
  *
@@ -76,24 +89,19 @@ typedef struct
     int *labels;     /* n_local: argmax_k r_ik of the LAST fused pass */
     double *c;       /* K: part of the log-density that depends only on the cluster */
     double *inv_var; /* K*D: 1 / var, computed once per iteration */
-    double *logp;    /* n_threads*logp_stride: per-thread buffer of K values; first it holds
-                        log(pi_k N(x_i | ...)), then it is overwritten with r_ik */
-    int logp_stride; /* K rounded up to a multiple of 8 doubles = 64 bytes (no false sharing) */
     double *acc;     /* K + 2*K*D: Nk | sx | sx2, contiguous (one MPI_Allreduce), as in the baseline */
+    /* No per-thread buffer here: every thread keeps its K values in a local array (see (3)) */
 } Workspace;
 
-static void workspace_alloc(Workspace *w, int n_local, int K, int D, int n_threads)
+static void workspace_alloc(Workspace *w, int n_local, int K, int D)
 {
-    w->logp_stride = (K + 7) / 8 * 8;
     w->labels = (int *)malloc((size_t)n_local * sizeof(int));
     w->c = (double *)malloc((size_t)K * sizeof(double));
     w->inv_var = (double *)malloc((size_t)K * D * sizeof(double));
-    w->logp = (double *)malloc((size_t)n_threads * w->logp_stride * sizeof(double));
     w->acc = (double *)malloc((size_t)(K + 2 * K * D) * sizeof(double));
     CHECK_ALLOC(w->labels);
     CHECK_ALLOC(w->c);
     CHECK_ALLOC(w->inv_var);
-    CHECK_ALLOC(w->logp);
     CHECK_ALLOC(w->acc);
 }
 
@@ -102,7 +110,6 @@ static void workspace_free(Workspace *w)
     free(w->labels);
     free(w->c);
     free(w->inv_var);
-    free(w->logp);
     free(w->acc);
 }
 
@@ -124,8 +131,10 @@ static double fused_pass(const Dataset *ds /* in */, const GMMParams *p /* in */
      * iteration and give up vectorizing. */
     const double *restrict X = ds->X;
     const double *restrict mu_all = p->mu;
-    const double *restrict inv_var = w->inv_var;
-    const double *restrict cterm = w->c;
+    /* inv_var and cterm are written (cluster terms) and then read in the same function: with
+     * restrict all the accesses must go through these pointers, so both are done through them */
+    double *restrict inv_var = w->inv_var;
+    double *restrict cterm = w->c;
     int *restrict labels = w->labels;
 
     /* The OpenMP reduction ADDS the private copies to the value already in acc: zero it first */
@@ -134,7 +143,9 @@ static double fused_pass(const Dataset *ds /* in */, const GMMParams *p /* in */
     double ll = 0.0;
 #pragma omp parallel reduction(+ : ll) reduction(+ : acc[:len])
     {
-        double *restrict buf = w->logp + (size_t)omp_get_thread_num() * w->logp_stride; /* my K values */
+        /* My K values: a LOCAL array of this thread (on its own stack), so no cache line is
+         * shared with another thread (no false sharing, see (3) at the top) */
+        double buf[K];
 
         /* Cluster terms (K*D operations) shared among the threads. The implicit barrier at the
          * end of the "omp for" makes inv_var and c visible to everybody before the main loop. */
@@ -145,10 +156,10 @@ static double fused_pass(const Dataset *ds /* in */, const GMMParams *p /* in */
             for (int d = 0; d < D; d++)
             {
                 double v = p->var[(size_t)k * D + d];
-                w->inv_var[(size_t)k * D + d] = 1.0 / v;
+                inv_var[(size_t)k * D + d] = 1.0 / v;
                 sum_log_var += log(v);
             }
-            w->c[k] = log(p->pi[k]) - 0.5 * (D * LOG_2PI + sum_log_var);
+            cterm[k] = log(p->pi[k]) - 0.5 * (D * LOG_2PI + sum_log_var);
         }
 
         /* Main loop: for every row, E-step (responsibilities in buf) and immediately the update
@@ -405,7 +416,7 @@ int main(int argc, char **argv)
     gmm_alloc(&p, K, D);
     gmm_alloc(&best, K, D);
     Workspace w;
-    workspace_alloc(&w, n_local, K, D, n_threads);
+    workspace_alloc(&w, n_local, K, D);
     uint64_t *idx = (uint64_t *)malloc((size_t)K * sizeof(uint64_t));
     double *rows = (double *)malloc((size_t)K * D * sizeof(double));
     int *best_labels = (int *)malloc((size_t)n_local * sizeof(int)); /* LOCAL rows */
