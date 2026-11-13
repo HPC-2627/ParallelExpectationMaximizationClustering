@@ -45,11 +45,13 @@ SETS=all                 # real | synthetic | all
 # Node type: extra PBS resources added to EVERY chunk of the select, so that all the jobs (all the
 # versions) run on the same kind of CPU and the times can be compared. The cluster mixes several
 # Xeon generations (E5-2650 v3 ... Gold 6418H): without it every job lands on a different one.
-# Example: NODE_FILTER="cpu_type=GOLD6252N" (the name of the resource: see "pbsnodes -a").
-NODE_FILTER=${NODE_FILTER:-}
+# PBS resource cpu_type (see "pbsnodes -a"): Xeon6252N = 87 nodes (the most common type, short
+# queues, enough nodes for the 4-node scatter jobs). Others: Xeon5218 (29), Xeon5118 (25),
+# Xeon6140M (22), Xeon2680 (10), Xeon6418H (7). NODE_FILTER= (empty) = any node.
+NODE_FILTER=${NODE_FILTER-cpu_type=Xeon6252N}
 # CPU check inside the job (pemc-job.sh): every node must have this CPU model, otherwise the job
-# stops without writing logs. Gold 6418H = the type that got most of the jobs. Empty = no check.
-REQUIRE_CPU=${REQUIRE_CPU-6418H}
+# stops without writing logs (safety net for NODE_FILTER: it must name the same CPU). Empty = no check.
+REQUIRE_CPU=${REQUIRE_CPU-6252N}
 # -----------------------------------------------------------------------------------------------
 
 # Versions that are WRITTEN (one source file with the code, built by the makefile). Add the new ones

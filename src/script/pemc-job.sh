@@ -25,7 +25,7 @@
 #   SWEEP_P         size of synth_clean for the K sweep [default 01 = 250000 rows]
 #   SWEEP_K         K used in the D sweep     [default 4]
 #   REQUIRE_CPU     text that the CPU model of EVERY node must contain, else the job stops
-#                   without writing logs [default 6418H; empty = no check]
+#                   without writing logs [default 6252N; empty = no check]
 #PBS -q shortCPUQ
 
 VERSION=${VERSION:?VERSION is required}
@@ -51,7 +51,7 @@ EXE=./bin/PEMC-$VERSION
 # The cluster mixes several Xeon generations: times measured on different CPUs cannot be compared.
 # Every node of the job must have a CPU whose model name contains REQUIRE_CPU, otherwise the job
 # stops BEFORE writing any log (no mixed data). REQUIRE_CPU= (empty) disables the check.
-REQUIRE_CPU=${REQUIRE_CPU-6418H}
+REQUIRE_CPU=${REQUIRE_CPU-6252N}
 if [ -n "$REQUIRE_CPU" ]; then
     for h in $( { sort -u "$PBS_NODEFILE" 2>/dev/null || hostname; } ); do
         if [ "${h%%.*}" = "$(hostname -s)" ]; then
