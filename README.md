@@ -58,7 +58,7 @@ Each model has four versions, for a total of eight programs:
 |---|---|---|
 | `sequential` | single process, no parallelism: correctness reference and serial time for the speedup | done |
 | `baseline-MPI-OpenMP` | first hybrid parallelization (rows split among MPI ranks, OpenMP threads inside each rank): the reference of the parallel tests | done |
-| `opt1-MPI-OpenMP` | first optimization of the baseline | **empty, not written yet** |
+| `opt1-MPI-OpenMP` | first optimization of the baseline | diagonal written (same log-likelihood and iterations as the baseline on one rank; to be checked with several ranks on the cluster): E-step and M-step fused in one pass (no responsibility matrix) inside one parallel region per iteration; full not written yet |
 | `opt2-MPI-OpenMP` | second optimization of the baseline | **empty, not written yet** |
 
 All the versions of the same model must end with the same log-likelihood and the same number of iterations (same dataset, `-k` and `-s`).
@@ -122,7 +122,7 @@ Public datasets, mostly medical, used for the clustering quality (none has missi
 
 ## Running the experiments
 
-- **On the cluster:** [doc/exec-cluster.md](doc/exec-cluster.md) (VPN, clone, datasets, modules, build, PBS jobs, plots).
+- **On the cluster:** [doc/exec-cluster.md](doc/exec-cluster.md) (VPN, clone, datasets, modules, build, PBS jobs, plots). All the diagonal versions on all the data with one command: `src/script/pemc-submit.sh diagonal`.
 - **Locally:** [doc/exec-local.md](doc/exec-local.md) (datasets, build, usage and options, log format, plots).
 
 ## Visualization of the algorithm

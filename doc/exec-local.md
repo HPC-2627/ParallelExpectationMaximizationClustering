@@ -87,7 +87,7 @@ raw/*.nii.gz  --gunzip-->  nifti/*.nii  --nibabel + numpy-->  brainweb.bin, brai
 
 ```
 make              # builds bin/PEMC-baseline-sequential-diagonal and bin/PEMC-baseline-sequential-full (gcc, -O3)
-make mpi-omp      # builds bin/PEMC-baseline-MPI-OpenMP-diagonal and bin/PEMC-baseline-MPI-OpenMP-full (mpicc -fopenmp)
+make mpi-omp      # builds the MPI + OpenMP versions written so far: baseline diagonal and full, opt1 diagonal (mpicc -fopenmp)
 make clean
 ```
 

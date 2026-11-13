@@ -87,23 +87,40 @@ make clean
 make all mpi-omp
 ```
 
-This produces in `bin/` the 4 executables (sequential and MPI + OpenMP, diagonal and full). `bin/` is not versioned.
+This produces in `bin/` the executables of the versions written so far: the 2 sequential baselines (diagonal, full), the MPI + OpenMP baselines (diagonal, full) and `PEMC-opt1-MPI-OpenMP-diagonal`. The versions still empty (opt2, opt1 full) are not in the makefile yet. `bin/` is not versioned.
 
 ---
 
 ## Phase 4: Experiments (PBS)
 
-Submit from the root of the repository:
+Submit from the root of the repository.
+
+**Whole diagonal folder, all the data (one command):** it submits every diagonal version written so far (`baseline-sequential`, `baseline-MPI-OpenMP`, `opt1-MPI-OpenMP`) on all the datasets (10 real + 15 synthetic), with all the layouts and placements below (33 jobs):
 
 ```bash
-src/script/pemc-submit.sh                # sequential + parallel
+make clean && make all mpi-omp           # build first (module OpenMPI loaded, see Phase 3)
+DRY_RUN=1 src/script/pemc-submit.sh diagonal    # check the qsub commands
+src/script/pemc-submit.sh diagonal              # submit
+```
+
+When opt2 is written, add it to the makefile (`MPI_BINS`) and to `DIAG_PAR` at the top of [pemc-submit.sh](../src/script/pemc-submit.sh). The logs of every version go in their own file (`results/logs/opt1-MPI-OpenMP-diagonal_<placement>_<layout>.log`), so baseline and opt1 are compared on the same datasets and layouts. Before the big submission, check that the results agree on a small dataset (same iterations and log-likelihood as the baseline):
+
+```bash
+OMP_NUM_THREADS=4 mpiexec -n 2 bin/PEMC-opt1-MPI-OpenMP-diagonal -d data/synthetic/synth_clean/synth_clean_p01.bin -k 4 --no-log
+OMP_NUM_THREADS=4 mpiexec -n 2 bin/PEMC-baseline-MPI-OpenMP-diagonal -d data/synthetic/synth_clean/synth_clean_p01.bin -k 4 --no-log
+```
+
+Other submissions:
+
+```bash
+src/script/pemc-submit.sh                # sequential + parallel (all the baselines, diagonal and full)
 src/script/pemc-submit.sh sequential     # only the 2 sequential versions
-src/script/pemc-submit.sh parallel       # only the 2 MPI + OpenMP baselines
+src/script/pemc-submit.sh parallel       # only the 2 MPI + OpenMP baselines (not opt1)
 src/script/pemc-submit.sh sweep          # K and D sweeps (plot P1)
 DRY_RUN=1 src/script/pemc-submit.sh      # prints the qsub commands without submitting
 ```
 
-One job = one version with one layout, and it runs **all the datasets** (10 real + 15 synthetic; `gene_rnaseq` is skipped with full covariance). The sequential jobs use 1 core on an exclusive node. For the MPI + OpenMP baselines the layout is `NODES x RANKS_PER_NODE x THREADS` (`ncpus` per node = `RANKS_PER_NODE x THREADS`, `mpiprocs` = `RANKS_PER_NODE`) and is combined with the 4 PBS placements:
+One job = one version with one layout, and it runs **all the datasets** (10 real + 15 synthetic; `gene_rnaseq` is skipped with full covariance). The sequential jobs use 1 core on an exclusive node. For the MPI + OpenMP versions the layout is `NODES x RANKS_PER_NODE x THREADS` (`ncpus` per node = `RANKS_PER_NODE x THREADS`, `mpiprocs` = `RANKS_PER_NODE`) and is combined with the 4 PBS placements:
 
 | Placement | Meaning |
 |---|---|
