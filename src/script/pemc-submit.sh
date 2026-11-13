@@ -2,14 +2,15 @@
 # Submits to PBS the experiments of the 4 versions: baseline-sequential and baseline-MPI-OpenMP,
 # diagonal and full. Run from the root of the repository, after "make all mpi-omp":
 #   src/script/pemc-submit.sh [sequential | parallel | all]        (default: all)
-#   src/script/pemc-submit.sh diagonal      EVERY written diagonal version (sequential baseline,
-#                                           baseline and opt1 MPI-OpenMP) on ALL the datasets
+#   src/script/pemc-submit.sh MODEL [STAGE]    MODEL = diagonal | full, STAGE = sequential | baseline | opt1 | opt2.
+#                                           With a STAGE: only that version of that model, on ALL the datasets
+#                                           (one stage at a time keeps the number of jobs under the per-user
+#                                           limit of the queue). Without STAGE: every written stage of the model.
 #   src/script/pemc-submit.sh sweep                                 sweeps of K and D for plot P1
-#   DRY_RUN=1 src/script/pemc-submit.sh      only prints the qsub commands
-#   DIAG_ONLY=opt1 src/script/pemc-submit.sh diagonal   only the versions whose name contains "opt1"
-#   PLACES_LIST="pack scatter" src/script/pemc-submit.sh diagonal   only these placements
-#   SKIP=24 src/script/pemc-submit.sh diagonal   does NOT submit the first 24 jobs (same order as the
-#                                            normal run): to send the rest after "per-user limit" errors
+#   DRY_RUN=1 src/script/pemc-submit.sh ...  only prints the qsub commands
+#   PLACES_LIST="pack scatter" src/script/pemc-submit.sh diagonal baseline   only these placements (no :excl)
+#   SKIP=4 src/script/pemc-submit.sh diagonal opt1   does NOT submit the first 4 jobs (same order as the
+#                                           normal run): to send the rest after "per-user limit" errors
 #
 # One job = one version x one layout; it runs ALL the datasets (pemc-job.sh), so the number of
 # jobs is small. Layout of a parallel job: NODES chunks, each with RANKS_PER_NODE MPI processes
@@ -41,9 +42,10 @@ SYNTH_P=all              # sizes of the synthetic files: all | e.g. 01:16
 SETS=all                 # real | synthetic | all
 # -----------------------------------------------------------------------------------------------
 
-# Versions of the diagonal model that are written, run by "diagonal". Add opt2 when it is ready.
-DIAG_SEQ=(baseline-sequential-diagonal)
-DIAG_PAR=(baseline-MPI-OpenMP-diagonal opt1-MPI-OpenMP-diagonal)
+# Versions that are WRITTEN (one source file with the code, built by the makefile). Add the new ones
+# here when they are ready (and to MPI_BINS in the makefile): opt2 diagonal, opt1/opt2 full.
+WRITTEN=" baseline-sequential-diagonal baseline-MPI-OpenMP-diagonal opt1-MPI-OpenMP-diagonal
+          baseline-sequential-full baseline-MPI-OpenMP-full "
 
 WHAT=${1:-all}
 LOGDIR=$PWD/results/logs/pbs
@@ -63,7 +65,8 @@ submit() {  # submit NAME SELECT PLACE VARS...
 
 short() { case $1 in baseline-sequential-diagonal) echo sd;; baseline-sequential-full) echo sf;;
                      baseline-MPI-OpenMP-diagonal) echo bd;; baseline-MPI-OpenMP-full) echo bf;;
-                     opt1-MPI-OpenMP-diagonal) echo o1d;; opt2-MPI-OpenMP-diagonal) echo o2d;; esac; }
+                     opt1-MPI-OpenMP-diagonal) echo o1d;; opt2-MPI-OpenMP-diagonal) echo o2d;;
+                     opt1-MPI-OpenMP-full) echo o1f;; opt2-MPI-OpenMP-full) echo o2f;; esac; }
 pl() { case $1 in pack) echo pk;; scatter) echo sc;; pack:excl) echo pkx;; scatter:excl) echo scx;; esac; }
 
 # Sweeps (plot P1): time per iteration vs K and vs D, ONE layout (1 node, 1 rank x 8 threads,
@@ -101,15 +104,29 @@ submit_parallel() {  # submit_parallel VERSION
     done
 }
 
-# Whole diagonal folder: sequential + every parallel version, all the datasets
-if [ "$WHAT" = diagonal ]; then
-    for v in "${DIAG_SEQ[@]}"; do
-        [[ "$v" == *"$DIAG_ONLY"* ]] || continue
-        submit "$(short $v)-seq" "1:ncpus=1:mem=$MEM" pack:excl "VERSION=$v,$COMMON"
-    done
-    for v in "${DIAG_PAR[@]}"; do
-        [[ "$v" == *"$DIAG_ONLY"* ]] || continue
-        submit_parallel "$v"
+# One model (diagonal | full), one stage or all the written stages, all the datasets
+if [ "$WHAT" = diagonal ] || [ "$WHAT" = full ]; then
+    MODEL=$WHAT
+    case "$2" in
+        "")         STAGES="sequential baseline opt1 opt2" ;;
+        sequential|baseline|opt1|opt2) STAGES=$2 ;;
+        *) echo "unknown stage '$2' (sequential | baseline | opt1 | opt2)" >&2; exit 1 ;;
+    esac
+    for st in $STAGES; do
+        case $st in
+            sequential) v=baseline-sequential-$MODEL ;;
+            baseline)   v=baseline-MPI-OpenMP-$MODEL ;;
+            *)          v=$st-MPI-OpenMP-$MODEL ;;
+        esac
+        if [[ " $(echo $WRITTEN) " != *" $v "* ]]; then
+            [ -n "$2" ] && { echo "$v is not written yet (add it to WRITTEN here and to MPI_BINS in the makefile)" >&2; exit 1; }
+            continue   # no stage given: the versions not written are skipped
+        fi
+        if [ "$st" = sequential ]; then
+            submit "$(short $v)-seq" "1:ncpus=1:mem=$MEM" pack:excl "VERSION=$v,$COMMON"
+        else
+            submit_parallel "$v"
+        fi
     done
     exit 0
 fi

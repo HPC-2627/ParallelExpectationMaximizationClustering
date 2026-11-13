@@ -122,7 +122,7 @@ Public datasets, mostly medical, used for the clustering quality (none has missi
 
 ## Running the experiments
 
-- **On the cluster:** [doc/exec-cluster.md](doc/exec-cluster.md) (VPN, clone, datasets, modules, build, PBS jobs, plots). All the diagonal versions on all the data with one command: `src/script/pemc-submit.sh diagonal`.
+- **On the cluster:** [doc/exec-cluster.md](doc/exec-cluster.md) (VPN, clone, datasets, modules, build, PBS jobs, plots). One version of one model on all the datasets per command, to stay under the queue limit: `src/script/pemc-submit.sh <diagonal|full> <sequential|baseline|opt1|opt2>`.
 - **Locally:** [doc/exec-local.md](doc/exec-local.md) (datasets, build, usage and options, log format, plots).
 
 ## Visualization of the algorithm
