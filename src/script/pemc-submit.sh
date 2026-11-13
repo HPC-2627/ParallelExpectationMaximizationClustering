@@ -42,6 +42,14 @@ WALLTIME=06:00:00        # per job: it runs every dataset; check the limit of sh
 REPS=${REPS:-3}          # repetitions of every (dataset, layout); override: REPS=1 src/script/pemc-submit.sh ...
 SYNTH_P=all              # sizes of the synthetic files: all | e.g. 01:16
 SETS=all                 # real | synthetic | all
+# Node type: extra PBS resources added to EVERY chunk of the select, so that all the jobs (all the
+# versions) run on the same kind of CPU and the times can be compared. The cluster mixes several
+# Xeon generations (E5-2650 v3 ... Gold 6418H): without it every job lands on a different one.
+# Example: NODE_FILTER="cpu_type=GOLD6252N" (the name of the resource: see "pbsnodes -a").
+NODE_FILTER=${NODE_FILTER:-}
+# CPU check inside the job (pemc-job.sh): every node must have this CPU model, otherwise the job
+# stops without writing logs. Gold 6418H = the type that got most of the jobs. Empty = no check.
+REQUIRE_CPU=${REQUIRE_CPU-6418H}
 # -----------------------------------------------------------------------------------------------
 
 # Versions that are WRITTEN (one source file with the code, built by the makefile). Add the new ones
@@ -59,6 +67,7 @@ submit() {  # submit NAME SELECT PLACE VARS...
     local name=$1 select=$2 place=$3; shift 3
     NJOB=$((NJOB + 1))
     [ "$NJOB" -le "$SKIP" ] && return 0
+    [ -n "$NODE_FILTER" ] && select="$select:$NODE_FILTER"
     local vars; vars=$(IFS=,; echo "$*")
     local cmd=(qsub -N "$name" -l "select=$select" -l "place=$place" -l "walltime=$WALLTIME"
                -o "$LOGDIR/$name.out" -e "$LOGDIR/$name.err" -v "$vars" src/script/pemc-job.sh)
@@ -79,18 +88,18 @@ SWEEP_LAYOUT=1:1:8
 if [ "$WHAT" = sweep ]; then
     for sw in K D; do
         for v in baseline-sequential-diagonal baseline-sequential-full; do
-            submit "$(short $v)-sw$sw" "1:ncpus=1:mem=$MEM" pack:excl "VERSION=$v,SWEEP=$sw,REPS=$REPS"
+            submit "$(short $v)-sw$sw" "1:ncpus=1:mem=$MEM" pack:excl "VERSION=$v,SWEEP=$sw,REPS=$REPS,REQUIRE_CPU=$REQUIRE_CPU"
         done
         for v in baseline-MPI-OpenMP-diagonal baseline-MPI-OpenMP-full; do
             IFS=: read -r N R T <<< "$SWEEP_LAYOUT"
             submit "$(short $v)-sw$sw" "$N:ncpus=$((R * T)):mpiprocs=$R:mem=$MEM" pack:excl \
-                   "VERSION=$v,SWEEP=$sw,NODES=$N,RANKS_PER_NODE=$R,THREADS=$T,PLACE=pack:excl,REPS=$REPS"
+                   "VERSION=$v,SWEEP=$sw,NODES=$N,RANKS_PER_NODE=$R,THREADS=$T,PLACE=pack:excl,REPS=$REPS,REQUIRE_CPU=$REQUIRE_CPU"
         done
     done
     exit 0
 fi
 
-COMMON="REPS=$REPS,SYNTH_P=$SYNTH_P,SETS=$SETS"
+COMMON="REPS=$REPS,SYNTH_P=$SYNTH_P,SETS=$SETS,REQUIRE_CPU=$REQUIRE_CPU"
 
 # Parallel layouts of one version: every layout of CONFIGS x every placement
 submit_parallel() {  # submit_parallel VERSION

@@ -24,6 +24,8 @@
 #   D_LIST          values of D for SWEEP=D   [default "5 10 20 35 50"]
 #   SWEEP_P         size of synth_clean for the K sweep [default 01 = 250000 rows]
 #   SWEEP_K         K used in the D sweep     [default 4]
+#   REQUIRE_CPU     text that the CPU model of EVERY node must contain, else the job stops
+#                   without writing logs [default 6418H; empty = no check]
 #PBS -q shortCPUQ
 
 VERSION=${VERSION:?VERSION is required}
@@ -44,6 +46,27 @@ SWEEP_K=${SWEEP_K:-4}
 cd "$PBS_O_WORKDIR" || exit 1
 EXE=./bin/PEMC-$VERSION
 [ -x "$EXE" ] || { echo "error: $EXE not found (run: make all mpi-omp)" >&2; exit 1; }
+
+# ---- CPU check --------------------------------------------------------------------------------
+# The cluster mixes several Xeon generations: times measured on different CPUs cannot be compared.
+# Every node of the job must have a CPU whose model name contains REQUIRE_CPU, otherwise the job
+# stops BEFORE writing any log (no mixed data). REQUIRE_CPU= (empty) disables the check.
+REQUIRE_CPU=${REQUIRE_CPU-6418H}
+if [ -n "$REQUIRE_CPU" ]; then
+    for h in $( { sort -u "$PBS_NODEFILE" 2>/dev/null || hostname; } ); do
+        if [ "${h%%.*}" = "$(hostname -s)" ]; then
+            m=$(grep -m1 "model name" /proc/cpuinfo)
+        else
+            m=$(ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR \
+                "$h" grep -m1 "'model name'" /proc/cpuinfo)
+        fi
+        if [[ "$m" != *"$REQUIRE_CPU"* ]]; then
+            echo "error: node $h has CPU '${m#*: }', not $REQUIRE_CPU: job stopped, no log written" >&2
+            exit 2
+        fi
+    done
+    echo "CPU check: every node has $REQUIRE_CPU"
+fi
 
 # ---- datasets: name:path:K ------------------------------------------------------------------
 # K = number of true classes (synthetic: clusters of the profile). parkinson has no classes: K=2 is arbitrary.
