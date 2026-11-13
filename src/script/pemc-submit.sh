@@ -32,6 +32,8 @@ CONFIGS=(
     # several nodes, 8 cores each: 16 and 32 cores
     2:2:4  4:2:4
 )
+# CONFIGS_LIST overrides them, e.g. CONFIGS_LIST="2:2:4 4:2:4" (only the multi-node layouts)
+[ -n "${CONFIGS_LIST:-}" ] && CONFIGS=($CONFIGS_LIST)
 # Placements. PLACES_LIST overrides them, e.g. PLACES_LIST="pack scatter" (no :excl: on a busy cluster
 # no node is ever completely empty, so the :excl jobs stay queued for a very long time)
 PLACES=(${PLACES_LIST:-pack scatter pack:excl scatter:excl})

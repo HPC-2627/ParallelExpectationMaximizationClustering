@@ -92,13 +92,22 @@ case "$VERSION" in
         # One thread per core, kept on the core of its rank (no migrations)
         export OMP_PROC_BIND=close
         export OMP_PLACES=cores
-        # Binding: every rank gets THREADS cores (PE=THREADS), RANKS_PER_NODE ranks per node.
+        # Binding: every rank gets THREADS cores (PE=THREADS). The ranks fill the slots of the
+        # hostfile in order (map-by slot), i.e. they go where PBS put the chunks: with place=pack
+        # PBS may put several chunks on the same node, so "ppr:R:node" (exactly R per node) fails.
         # Without it OpenMPI binds each rank to ONE core (default with np <= 2) and all its
         # OpenMP threads end up on that core (no speedup from the threads).
         # --report-bindings prints the cores of every rank in the .err file (to check it).
+        # Nodes: OpenMPI does not see the other nodes of the job by itself (it sees only the first
+        # one, and ppr:R:node then fails with more than one node): the list of the nodes assigned by
+        # PBS is passed with --hostfile (as in Exercise 10). plm_rsh_args: ssh between the nodes
+        # without host-key prompts. Without PBS (test outside the queue) the local node is used.
+        HOSTS=()
+        [ -n "${PBS_NODEFILE:-}" ] && HOSTS=(--hostfile "$PBS_NODEFILE"
+            --mca plm_rsh_args "-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR")
         # Multi-node runs go through the UCX wrapper (Ethernet interface of the cluster)
-        LAUNCH=(mpiexec -n $((NODES * RANKS_PER_NODE))
-                --map-by ppr:${RANKS_PER_NODE}:node:PE=${THREADS} --bind-to core --report-bindings
+        LAUNCH=(mpiexec -n $((NODES * RANKS_PER_NODE)) "${HOSTS[@]}"
+                --map-by slot:PE=${THREADS} --bind-to core --report-bindings
                 ./src/script/mpi_wrapper.sh "$EXE") ;;
 esac
 # Sweep logs go in their own folder: the same dataset appears with several K, and plots-performance.py
