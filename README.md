@@ -80,7 +80,7 @@ All the versions of the same model must end with the same log-likelihood and the
 │   ├── real/              #   real datasets, one folder each (raw files + converted .bin)
 │   └── synthetic/         #   synthetic datasets, one folder per profile (see Data)
 ├── results/
-│   ├── logs/              # Raw execution logs (scaling runs, sweeps, clustering runs, PBS output)
+│   ├── logs/              # Raw execution logs: <model>/<stage>/ for the scaling runs, plus sweep/, cluster/ and pbs/ (PBS output)
 │   ├── clusters/          # Clustering results saved with --save, used by the clustering plots
 │   ├── tables/            # Summary tables
 │   └── plots/             # Generated plots (PDF)

@@ -103,7 +103,7 @@ DRY_RUN=1 src/script/pemc-submit.sh diagonal    # check the qsub commands
 src/script/pemc-submit.sh diagonal              # submit
 ```
 
-When opt2 is written, add it to the makefile (`MPI_BINS`) and to `DIAG_PAR` at the top of [pemc-submit.sh](../src/script/pemc-submit.sh). The logs of every version go in their own file (`results/logs/opt1-MPI-OpenMP-diagonal_<placement>_<layout>.log`), so baseline and opt1 are compared on the same datasets and layouts. Before the big submission, check that the results agree on a small dataset (same iterations and log-likelihood as the baseline):
+When opt2 is written, add it to the makefile (`MPI_BINS`) and to `DIAG_PAR` at the top of [pemc-submit.sh](../src/script/pemc-submit.sh). The logs of every version go in their own file (`results/logs/diagonal/opt1/opt1-MPI-OpenMP-diagonal_<placement>_<layout>.log`), so baseline and opt1 are compared on the same datasets and layouts. Before the big submission, check that the results agree on a small dataset (same iterations and log-likelihood as the baseline):
 
 ```bash
 OMP_NUM_THREADS=4 mpiexec -n 2 bin/PEMC-opt1-MPI-OpenMP-diagonal -d data/synthetic/synth_clean/synth_clean_p01.bin -k 4 --no-log
@@ -154,7 +154,7 @@ PBS_O_WORKDIR=$PWD VERSION=baseline-sequential-full ONLY=heart_failure src/scrip
 
 ### Output
 
-- logs: `results/logs/<version>_<placement>_<nodes>n<ranks>r<threads>t.log` (`<version>_seq.log` for the sequential ones); sweeps in `results/logs/sweep/`; clustering in `results/logs/cluster/` and `results/clusters/`;
+- logs: `results/logs/<model>/<stage>/<version>_<placement>_<nodes>n<ranks>r<threads>t.log` (`<version>_seq.log` for the sequential ones), with model = `diagonal` | `full` and stage = `sequential` | `baseline` | `opt1` | `opt2` (folders already in the repository); sweeps in `results/logs/sweep/`; clustering in `results/logs/cluster/` and `results/clusters/`;
 - standard output/error of the jobs: `results/logs/pbs/<job>.out|.err` (not versioned).
 
 ---

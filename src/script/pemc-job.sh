@@ -96,8 +96,15 @@ case "$VERSION" in
         LAUNCH=(mpiexec -n $((NODES * RANKS_PER_NODE)) ./src/script/mpi_wrapper.sh "$EXE") ;;
 esac
 # Sweep logs go in their own folder: the same dataset appears with several K, and plots-performance.py
-# must not mix those runs with the scaling runs of results/logs/
-LOGDIR=results/logs
+# must not mix those runs with the scaling runs of results/logs/<model>/<stage>/
+# Scaling logs: results/logs/<model>/<stage>/ with model = diagonal | full and stage = sequential |
+# baseline | opt1 | opt2, taken from the version name (e.g. opt1-MPI-OpenMP-diagonal -> diagonal/opt1)
+MODEL=${VERSION##*-}
+case "$VERSION" in
+    *sequential*) STAGE=sequential ;;
+    *) STAGE=${VERSION%%-*} ;;
+esac
+LOGDIR=results/logs/$MODEL/$STAGE
 [ "$SWEEP" != none ] && LOGDIR=results/logs/sweep
 LOG=$LOGDIR/${VERSION}_${TAG}.log
 mkdir -p "$LOGDIR"

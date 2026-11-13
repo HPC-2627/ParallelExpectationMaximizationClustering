@@ -3,7 +3,7 @@
 plots-performance.py
 
 Performance plots of the report (catalog P1-P11 of doc/plots.md, colors of doc/color.md).
-Reads all the logs in results/logs/*.log and writes PDF files in results/plots/.
+Reads all the logs in results/logs/<model>/<stage>/*.log and writes PDF files in results/plots/.
 
 Usage (from the root of the repository):
     python3 src/plots-generate/plots-performance.py                 # all the plots
@@ -11,7 +11,8 @@ Usage (from the root of the repository):
     python3 src/plots-generate/plots-performance.py --placement scatter:excl --large synth_clean_p16
 
 Where the data comes from
-    One log file per PBS job: results/logs/<VERSION>_<TAG>.log, TAG = "seq" (sequential) or
+    One log file per PBS job: results/logs/<model>/<stage>/<VERSION>_<TAG>.log
+    (model = diagonal | full, stage = sequential | baseline | opt1 | opt2), TAG = "seq" (sequential) or
     "<placement>_<N>n<R>r<T>t" (e.g. pack_excl_2n2r4t = pack:excl, 2 nodes, 2 ranks/node,
     4 threads/rank). The placement is NOT in the log block, so it is read from the file name.
     Block format: see include/logger.h.
@@ -120,10 +121,12 @@ def parse_rank_compute(text):
     return v if v.size else None
 
 
-def load_logs(logdir, required=True):
-    """Reads every *.log of logdir (not the subfolders) into one row per run."""
+def load_logs(logdir, required=True, pattern="*/*/*.log"):
+    """Reads every log matching pattern (relative to logdir) into one row per run.
+    Default: results/logs/<model>/<stage>/*.log; not sweep/, cluster/ or pbs/ (they are one level
+    only). The sweeps use pattern "*.log" on their own folder."""
     rows = []  # one dict per run, over all the files
-    for path in sorted(logdir.glob("*.log")):  # not the pbs/ subfolder (stdout/stderr of the jobs)
+    for path in sorted(logdir.glob(pattern)):
         # file name = <VERSION>_<TAG>.log: the version has no "_", so the first "_" splits them.
         # The placement and the number of nodes are NOT in the block: they come from the tag
         tag = path.stem.split("_", 1)[1] if "_" in path.stem else "seq"
@@ -138,7 +141,7 @@ def load_logs(logdir, required=True):
             rows.append(b)
     if not rows:
         if required:
-            sys.exit(f"no run found in {logdir}/*.log")
+            sys.exit(f"no run found in {logdir}/{pattern}")
         return None
     df = pd.DataFrame(rows)
     # text -> numbers (errors="coerce": "n/a" or a missing key becomes NaN)
@@ -593,7 +596,7 @@ def main():
     df = load_logs(args.logs)
     agg = aggregate(df)
     best = best_split(agg, args.placement)
-    sweep_df = load_logs(args.logs / "sweep", required=False)  # P1 only
+    sweep_df = load_logs(args.logs / "sweep", required=False, pattern="*.log")  # P1 only
     sweep = aggregate(sweep_df) if sweep_df is not None else None
     # everything the plot functions need, in one object (they are called as plot(ctx, model))
     ctx = argparse.Namespace(args=args, df=df, agg=agg, best=best, sweep=sweep, out=args.out,
