@@ -3,7 +3,6 @@
 ### How to run
 
 [![Run on the cluster](https://img.shields.io/badge/Run_on_the-Cluster-blue?style=for-the-badge&logo=gnubash&logoColor=white)](doc/exec-cluster.md)
-[![Run locally](https://img.shields.io/badge/Run-Locally-green?style=for-the-badge&logo=linux&logoColor=white)](doc/exec-local.md)
 [![Visualize the algorithm](https://img.shields.io/badge/Visualize-the_Algorithm-purple?style=for-the-badge&logo=python&logoColor=white)](doc/exec-visual.md)
 
 ---
@@ -91,7 +90,7 @@ All the versions of the same model must end with the same log-likelihood and the
 
 ## Data
 
-All the datasets are described in **[doc/datasets.md](doc/datasets.md)** (profiles, variables, sizes, file format, sources, licenses, preprocessing, verification). The whole `data/` folder is **not versioned** (listed in `.gitignore`): the datasets are generated (synthetic) or downloaded (real) on the machine where the experiments run, following [doc/exec-cluster.md](doc/exec-cluster.md) or [doc/exec-local.md](doc/exec-local.md). Every dataset is converted to the same binary format (header `int32` N, D + `float64` matrix in row-major order, labels in a separate file) and every column is standardized (z-score).
+All the datasets are described in **[doc/datasets.md](doc/datasets.md)** (profiles, variables, sizes, file format, sources, licenses, preprocessing, verification). The whole `data/` folder is **not versioned** (listed in `.gitignore`): the datasets are generated (synthetic) or downloaded (real) on the machine where the experiments run, following [doc/exec-cluster.md](doc/exec-cluster.md). Every dataset is converted to the same binary format (header `int32` N, D + `float64` matrix in row-major order, labels in a separate file) and every column is standardized (z-score).
 
 ### Synthetic datasets
 
@@ -123,7 +122,6 @@ Public datasets, mostly medical, used for the clustering quality (none has missi
 ## Running the experiments
 
 - **On the cluster:** [doc/exec-cluster.md](doc/exec-cluster.md) (VPN, clone, datasets, modules, build, PBS jobs, plots). One version of one model on all the datasets per command, to stay under the queue limit: `src/script/pemc-submit.sh <diagonal|full> <sequential|baseline|opt1|opt2>`.
-- **Locally:** [doc/exec-local.md](doc/exec-local.md) (datasets, build, usage and options, log format, plots).
 
 ## Visualization of the algorithm
 
@@ -139,7 +137,6 @@ TODO
 
 ## Documentation
 
-- [doc/exec-local.md](doc/exec-local.md): run locally (datasets, build, usage and options, log format, plots)
 - [doc/exec-visual.md](doc/exec-visual.md): run the step-by-step web visualization of the EM algorithm
 - [doc/exec-cluster.md](doc/exec-cluster.md): step-by-step procedure to run everything on the cluster (VPN, clone, datasets, modules, build, PBS jobs, plots)
 - [doc/todo.md](doc/todo.md): task list and workflow

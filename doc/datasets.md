@@ -1,6 +1,6 @@
 # Datasets
 
-All the datasets used by the project: three **synthetic** profiles (for scaling and correctness) and ten **real** datasets (mostly medical, for the clustering quality). Everything under `data/` is not versioned: it is generated or downloaded by the scripts in `src/dataset-managed/` (procedure in [exec-local.md](exec-local.md) and [exec-cluster.md](exec-cluster.md)).
+All the datasets used by the project: three **synthetic** profiles (for scaling and correctness) and ten **real** datasets (mostly medical, for the clustering quality). Everything under `data/` is not versioned: it is generated or downloaded by the scripts in `src/dataset-managed/` (procedure in [exec-cluster.md](exec-cluster.md)).
 
 | Section | Content |
 |---|---|

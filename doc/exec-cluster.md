@@ -305,3 +305,77 @@ python3 src/plots-generate/plots-cluster.py         # C1-C6 + results/tables/clu
 ```
 
 Options, catalog and experiment matrix: [plots.md](plots.md).
+
+---
+
+## Usage of the programs
+
+The PBS jobs ([pemc-job.sh](../src/script/pemc-job.sh)) call the executables of `bin/` with the options below; they can also be run by hand (from the root of the repository) for a quick test, e.g. on the login node or inside an interactive job (`qsub -I -l select=1:ncpus=8:mem=4gb:cpu_type=Xeon6252N -l walltime=00:20:00`). Times measured on the login node are not meaningful (shared node, different CPU).
+
+```bash
+# sequential versions (correctness reference and serial time)
+./bin/PEMC-baseline-sequential-diagonal -d data/synthetic/synth_clean/synth_clean_p01.bin -k 4
+./bin/PEMC-baseline-sequential-full     -d data/real/heart_failure/heart_failure.bin -k 2
+
+# MPI + OpenMP versions: R ranks x T threads, every rank bound to T cores (as in the jobs)
+module load OpenMPI/4.1.5-GCC-12.3.0
+OMP_NUM_THREADS=4 OMP_PROC_BIND=close OMP_PLACES=cores \
+  mpiexec -n 2 --map-by slot:PE=4 --bind-to core --report-bindings \
+  bin/PEMC-opt1-MPI-OpenMP-diagonal -d data/synthetic/synth_clean/synth_clean_p01.bin -k 4 --no-log
+```
+
+Without `--map-by ...:PE=T --bind-to core` Open MPI binds every rank to ONE core and all its OpenMP threads share it (see Phase 4). `-h` prints the options of every executable.
+
+$K$ used by the jobs: number of true classes of each dataset (`synth_clean` 4, `synth_overlap` 5, `synth_rare` 6; real: `brainweb` 12, `cardiotocography` 10, `diabetes130` 3, `gene_rnaseq` 5, all the others 2; `parkinson` has no labels, so $K = 2$ is arbitrary there). The full-covariance versions cost $O(NKD^2)$ per iteration: `gene_rnaseq` ($D = 20\,264$) is not feasible ($K D^2$ doubles do not fit in memory); on big files start with `-n ROWS`.
+
+| Option | Meaning |
+|---|---|
+| `-d, --dataset FILE` | dataset in binary format (header N, D + float64 row-major) |
+| `-k, --clusters K` | number of clusters |
+| `-n, --rows N` | use only the first N rows of the file (default: all) |
+| `-i, --max-iter N` | maximum number of iterations (default 200) |
+| `-t, --tol X` | relative tolerance on the log-likelihood (default 1e-6) |
+| `-s, --seed S` | seed of the initialization (default 42): the same seed gives the same initialization in every version |
+| `-r, --restarts R` | number of initializations, the best one is kept (default 1); the times are summed over all the restarts |
+| `-w, --warmup N` | warm-up EM iterations done before the timed run and then discarded (default 3, 0 = off). They wake up the OpenMP threads, MPI and the caches; the result is identical with and without warm-up, and their time is not in `t_total` nor in the other times (it is logged as `t_warmup`) |
+| `-l, --log FILE.log` | log file (default `results/logs/<name>.log`; the jobs pass `results/logs/<model>/<stage>/<version>_<placement>_<layout>.log`) |
+| `--no-log` | do not write the log |
+| `--save DIR` | save the clustering result (labels of every row, weights and means, log-likelihood curve) in `DIR`, see `include/cluster-out.h`. Sequential versions only; used by the clustering plots |
+| `-v, --verbose` | print the log-likelihood at every iteration |
+
+**Log format** (`.log`, plain text, the same for all the versions). Every run appends a block of `key : value` lines, separated from the next one by an empty line (example of opt1 on 4 nodes x 2 ranks x 4 threads; some values rounded):
+
+```
+==== run ====
+timestamp      : 2026-11-13T16:13:29Z
+version        : opt1-MPI-OpenMP-diagonal
+dataset        : data/real/brainweb/brainweb.bin
+hostname       : hpc3-c11-n12.unitn.it
+cpu_model      : Intel(R) Xeon(R) Gold 6252N CPU @ 2.30GHz
+ranks          : 8
+threads        : 4
+N              : 11862016
+D              : 1
+K              : 12
+restarts       : 1
+warmup_iters   : 3
+iterations     : 200
+converged      : 0
+loglik         : 513268.212527
+ari            : 0.161056
+t_total        : 25.1
+t_read         : 0.13
+t_init         : 0.06
+t_estep        : 22.2
+t_mstep        : 4.86e-05
+t_comm         : 2.68
+t_warmup       : 0.4
+flops          : 4.33e+11
+bytes          : 1.91e+10
+rank_compute   : 21.3 22.2 20.1 19.4 21.8 22.0 20.9 21.5
+t_iteration    : 0.1243
+```
+
+Times are in seconds. `hostname` and `cpu_model` identify the node (the nodes of the cluster are not all equal: compare only runs on the same CPU). `ari` (adjusted Rand index against the true labels) is `n/a` if the dataset has no labels. `t_warmup` is the time of the `warmup_iters` throwaway iterations, not included in `t_total`. In the opt1 versions E-step and M-step are fused: the fused pass is in `t_estep`, and `t_mstep` is only the update of the parameters. `flops` and `bytes` are an analytic count of the floating-point operations and of the main-memory traffic of the run (`include/perfmodel.h`, not hardware counters), used for the roofline. `rank_compute` is the compute time (E-step + M-step, no MPI) of every MPI rank in rank order (`n/a` in the sequential versions), used for the load imbalance. `t_iteration` is `(t_estep + t_mstep + t_comm) / iterations` (only with one restart). To read it in Python, split the file on `==== run ====` and every line on the first `:`.
+
+**Correctness check between versions:** run them with the same dataset, `-k` and `-s`: they must end with the same log-likelihood (up to rounding) and the same number of iterations. Compare only versions of the same model: `-diagonal` with `-diagonal`, `-full` with `-full`.

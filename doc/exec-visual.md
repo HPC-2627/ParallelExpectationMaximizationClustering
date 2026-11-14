@@ -1,12 +1,12 @@
 # Visualization of the algorithm
 
-How to run the step-by-step web visualization of the EM algorithm locally. A small web page shows how EM works on any dataset of `data/`: the initial centroids, then for every iteration the E-step (points coloured by their responsibilities), the convergence test on the log-likelihood and the M-step (means and ellipses moving to their new values). It also shows the formulas with the real numbers of the current iteration, the log-likelihood curve, and the calculation of any point you click. How to run the experiments: [exec-local.md](exec-local.md) (locally) and [exec-cluster.md](exec-cluster.md) (cluster). Run everything from the root of the repository.
+How to run the step-by-step web visualization of the EM algorithm locally. A small web page shows how EM works on any dataset of `data/`: the initial centroids, then for every iteration the E-step (points coloured by their responsibilities), the convergence test on the log-likelihood and the M-step (means and ellipses moving to their new values). It also shows the formulas with the real numbers of the current iteration, the log-likelihood curve, and the calculation of any point you click. How to run the experiments: [exec-cluster.md](exec-cluster.md). Run everything from the root of the repository.
 
 ## Requirements
 
 - Python 3 with NumPy
 - a C compiler (`gcc`)
-- at least one dataset in `data/` (see [exec-local.md](exec-local.md) for generating or downloading them)
+- at least one dataset in `data/` (see [exec-cluster.md](exec-cluster.md#phase-2-datasets) for generating or downloading them)
 - the browser only needs to reach `127.0.0.1`
 
 ## Run
