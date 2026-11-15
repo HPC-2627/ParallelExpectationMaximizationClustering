@@ -12,6 +12,11 @@
 
 CC       ?= gcc
 CFLAGS   ?= -O3 -std=gnu11 -Wall -Wextra
+# Extra architecture flags, EMPTY by default: all the measured versions use the same flags (-O3,
+# generic x86-64, SSE2). For a separate experiment on the wider vectors of the cluster CPU (to apply
+# to ALL the versions, not only one):  make mpi-omp ARCH=-march=cascadelake
+ARCH     ?=
+CFLAGS   += $(ARCH)
 INCLUDES  = -Iinclude
 LIBS      = -lm
 
@@ -25,12 +30,13 @@ vpath %.c src/diagonal src/full
 SEQ_BINS = $(BIN_DIR)/PEMC-baseline-sequential-diagonal \
            $(BIN_DIR)/PEMC-baseline-sequential-full
 
-# MPI + OpenMP versions. Not yet written (empty files): opt1/opt2-full.
-# Add them here when they are ready.
+# MPI + OpenMP versions (all written)
 MPI_BINS = $(BIN_DIR)/PEMC-baseline-MPI-OpenMP-diagonal \
            $(BIN_DIR)/PEMC-opt1-MPI-OpenMP-diagonal \
            $(BIN_DIR)/PEMC-opt2-MPI-OpenMP-diagonal \
-           $(BIN_DIR)/PEMC-baseline-MPI-OpenMP-full
+           $(BIN_DIR)/PEMC-baseline-MPI-OpenMP-full \
+           $(BIN_DIR)/PEMC-opt1-MPI-OpenMP-full \
+           $(BIN_DIR)/PEMC-opt2-MPI-OpenMP-full
 
 .PHONY: all sequential mpi-omp clean
 

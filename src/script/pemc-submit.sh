@@ -9,6 +9,8 @@
 #   src/script/pemc-submit.sh sweep                                 sweeps of K and D for plot P1
 #   DRY_RUN=1 src/script/pemc-submit.sh ...  only prints the qsub commands
 #   PLACES_LIST="pack scatter" src/script/pemc-submit.sh diagonal baseline   only these placements (no :excl)
+#   BLOCK=64 src/script/pemc-submit.sh full opt2      rows per block of opt2 full (sweep over B, logs
+#                                           in results/logs/block/)
 #   SKIP=4 src/script/pemc-submit.sh diagonal opt1   does NOT submit the first 4 jobs (same order as the
 #                                           normal run): to send the rest after "per-user limit" errors
 #
@@ -55,9 +57,10 @@ REQUIRE_CPU=${REQUIRE_CPU-6252N}
 # -----------------------------------------------------------------------------------------------
 
 # Versions that are WRITTEN (one source file with the code, built by the makefile). Add the new ones
-# here when they are ready (and to MPI_BINS in the makefile): opt1/opt2 full.
+# here when they are ready (and to MPI_BINS in the makefile).
 WRITTEN=" baseline-sequential-diagonal baseline-MPI-OpenMP-diagonal opt1-MPI-OpenMP-diagonal
-          opt2-MPI-OpenMP-diagonal baseline-sequential-full baseline-MPI-OpenMP-full "
+          opt2-MPI-OpenMP-diagonal baseline-sequential-full baseline-MPI-OpenMP-full
+          opt1-MPI-OpenMP-full opt2-MPI-OpenMP-full "
 
 WHAT=${1:-all}
 LOGDIR=$PWD/results/logs/pbs
@@ -67,6 +70,7 @@ SKIP=${SKIP:-0}          # number of jobs, in submission order, not to submit (a
 NJOB=0
 submit() {  # submit NAME SELECT PLACE VARS...
     local name=$1 select=$2 place=$3; shift 3
+    [ -n "${BLOCK:-}" ] && name="$name-b$BLOCK"   # one .out/.err per block size
     NJOB=$((NJOB + 1))
     [ "$NJOB" -le "$SKIP" ] && return 0
     [ -n "$NODE_FILTER" ] && select="$select:$NODE_FILTER"
@@ -102,6 +106,10 @@ if [ "$WHAT" = sweep ]; then
 fi
 
 COMMON="REPS=$REPS,SYNTH_P=$SYNTH_P,SETS=$SETS,REQUIRE_CPU=$REQUIRE_CPU"
+# Block size of opt2 full (sweep over B): passed to the jobs only if set; the logs then go to
+# results/logs/block/ (see pemc-job.sh). Example, 1 node only, a few datasets:
+#   BLOCK=64 CONFIGS_LIST="1:1:8" PLACES_LIST="pack:excl" src/script/pemc-submit.sh full opt2
+[ -n "${BLOCK:-}" ] && COMMON="$COMMON,BLOCK=$BLOCK"
 
 # Parallel layouts of one version: every layout of CONFIGS x every placement
 submit_parallel() {  # submit_parallel VERSION

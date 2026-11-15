@@ -26,6 +26,10 @@
 #   SWEEP_K         K used in the D sweep     [default 4]
 #   REQUIRE_CPU     text that the CPU model of EVERY node must contain, else the job stops
 #                   without writing logs [default 6252N; empty = no check]
+#   BLOCK           rows per block, passed as -b (only opt2 full uses it; the others ignore it)
+#                   [default: empty = default of the version]. When it is set the logs go to
+#                   results/logs/block/<version>_<layout>_b<BLOCK>.log, apart from the scaling
+#                   runs (sweep over B to choose the default)
 #PBS -q shortCPUQ
 
 VERSION=${VERSION:?VERSION is required}
@@ -42,6 +46,7 @@ K_LIST=${K_LIST:-2 4 8 16 32 64}
 D_LIST=${D_LIST:-5 10 20 35 50}
 SWEEP_P=${SWEEP_P:-01}
 SWEEP_K=${SWEEP_K:-4}
+BLOCK=${BLOCK:-}
 
 cd "$PBS_O_WORKDIR" || exit 1
 EXE=./bin/PEMC-$VERSION
@@ -145,6 +150,13 @@ esac
 LOGDIR=results/logs/$MODEL/$STAGE
 [ "$SWEEP" != none ] && LOGDIR=results/logs/sweep
 LOG=$LOGDIR/${VERSION}_${TAG}.log
+# Sweep over the block size: own folder and the block in the name of the file
+BARGS=()
+if [ -n "$BLOCK" ]; then
+    BARGS=(-b "$BLOCK")
+    LOGDIR=results/logs/block
+    LOG=$LOGDIR/${VERSION}_${TAG}_b${BLOCK}.log
+fi
 mkdir -p "$LOGDIR"
 
 echo "version $VERSION | layout $TAG | datasets ${#LIST[@]} | reps $REPS | log $LOG"
@@ -161,7 +173,7 @@ for entry in "${LIST[@]}"; do
     [ -f "$path" ] || { echo "skip $name: $path not found"; fail=$((fail + 1)); continue; }
     for ((rep = 1; rep <= REPS; rep++)); do
         echo "---- $name K=$K rep $rep/$REPS"
-        "${LAUNCH[@]}" -d "$path" -k "$K" -l "$LOG" || { echo "FAILED: $name"; fail=$((fail + 1)); }
+        "${LAUNCH[@]}" -d "$path" -k "$K" "${BARGS[@]}" -l "$LOG" || { echo "FAILED: $name"; fail=$((fail + 1)); }
     done
 done
 echo "done, $fail failure(s)"
