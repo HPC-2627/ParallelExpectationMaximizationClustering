@@ -25,7 +25,7 @@ Workflow, in order. Phases overlap on purpose: datasets are prepared while the c
 - [X] Define the PBS launch script (new file, location to decide)
 - [ ] First test run on the cluster (also on 2 nodes) to find environment problems early
 - [ ] Optimization 1, diagonal: `src/diagonal/PEMC-opt1-MPI-OpenMP-diagonal.c` (compared against `src/diagonal/PEMC-baseline-MPI-OpenMP-diagonal.c`) --> to choose
-- [ ] Optimization 1, full covariance: `src/full/PEMC-opt1-MPI-OpenMP-full.c` (same optimization as the diagonal one, compared against `src/full/PEMC-baseline-MPI-OpenMP-full.c`)
+- [X] Optimization 1, full covariance: `src/full/PEMC-opt1-MPI-OpenMP-full.c` (same optimization as the diagonal one, compared against `src/full/PEMC-baseline-MPI-OpenMP-full.c`). Written; correctness checked locally (same ll and iterations as the baseline); cluster measurements still to do
 - [ ] Optimization 2, diagonal: `src/diagonal/PEMC-opt2-MPI-OpenMP-diagonal.c` (compared against `src/diagonal/PEMC-baseline-MPI-OpenMP-diagonal.c`) --> to choose
 - [ ] Optimization 2, full covariance: `src/full/PEMC-opt2-MPI-OpenMP-full.c` (same optimization as the diagonal one, compared against `src/full/PEMC-baseline-MPI-OpenMP-full.c`)
 - [ ] Build rules for all the versions in `makefile`
@@ -49,6 +49,7 @@ Run all the versions (`src/diagonal/PEMC-baseline-sequential-diagonal.c`, `src/d
 - [ ] Parallel design section (Foster, communication): data distribution by blocks of rows, one `MPI_Allreduce` of a contiguous buffer per iteration, per-thread buffers with padding, results equal to the sequential up to rounding, meaning of `t_comm` (includes load imbalance)
 - [ ] Experimental setup section: hardware infrastructure (cluster, nodes, PBS placements)
 - [ ] Implementation and performance evaluation sections of the report (`doc/latex/Group6-Report.tex`)
+- [ ] Performance evaluation: compare opt1 and opt2 against the baseline (same model, same layouts and placements), and compare our results with the papers that use the same techniques (e.g. fused E/M per thread: Lee et al., arXiv:1606.02054, `doc/papers.md` #4.1; cache blocking / matrix formulation: Kwedlo 2023, #4.2; per-thread accumulators + reduction: Sanderson & Curtin, #2), discussing differences in setting (datasets, covariance type, hardware)
 - [ ] Report: description of opt1 and opt2 once chosen, and cite the data sources (tables already have the links)
 - [ ] Discussion and conclusions
 - [X] AI statement (mandatory): written at the top of the report (code help, search of sources, mathematical and grammatical correction); check that it is accurate before delivery

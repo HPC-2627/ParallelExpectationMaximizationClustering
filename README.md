@@ -57,7 +57,7 @@ Each model has four versions, for a total of eight programs:
 |---|---|---|
 | `sequential` | single process, no parallelism: correctness reference and serial time for the speedup | done |
 | `baseline-MPI-OpenMP` | first hybrid parallelization (rows split among MPI ranks, OpenMP threads inside each rank): the reference of the parallel tests | done |
-| `opt1-MPI-OpenMP` | first optimization of the baseline | diagonal written (same log-likelihood and iterations as the baseline on one rank; to be checked with several ranks on the cluster): E-step and M-step fused in one pass (no responsibility matrix) inside one parallel region per iteration; full not written yet |
+| `opt1-MPI-OpenMP` | first optimization of the baseline | diagonal written (same log-likelihood and iterations as the baseline on one rank; to be checked with several ranks on the cluster): E-step and M-step fused in one pass (no responsibility matrix) inside one parallel region per iteration; full written with the same optimization (the K Cholesky factorizations are also split among the threads; same log-likelihood and iterations as the full baseline with 1-4 ranks x 1-4 threads, checked locally) |
 | `opt2-MPI-OpenMP` | second optimization of the baseline | **empty, not written yet** |
 
 All the versions of the same model must end with the same log-likelihood and the same number of iterations (same dataset, `-k` and `-s`).
