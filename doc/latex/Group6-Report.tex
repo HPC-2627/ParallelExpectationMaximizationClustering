@@ -122,6 +122,8 @@ $\ln\sum_{k}e^{v_k}=m+\ln\sum_{k}e^{v_k-m}$, where $m=\max_k v_k$: the largest t
 \item Empty clusters. If $N_k<10^{-10}$ no point is assigned to the cluster and the formulas would divide by zero: mean and variances stay as before and the weight is set to the minimum $\pi_k=10^{-12}$, never 0, because the E-step uses $\ln\pi_k$.
 \end{itemize}
 
+\paragraph{Visualization of the algorithm.} \textcolor{red}{TODO: insert the link to the visualization of the algorithm (how EM moves the means and the covariances iteration after iteration).}
+
 \subsection{Implemented versions and cost}\label{sec:versions}
 The EM algorithm is the same for both covariance models (Algorithms~\ref{alg:seq-diag} and~\ref{alg:seq-full}, with the same safeguards): only $\sigma^2_{kd}$ is replaced by $\Sigma_k$ in the density of the E-step and in the covariance update of the M-step. Each model has four versions, for a total of eight programs:
 \begin{itemize}
@@ -426,6 +428,7 @@ The same procedure is used for every version, so that the times of sequential, b
 \item \emph{Stability.} On the exclusive placements the spread of the 3 repetitions (max$-$min over median) is a few percent; on shared nodes it is larger, because other jobs use the memory bandwidth and the caches \textcolor{red}{(TODO: check the final values per placement and report them)}.
 \item \emph{Not controlled.} The CPU frequency (turbo) is not fixed by the jobs \textcolor{red}{(TODO: check the frequency governor of the nodes)}; the network between nodes is shared with the other users of the cluster.
 \item \emph{Raw data.} Every run appends one entry to a text log (version, dataset, layout, node, CPU, iterations, $\mathcal{L}$, all the times); all the tables and plots are generated from these logs.
+\item \emph{Execution on the cluster.} \textcolor{red}{TODO: insert the link to the execution on the cluster (scripts and instructions to compile and launch the PBS jobs).}
 \end{itemize}
 
 \subsection{Dataset}

@@ -55,6 +55,8 @@ Run all the versions (`src/diagonal/PEMC-baseline-sequential-diagonal.c`, `src/d
 - [ ] Discussion and conclusions
 - [X] AI statement (mandatory): written at the top of the report (code help, search of sources, mathematical and grammatical correction); check that it is accurate before delivery
 - [ ] Repo link (SET TO PUBLIC) and data sources cited
+- [ ] Report: insert the link to the execution on the cluster (TODO in Measurement Methodology, item "Execution on the cluster")
+- [ ] Report: insert the link to the visualization of the algorithm (TODO at the end of the subsection "The EM algorithm for Gaussian mixtures", paragraph "Visualization of the algorithm")
 - [X] Report at least 10 pages
 
 ## Final checks
