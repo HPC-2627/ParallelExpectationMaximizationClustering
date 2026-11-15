@@ -55,9 +55,9 @@ REQUIRE_CPU=${REQUIRE_CPU-6252N}
 # -----------------------------------------------------------------------------------------------
 
 # Versions that are WRITTEN (one source file with the code, built by the makefile). Add the new ones
-# here when they are ready (and to MPI_BINS in the makefile): opt2 diagonal, opt1/opt2 full.
+# here when they are ready (and to MPI_BINS in the makefile): opt1/opt2 full.
 WRITTEN=" baseline-sequential-diagonal baseline-MPI-OpenMP-diagonal opt1-MPI-OpenMP-diagonal
-          baseline-sequential-full baseline-MPI-OpenMP-full "
+          opt2-MPI-OpenMP-diagonal baseline-sequential-full baseline-MPI-OpenMP-full "
 
 WHAT=${1:-all}
 LOGDIR=$PWD/results/logs/pbs
