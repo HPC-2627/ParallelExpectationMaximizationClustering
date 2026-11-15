@@ -27,7 +27,7 @@ Workflow, in order. Phases overlap on purpose: datasets are prepared while the c
 - [ ] Optimization 1, diagonal: `src/diagonal/PEMC-opt1-MPI-OpenMP-diagonal.c` (compared against `src/diagonal/PEMC-baseline-MPI-OpenMP-diagonal.c`) --> to choose
 - [X] Optimization 1, full covariance: `src/full/PEMC-opt1-MPI-OpenMP-full.c` (same optimization as the diagonal one, compared against `src/full/PEMC-baseline-MPI-OpenMP-full.c`). Written; correctness checked locally (same ll and iterations as the baseline); cluster measurements still to do
 - [ ] Optimization 2, diagonal: `src/diagonal/PEMC-opt2-MPI-OpenMP-diagonal.c` (compared against `src/diagonal/PEMC-baseline-MPI-OpenMP-diagonal.c`) --> to choose
-- [ ] Optimization 2, full covariance: `src/full/PEMC-opt2-MPI-OpenMP-full.c` (same optimization as the diagonal one, compared against `src/full/PEMC-baseline-MPI-OpenMP-full.c`)
+- [ ] Optimization 2, full covariance: `src/full/PEMC-opt2-MPI-OpenMP-full.c` (compared against `src/full/PEMC-baseline-MPI-OpenMP-full.c`) --> to choose. It does NOT have to be the same as the diagonal one: the optimizations of the two models can be different, each chosen for the bottleneck of its own model (full: compute-bound for large D)
 - [ ] Build rules for all the versions in `makefile`
 - [ ] Correctness test after every version, not only at the end
 - [ ] Check performances on course notes.

@@ -51,7 +51,7 @@ The model is different, so the results are compared only with runs of the same m
 
 ### Versions
 
-Each model has four versions, for a total of eight programs: `sequential` (single process, no parallelism: correctness reference and serial time for the speedup), `baseline-MPI-OpenMP` (first hybrid parallelization: rows split among MPI ranks, OpenMP threads inside each rank; the reference of the parallel tests) and two optimizations of the baseline, `opt1-MPI-OpenMP` and `opt2-MPI-OpenMP`. The two models have **different optimizations**: each one starts from the baseline of its own model and is compared only with it.
+Each model has four versions, for a total of eight programs: `sequential` (single process, no parallelism: correctness reference and serial time for the speedup), `baseline-MPI-OpenMP` (first hybrid parallelization: rows split among MPI ranks, OpenMP threads inside each rank; the reference of the parallel tests) and two optimizations of the baseline, `opt1-MPI-OpenMP` and `opt2-MPI-OpenMP`. The optimizations **can be different in the two models**: each model has its own bottleneck (the diagonal one is memory-bound, $O(NKD)$; the full one is compute-bound for large $D$, $O(NKD^2)$), so `opt1` and `opt2` are chosen separately for each model. `opt1` happens to be the same idea in both models; `opt2` is chosen independently. Each optimization starts from the baseline of its own model and is compared only with it.
 
 #### Diagonal covariance (`src/diagonal/`)
 
@@ -66,14 +66,10 @@ Each model has four versions, for a total of eight programs: `sequential` (singl
 
 | Version | What it is | State |
 |---|---|---|
-| `sequential` | single process, no parallelism: correctness reference and serial time for the speedup | done |
-| `baseline-MPI-OpenMP` | first hybrid parallelization (rows split among MPI ranks, OpenMP threads inside each rank): the reference of the parallel tests | done |
-| `opt1-MPI-OpenMP` | first optimization of the baseline | diagonal written (same log-likelihood and iterations as the baseline on one rank; to be checked with several ranks on the cluster): E-step and M-step fused in one pass (no responsibility matrix) inside one parallel region per iteration; full written with the same optimization (the K Cholesky factorizations are also split among the threads; same log-likelihood and iterations as the full baseline with 1-4 ranks x 1-4 threads, checked locally) |
-| `opt2-MPI-OpenMP` | second optimization of the baseline | **empty, not written yet** |
 | `sequential` | correctness reference and serial time | done, measured on the cluster |
 | `baseline-MPI-OpenMP` | hybrid MPI + OpenMP parallelization (Cholesky), two `MPI_Allreduce` per iteration | done, measured on the cluster |
-| `opt1-MPI-OpenMP` | first optimization of the full baseline (to be defined) | **not written yet** |
-| `opt2-MPI-OpenMP` | second optimization of the full baseline (to be defined) | **not written yet** |
+| `opt1-MPI-OpenMP` | **computation**, same idea as the diagonal `opt1`: E-step and M-step fused in one pass (no responsibility matrix), one parallel region per iteration (the K Cholesky factorizations are also split among the threads), thread-local buffers (no false sharing); communication as in the baseline | done, measured on the cluster (`pack`/`scatter`; `:excl` placements still to run): same log-likelihood and iterations as the sequential version on every layout |
+| `opt2-MPI-OpenMP` | second optimization of the full baseline: **to be chosen**, it does not have to be the same as the diagonal `opt2` | **not written yet** |
 
 All the versions of the same model must end with the same log-likelihood and the same number of iterations (same dataset, `-k` and `-s`).
 

@@ -127,7 +127,7 @@ The EM algorithm is the same for both covariance models (Algorithms~\ref{alg:seq
 \begin{itemize}
 \item \emph{Sequential}: single process, single thread. It is the correctness reference (the parallel versions must reach the same final log-likelihood) and gives the serial time used to compute speedup and efficiency.
 \item \emph{Baseline MPI+OpenMP}: the straightforward hybrid parallelization, without optimizations. It is the reference against which the optimizations are measured.
-\item \emph{Optimization 1} and \emph{Optimization 2}: two optimizations of the baseline of the same model. Each one starts from the baseline and changes one aspect only, so its effect is measured against the baseline alone. The two models have \emph{different} optimizations (Section~\ref{sec:design}).
+\item \emph{Optimization 1} and \emph{Optimization 2}: two optimizations of the baseline of the same model. Each one starts from the baseline and changes one aspect only, so its effect is measured against the baseline alone. The optimizations can be \emph{different} in the two models, because each is chosen for the bottleneck of its own model (the diagonal model is memory-bound, the full one is compute-bound for large $D$): Optimization~1 applies the same idea to both, Optimization~2 is chosen separately for each model (Section~\ref{sec:design}).
 \end{itemize}
 The two models are compared only within themselves: \emph{diagonal} with \emph{diagonal} and \emph{full} with \emph{full}, because the log-likelihood of different models is not comparable.
 
