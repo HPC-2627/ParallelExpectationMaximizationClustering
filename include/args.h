@@ -36,6 +36,8 @@ typedef struct
                              with the best log-likelihood is kept */
     int warmup;           /* warm-up EM iterations done before the timed run and then discarded
                              (0 = no warm-up). See the warm-up pass in main() of every version */
+    int block;            /* rows per block of the blocked versions (opt2 full, option -b);
+                             0 = default of the version. The other versions ignore it */
     const char *save_dir; /* folder where the clustering result (labels, means, log-likelihood
                              curve) is saved, see cluster-out.h (NULL = do not save, option --save) */
     int verbose;          /* 1 = print the log-likelihood of every iteration */

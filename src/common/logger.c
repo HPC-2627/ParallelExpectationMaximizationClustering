@@ -147,6 +147,9 @@ int log_run(const char *path, const RunStats *s)
         fprintf(f, "t_iteration    : %.9g\n", (s->t_estep + s->t_mstep + s->t_comm) / s->iterations);
     else
         fprintf(f, "t_iteration    : n/a\n");
+    /* Block size: only the blocked versions set it, the logs of the others do not change */
+    if (s->block > 0)
+        fprintf(f, "block          : %d\n", s->block);
     fprintf(f, "\n"); /* empty line: separates this block from the next one */
 
     fclose(f);

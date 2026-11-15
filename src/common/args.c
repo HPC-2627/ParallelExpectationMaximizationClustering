@@ -22,6 +22,7 @@ void args_defaults(RunArgs *a, const char *default_name)
     a->seed = 42;
     a->restarts = 1; /* a single run: the measured time is that of a single EM */
     a->warmup = 3; /* few iterations: enough to wake up threads, MPI and caches (see args.h) */
+    a->block = 0;  /* 0 = the blocked version uses its own default (opt2 full: 64 rows) */
     a->verbose = 0;
     a->save_dir = NULL; /* by default the clustering result is not saved */
     a->log_path = NULL; /* the default path is decided in args_parse() */
@@ -46,6 +47,8 @@ void args_usage(const char *prog)
             "                       the times are summed over all the restarts\n"
             "  -w, --warmup N       EM iterations done before the timed run, then discarded: they\n"
             "                       wake up the OpenMP threads, MPI and the caches (default: 3, 0 = off)\n"
+            "  -b, --block B        rows per block of the blocked version (opt2 full only, default: 64);\n"
+            "                       ignored by the other versions\n"
             "  -l, --log FILE.log   append a block with the results and the times to this log file\n"
             "                       (default: results/logs/<name>.log, created if missing)\n"
             "      --no-log         do not write the log\n"
@@ -96,6 +99,7 @@ int args_parse(int argc, char **argv, RunArgs *a)
         {"seed", required_argument, 0, 's'},
         {"restarts", required_argument, 0, 'r'},
         {"warmup", required_argument, 0, 'w'},
+        {"block", required_argument, 0, 'b'},
         {"log", required_argument, 0, 'l'},
         {"name", required_argument, 0, 'N'},
         {"no-log", no_argument, 0, 'L'},
@@ -106,10 +110,10 @@ int args_parse(int argc, char **argv, RunArgs *a)
 
     /* Loop over the options: getopt_long returns one at a time the code of the option found
      * (and puts its value in 'optarg'), then -1 when the options are finished.
-     * The string "d:k:n:i:t:s:r:w:l:vh" lists the short options: a letter followed by ':'
+     * The string "d:k:n:i:t:s:r:w:b:l:vh" lists the short options: a letter followed by ':'
      * takes a value, a lone letter (v, h) is a switch. */
     int c;
-    while ((c = getopt_long(argc, argv, "d:k:n:i:t:s:r:w:l:vh", long_options, NULL)) != -1)
+    while ((c = getopt_long(argc, argv, "d:k:n:i:t:s:r:w:b:l:vh", long_options, NULL)) != -1)
     {
         switch (c)
         {
@@ -121,6 +125,7 @@ int args_parse(int argc, char **argv, RunArgs *a)
         case 's': a->seed = strtoull(optarg, NULL, 10); break; /* string -> uint64, base 10 */
         case 'r': a->restarts = atoi(optarg); break;
         case 'w': a->warmup = atoi(optarg); break;
+        case 'b': a->block = atoi(optarg); break;
         case 'l': a->log_path = optarg; break;
         case 'N': a->name = optarg; break;
         case 'L': a->no_log = 1; break;
@@ -140,9 +145,10 @@ int args_parse(int argc, char **argv, RunArgs *a)
         args_usage(argv[0]);
         return -1;
     }
-    if (a->max_iter < 1 || a->restarts < 1 || a->tol < 0.0 || a->warmup < 0)
+    if (a->max_iter < 1 || a->restarts < 1 || a->tol < 0.0 || a->warmup < 0 || a->block < 0)
     {
-        fprintf(stderr, "error: invalid value (max-iter >= 1, restarts >= 1, tol >= 0, warmup >= 0)\n");
+        fprintf(stderr, "error: invalid value (max-iter >= 1, restarts >= 1, tol >= 0, warmup >= 0, "
+                        "block >= 0)\n");
         return -1;
     }
 
