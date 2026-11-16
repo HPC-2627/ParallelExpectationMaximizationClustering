@@ -116,8 +116,6 @@ The cluster is **heterogeneous** (several Xeon generations, from 2014 to 2023) a
 | **Multi-node runs on all the nodes** | `--hostfile $PBS_NODEFILE`: Open MPI does not see the other nodes of the job by itself (same as Exercise 10) | - |
 | **Repetitions** | every (dataset, layout) runs 3 times; the plots use the median, error bar min-max | `REPS` (default 3) |
 
-To compare two versions use **only logs from the same campaign** (same `NODE_FILTER`): delete the old logs before a new campaign (see below). For the final numbers of the report prefer the `:excl` placements (batch B): with `pack`/`scatter` other jobs can share the node and disturb memory bandwidth and timing.
-
 ### Before a new campaign: clean up
 
 Two campaigns running at the same time write **into the same log files** (blocks mixed, double repetitions). Before submitting again:
@@ -136,7 +134,13 @@ unset CONFIGS_LIST                                     # no leftover filter from
 
 ### Submit
 
-**One stage at a time, both models, all the data.** One command = one version of one model (`diagonal` or `full`) on **all the datasets** (10 real + 15 synthetic; `gene_rnaseq` is skipped with the full model) with all the layouts below. The queue has a **per-user limit** on the jobs (about 30 between running and queued, counting also the jobs of other projects): with everything at once some `qsub` are rejected. So submit **one stage at a time**, and send the next one when the jobs of the previous one have finished (or at least started):
+**One stage at a time, both models, all the data.**
+
+One command = one version of one model (`diagonal` or `full`) on **all the datasets** (10 real + 15 synthetic; `gene_rnaseq` is skipped with the full model) with all the layouts below. 
+
+The queue has a **per-user limit** on the jobs (about 30 between running and queued, counting also the jobs of other projects): with everything at once some `qsub` are rejected. 
+
+So submit **one stage at a time**, and send the next one when the jobs of the previous one have finished (or at least started):
 
 Every stage is submitted in **two batches** (`PLACES_LIST`), at most 8 jobs each:
 
@@ -145,12 +149,12 @@ Every stage is submitted in **two batches** (`PLACES_LIST`), at most 8 jobs each
 | **A** | `pack`, `scatter` | 8 | they start as soon as some cores are free: these are the runs that give the results |
 | **B** | `pack:excl`, `scatter:excl` | 8 | the nodes are reserved for the job (clean timing), but on a busy cluster they can stay queued for a long time (no Xeon6252N node is ever completely empty) |
 
-The sequential stage is one job, already on a node used only by itself: it is submitted once, in batch A. Send **all of batch A first**, check `qstat -u $USER`, then batch B when there is room under the limit.
+The sequential stage is one job, already on a node used only by itself: it is submitted once, in batch A. 
+
+Send **all of batch A first**, check `qstat -u $USER`, then batch B when there is room under the limit.
 
 ```bash
 make clean && make all mpi-omp                       # build first (module OpenMPI loaded, see Phase 3)
-DRY_RUN=1 src/script/pemc-submit.sh diagonal baseline   # check the qsub commands of a stage (nothing is sent):
-                                                     # every select must end with :cpu_type=Xeon6252N
 
 # ---- batch A: pack + scatter ---------------------------------------------------------------
 export PLACES_LIST="pack scatter"
@@ -173,7 +177,9 @@ src/script/pemc-submit.sh full opt1                  # 8 jobs, when opt1 full is
 src/script/pemc-submit.sh full opt2                  # 8 jobs, when opt2 full is written
 ```
 
-Sweeps of K and D (plot P1: time per iteration vs K and vs D), one fixed layout (1 node, 1 rank x 8 threads, node used only by the job). They need the D sweep files made in Phase 2 (`generate-synthetic-dataset.py --sweep`); the logs go in `results/logs/sweep/`:
+Sweeps of K and D (plot P1: time per iteration vs K and vs D), one fixed layout (1 node, 1 rank x 8 threads, node used only by the job). 
+
+They need the D sweep files made in Phase 2 (`generate-synthetic-dataset.py --sweep`); the logs go in `results/logs/sweep/`:
 
 ```bash
 src/script/pemc-submit.sh sweep
@@ -187,7 +193,9 @@ One job = one version with one layout, and it runs **all the datasets** (10 real
 | `scatter` | every chunk on a different node |
 | `pack:excl`, `scatter:excl` | same, but the nodes are reserved for the job (no other job disturbs the timing) |
 
-With one node `pack` and `scatter` coincide, so only `pack` and `pack:excl` are submitted. Note: with `pack` PBS may put several chunks on the **same** node (e.g. a "2n2r4t" job with its 4 ranks on one node, communication through shared memory): for a real comparison across nodes use the `scatter` runs. The layouts, memory, walltime, repetitions, node type and subset of datasets are variables at the top of [pemc-submit.sh](../src/script/pemc-submit.sh).
+With one node `pack` and `scatter` coincide, so only `pack` and `pack:excl` are submitted. Note: with `pack` PBS may put several chunks on the **same** node (e.g. a "2n2r4t" job with its 4 ranks on one node, communication through shared memory): for a real comparison across nodes use the `scatter` runs. 
+
+The layouts, memory, walltime, repetitions, node type and subset of datasets are variables at the top of [pemc-submit.sh](../src/script/pemc-submit.sh).
 
 Other options of `pemc-submit.sh` (environment variables, combined with the commands above):
 
@@ -263,24 +271,6 @@ done
 watch -n 30 'qstat -u $USER | tail -n +6; echo; grep -c "^==== run" results/logs/diagonal/*/*.log 2>/dev/null'
 ```
 
-**Other commands:**
-
-```bash
-qstat -u $USER                        # state of the jobs (R = running, Q = queued)
-qstat -x -u $USER                     # also the finished ones (F)
-qstat -xf <job_id> | grep -E "Exit_status|exec_host"   # exit code and node(s) of one job
-qdel <job_id>                         # cancel a job
-qselect -u $USER | xargs -r qdel      # cancel all my jobs
-```
-
-### Test a job without the queue
-
-On the login node the CPU is not a Xeon6252N, so the CPU check must be disabled (`REQUIRE_CPU=`); the times of this test are not meaningful (shared node):
-
-```bash
-PBS_O_WORKDIR=$PWD REQUIRE_CPU= REPS=1 VERSION=baseline-sequential-full ONLY=heart_failure src/script/pemc-job.sh
-```
-
 ### Output
 
 - logs: `results/logs/<model>/<stage>/<version>_<placement>_<nodes>n<ranks>r<threads>t.log` (`<version>_seq.log` for the sequential ones), with model = `diagonal` | `full` and stage = `sequential` | `baseline` | `opt1` | `opt2` (folders already in the repository); sweeps in `results/logs/sweep/`; sweep over the block size of `opt1` full (`BLOCK=64 src/script/pemc-submit.sh full opt1`) in `results/logs/block/<version>_<layout>_b<B>.log`; clustering in `results/logs/cluster/` and `results/clusters/`;
@@ -310,73 +300,44 @@ Options, catalog and experiment matrix: [plots.md](plots.md).
 
 ## Usage of the programs
 
-The PBS jobs ([pemc-job.sh](../src/script/pemc-job.sh)) call the executables of `bin/` with the options below; they can also be run by hand (from the root of the repository) for a quick test, e.g. on the login node or inside an interactive job (`qsub -I -l select=1:ncpus=8:mem=4gb:cpu_type=Xeon6252N -l walltime=00:20:00`). Times measured on the login node are not meaningful (shared node, different CPU).
+The PBS jobs ([pemc-job.sh](../src/script/pemc-job.sh)) call the executables in `bin/`; for a quick test they can also be run by hand from the repository root (login node or `qsub -I -l select=1:ncpus=8:mem=4gb:cpu_type=Xeon6252N -l walltime=00:20:00`). Times on the login node are not meaningful.
 
 ```bash
-# sequential versions (correctness reference and serial time)
+# sequential
 ./bin/PEMC-baseline-sequential-diagonal -d data/synthetic/synth_clean/synth_clean_p01.bin -k 4
-./bin/PEMC-baseline-sequential-full     -d data/real/heart_failure/heart_failure.bin -k 2
 
-# MPI + OpenMP versions: R ranks x T threads, every rank bound to T cores (as in the jobs)
+# MPI + OpenMP: R ranks x T threads, each rank bound to T cores
 module load OpenMPI/4.1.5-GCC-12.3.0
 OMP_NUM_THREADS=4 OMP_PROC_BIND=close OMP_PLACES=cores \
-  mpiexec -n 2 --map-by slot:PE=4 --bind-to core --report-bindings \
+  mpiexec -n 2 --map-by slot:PE=4 --bind-to core \
   bin/PEMC-opt1-MPI-OpenMP-diagonal -d data/synthetic/synth_clean/synth_clean_p01.bin -k 4 --no-log
 ```
 
-Without `--map-by ...:PE=T --bind-to core` Open MPI binds every rank to ONE core and all its OpenMP threads share it (see Phase 4). `-h` prints the options of every executable.
+Without `--map-by slot:PE=T --bind-to core` all threads of a rank share one core. `-h` lists the options.
 
-$K$ used by the jobs: number of true classes of each dataset (`synth_clean` 4, `synth_overlap` 5, `synth_rare` 6; real: `brainweb` 12, `cardiotocography` 10, `diabetes130` 3, `gene_rnaseq` 5, all the others 2; `parkinson` has no labels, so $K = 2$ is arbitrary there). The full-covariance versions cost $O(NKD^2)$ per iteration: `gene_rnaseq` ($D = 20\,264$) is not feasible ($K D^2$ doubles do not fit in memory); on big files start with `-n ROWS`.
+**$K$** = number of true classes (`synth_clean` 4, `synth_overlap` 5, `synth_rare` 6, `brainweb` 12, `cardiotocography` 10, `diabetes130` 3, `gene_rnaseq` 5, others 2; `parkinson` is unlabeled). Full covariance is $O(NKD^2)$: not feasible on `gene_rnaseq`; on big files start with `-n`.
 
 | Option | Meaning |
 |---|---|
-| `-d, --dataset FILE` | dataset in binary format (header N, D + float64 row-major) |
-| `-k, --clusters K` | number of clusters |
-| `-n, --rows N` | use only the first N rows of the file (default: all) |
-| `-i, --max-iter N` | maximum number of iterations (default 200) |
-| `-t, --tol X` | relative tolerance on the log-likelihood (default 1e-6) |
-| `-s, --seed S` | seed of the initialization (default 42): the same seed gives the same initialization in every version |
-| `-r, --restarts R` | number of initializations, the best one is kept (default 1); the times are summed over all the restarts |
-| `-w, --warmup N` | warm-up EM iterations done before the timed run and then discarded (default 3, 0 = off). They wake up the OpenMP threads, MPI and the caches; the result is identical with and without warm-up, and their time is not in `t_total` nor in the other times (it is logged as `t_warmup`) |
-| `-b, --block B` | rows per block of `opt1` full (default 64); ignored by the other versions. Written in the log as `block` |
-| `-l, --log FILE.log` | log file (default `results/logs/<name>.log`; the jobs pass `results/logs/<model>/<stage>/<version>_<placement>_<layout>.log`) |
-| `--no-log` | do not write the log |
-| `--save DIR` | save the clustering result (labels of every row, weights and means, log-likelihood curve) in `DIR`, see `include/cluster-out.h`. Sequential versions only; used by the clustering plots |
-| `-v, --verbose` | print the log-likelihood at every iteration |
+| `-d FILE` | binary dataset (header N, D + float64 row-major) |
+| `-k K` | number of clusters |
+| `-n N` | use only the first N rows |
+| `-i N` | max iterations (200) |
+| `-t X` | relative log-likelihood tolerance (1e-6) |
+| `-s S` | init seed (42), same init in every version |
+| `-r R` | restarts, best kept; times summed (1) |
+| `-w N` | untimed warm-up iterations (3), logged as `t_warmup` |
+| `-b B` | block rows for `opt1` full (64) |
+| `-l FILE` / `--no-log` | log file (`results/logs/<name>.log`) / no log |
+| `--save DIR` | save labels, weights, means, loglik curve (sequential only) |
+| `-v` | print loglik every iteration |
 
-**Log format** (`.log`, plain text, the same for all the versions). Every run appends a block of `key : value` lines, separated from the next one by an empty line (example of opt1 on 4 nodes x 2 ranks x 4 threads; some values rounded):
+**Log** (`.log`): each run appends a `==== run ====` block of `key : value` lines (parse by splitting on the first `:`). Main keys:
 
-```
-==== run ====
-timestamp      : 2026-11-13T16:13:29Z
-version        : opt1-MPI-OpenMP-diagonal
-dataset        : data/real/brainweb/brainweb.bin
-hostname       : hpc3-c11-n12.unitn.it
-cpu_model      : Intel(R) Xeon(R) Gold 6252N CPU @ 2.30GHz
-ranks          : 8
-threads        : 4
-N              : 11862016
-D              : 1
-K              : 12
-restarts       : 1
-warmup_iters   : 3
-iterations     : 200
-converged      : 0
-loglik         : 513268.212527
-ari            : 0.161056
-t_total        : 25.1
-t_read         : 0.13
-t_init         : 0.06
-t_estep        : 22.2
-t_mstep        : 4.86e-05
-t_comm         : 2.68
-t_warmup       : 0.4
-flops          : 4.33e+11
-bytes          : 1.91e+10
-rank_compute   : 21.3 22.2 20.1 19.4 21.8 22.0 20.9 21.5
-t_iteration    : 0.1243
-```
+- run info: `version`, `dataset`, `hostname`, `cpu_model` (compare only runs on the same CPU), `ranks`, `threads`, `N`, `D`, `K`, `iterations`, `converged`
+- quality: `loglik`, `ari` (`n/a` without labels)
+- times (s): `t_total`, `t_read`, `t_init`, `t_estep`, `t_mstep`, `t_comm`, `t_warmup` (not in `t_total`), `t_iteration` = (E+M+comm)/iterations. In opt1 E and M are fused into `t_estep`
+- `flops`, `bytes`: analytic counts ([perfmodel.h](../include/perfmodel.h)) for the roofline
+- `rank_compute`: per-rank compute time, for load imbalance
 
-Times are in seconds. `hostname` and `cpu_model` identify the node (the nodes of the cluster are not all equal: compare only runs on the same CPU). `ari` (adjusted Rand index against the true labels) is `n/a` if the dataset has no labels. `t_warmup` is the time of the `warmup_iters` throwaway iterations, not included in `t_total`. In the opt1 versions E-step and M-step are fused: the fused pass is in `t_estep`, and `t_mstep` is only the update of the parameters. `flops` and `bytes` are an analytic count of the floating-point operations and of the main-memory traffic of the run (`include/perfmodel.h`, not hardware counters), used for the roofline. `rank_compute` is the compute time (E-step + M-step, no MPI) of every MPI rank in rank order (`n/a` in the sequential versions), used for the load imbalance. `t_iteration` is `(t_estep + t_mstep + t_comm) / iterations` (only with one restart). To read it in Python, split the file on `==== run ====` and every line on the first `:`.
-
-**Correctness check between versions:** run them with the same dataset, `-k` and `-s`: they must end with the same log-likelihood (up to rounding) and the same number of iterations. Compare only versions of the same model: `-diagonal` with `-diagonal`, `-full` with `-full`.
+**Correctness check:** same dataset, `-k`, `-s` → same log-likelihood (up to rounding) and same iterations. Compare only `-diagonal` with `-diagonal`, `-full` with `-full`.

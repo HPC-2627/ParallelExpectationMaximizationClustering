@@ -44,7 +44,7 @@ for model in diagonal full; do
     for entry in "${LIST[@]}"; do
         name=${entry%%:*}; rest=${entry#*:}; path=${rest%%:*}; Kt=${rest##*:}
         [ -n "$ONLY" ] && [[ "$name" != *"$ONLY"* ]] && continue
-        # Full covariance needs K*D^2 doubles: gene_rnaseq (D = 20531) does not fit in memory
+        # Full covariance needs K*D^2 doubles: gene_rnaseq (D = 20264) does not fit in memory
         [ "$model" = full ] && [ "$name" = gene_rnaseq ] && { echo "skip $name full"; continue; }
         [ -f "$path" ] || { echo "skip $name: $path not found"; fail=$((fail + 1)); continue; }
         # K range, with the true K added if it is outside
