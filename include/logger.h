@@ -42,7 +42,7 @@
  *   rank_compute   : 0.61 0.60 0.63 0.62            compute seconds (E-step + M-step, no MPI) of
  *                                                   EACH rank, in rank order; n/a if sequential
  *   t_iteration    : 0.079643                       (t_estep + t_mstep + t_comm) / iterations
- *   block          : 128                            rows per block (ONLY in the blocked versions)
+ *   block          : 64                             rows per block (ONLY in the blocked versions)
  *
  * Every line is "key : value": it is readable by eye and easy to parse (just split at the
  * first ':'). Runs are separated by an empty line. hostname and cpu_model identify the node,
@@ -76,7 +76,7 @@ typedef struct
     const double *rank_compute; /* compute time of every rank (s), array of n_rank_compute values
                                    in rank order; NULL if not available (sequential versions) */
     int n_rank_compute;  /* length of rank_compute (= number of MPI ranks) */
-    int block;           /* rows per block (blocked versions only, opt2 full); 0 = not a blocked
+    int block;           /* rows per block (blocked versions only, opt1 full); 0 = not a blocked
                             version, and the line "block" is not written */
 } RunStats;
 

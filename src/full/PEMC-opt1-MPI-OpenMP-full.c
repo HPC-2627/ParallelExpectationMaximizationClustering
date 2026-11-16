@@ -1,10 +1,13 @@
 /*
  * PEMC-opt1-MPI-OpenMP-full.c
  *
- * OPTIMIZATION 1 of the hybrid MPI + OpenMP EM, FULL covariance. It is the SAME optimization as
- * PEMC-opt1-MPI-OpenMP-diagonal.c, applied to the full model: same model, same formulas and same
- * results as PEMC-baseline-MPI-OpenMP-full.c (read it first); what changes is HOW the work is
- * organized: algorithm and memory access, not communication (that is opt2).
+ * OPTIMIZATION 1 of the hybrid MPI + OpenMP EM, FULL covariance: ALL THE OPTIMIZATIONS OF THE
+ * COMPUTATION. Same model, same formulas and same results as PEMC-baseline-MPI-OpenMP-full.c (read
+ * it first); what changes is HOW the work inside a rank is organized: algorithm, loop order and
+ * memory access. The communication is the one of the baseline on purpose (two MPI_Allreduce per
+ * iteration): optimizing it is the subject of Optimization 2 (PEMC-opt2-MPI-OpenMP-full.c).
+ * Points (1)-(3) are the same idea as PEMC-opt1-MPI-OpenMP-diagonal.c; point (4), the blocking,
+ * exists only in the full model, whose cost per row (O(K*D^2)) makes it compute-bound.
  *
  * ========================================================================================
  * WHAT CHANGES WITH RESPECT TO THE BASELINE
@@ -12,57 +15,99 @@
  * (1) FUSION OF E-STEP AND M-STEP
  *     baseline: E-step loop  : reads X, writes the responsibilities r (n_local*K doubles)
  *               M-step loop  : reads X and r again, accumulates Nk, sum r*x, sum r*x*x^T
- *     opt1    : ONE loop over the rows. For each row the K responsibilities are computed in a tiny
- *               per-thread buffer (K doubles, stays in the L1 cache) and used immediately to update
- *               Nk, sx, sxx while the row x_i is still in the cache. The matrix r does not exist any
- *               more, and X is read ONCE per iteration instead of twice: fewer bytes moved from the
- *               main memory (pem_bytes(fused = 1)), higher arithmetic intensity (roofline).
- *     The labels (argmax of the responsibilities of the row) are stored during the same pass,
- *     so the final clustering is available without r.
- *     Expected effect: SMALLER than in the diagonal model. The full model does K*D^2 operations per
- *     row against 8*(D + K) bytes, so for large D (synth_rare, D = 50) it is compute-bound and the
- *     bytes saved are not the bottleneck; for small D (synth_clean, D = 10) it is close to the
- *     memory-bound regime and the fusion helps more (see doc/full-covariance-theory.md, 6.1).
+ *     opt1    : ONE pass over the rows. The responsibilities of a row (of a block of rows, see (4))
+ *               are used immediately to update Nk, sx, sxx while the rows are still in the cache.
+ *               The matrix r does not exist any more and X is read ONCE per iteration instead of
+ *               twice (pem_bytes(fused = 1)). The labels (argmax of the responsibilities) are stored
+ *               during the same pass.
  *
  * (2) ONE PARALLEL REGION PER ITERATION
- *     baseline: two "parallel for" per iteration (E-step, M-step), each with its own fork/join,
- *               and the K Cholesky factorizations (K*D^3/6 multiply-adds) done by the master thread
- *               alone while the other threads wait: a serial part (Amdahl).
- *     opt1    : a single "#pragma omp parallel" that contains: the K factorizations (split among the
- *               threads, one cluster each: they are independent), the loop over the rows (E+M fused)
- *               and the reductions of ll and of the sums. One fork/join and one creation of the
- *               private copies per iteration, and the serial part is divided by min(K, threads).
+ *     baseline: two "parallel for" per iteration (E-step, M-step), and the K Cholesky
+ *               factorizations (K*D^3/6 multiply-adds) done by the master thread alone while the
+ *               other threads wait (a serial part, Amdahl).
+ *     opt1    : a single "#pragma omp parallel" with the K factorizations (split among the threads,
+ *               one cluster each: they are independent), the loop over the rows (E+M fused) and the
+ *               reductions of ll and of the sums. One fork/join per iteration.
  *
  * (3) NO FALSE SHARING ON THE PER-THREAD BUFFERS
- *     baseline: the K values of the row (logp) and the vector z of the forward substitution live in
- *               malloc'ed arrays, one slice per thread. malloc aligns only to 16 bytes, so the slice of
- *               a thread can share a 64-byte cache line with the slice of its neighbour: every write
- *               of one thread invalidates the line in the cache of the other (false sharing). In the
- *               diagonal model this made the fused loop ~2x SLOWER with 2-4 threads per rank.
- *     opt1    : the buffers are local arrays of the thread (double logp[K], z[D], declared inside the
- *               parallel region): they live on the stack of that thread, no line is shared.
+ *     baseline: the per-thread buffers are slices of one malloc'ed array, aligned only to 16 bytes:
+ *               the slice of a thread can share a 64-byte cache line with the slice of its neighbour,
+ *               and every write invalidates the line in the cache of the other.
+ *     opt1    : the per-thread buffers are allocated ONCE, aligned to 64 bytes, and every slice is a
+ *               multiple of 64 bytes: no cache line is shared by two threads.
  *
- * Communication is the same as the baseline on purpose (two MPI_Allreduce per iteration: ll, then
- * the packed sums), so the effect of (1)-(3) is measured alone.
+ * (4) BLOCKS OF B ROWS, INNER LOOP OVER THE ROWS
+ *     With (1)-(3) only, the fused pass reaches ~1.2 FLOP per cycle per core (synth_rare_p16,
+ *     D = 50, ~28 GFLOP/s on 8 cores of the Xeon 6252N, arithmetic intensity ~78 FLOP/byte): it is
+ *     compute-bound and the core waits instead of computing, because, processing ONE row at a time,
+ *       (a) the forward substitution  t -= L[a][b] * z[b]  is a chain of DEPENDENT subtractions
+ *           (each needs the previous t): the compiler cannot vectorize it (reordering floating-point
+ *           additions changes the result), so it runs at ~one subtraction every 4 cycles;
+ *       (b) the K Cholesky factors L_k are re-read for EVERY row and each value is used for ONE
+ *           multiply (matrix-vector operation, no reuse in the registers);
+ *       (c) the sums sxx (K*D*D doubles, 120 KB for K = 6, D = 50: larger than the 32 KB L1 cache)
+ *           are read and written for EVERY row, while their value is needed only at the end.
+ *     The independent work exists (the other ROWS), but in the outer loop, too far for the
+ *     out-of-order window of the CPU. So every thread copies a block of B rows TRANSPOSED into its
+ *     own buffer Xt (D x B: component a of the B rows contiguous) and runs, on the whole block:
+ *       Mahalanobis_block      forward substitution of TILE = 8 rows at a time: the subtraction
+ *                              chain of every row is unchanged, but the 8 chains are independent
+ *                              and advance together in one SIMD register; each L[a][b] is loaded
+ *                              once and used for 8 rows                                -> (a), (b)
+ *       Responsibilities_block log-sum-exp, exp, label and log-likelihood of every row
+ *       Accumulate_block       sxx[a][b] += sum_i r_ik x_ia x_ib accumulated in a register over the
+ *                              B rows and written ONCE per block instead of once per row; the inner
+ *                              loop over the rows is a contiguous SIMD reduction         -> (c)
+ *     It is the step from matrix-vector operations (BLAS level 2: TRSV, SYR) to matrix-matrix ones
+ *     (BLAS level 3: TRSM, SYRK), inspired by the matrix formulation with cache blocking of
+ *     W. Kwedlo, FedCSIS 2023 (doc/papers.md #4.2), written here by hand (no BLAS library).
+ *     The OpenMP loop runs over the blocks (schedule static).
+ *
+ *     Effect of (4) alone, measured on the cluster in a previous campaign (fused pass (1)-(3)
+ *     without blocks vs with blocks, B = 64, 1 exclusive node, 8 cores; that version is in the git
+ *     history, commit c9fadde): ~1.7x on the large datasets, 2.1x for D = 10, 1.7x for D = 50,
+ *     1.05x on brainweb (D = 1: nothing to block, the cost is exp); 28 -> 49 GFLOP/s for D = 50.
+ *
+ *     Block size B (option -b, default 64): the per-thread buffers are ~(2*D + 2*K) * B doubles
+ *     (~57 KB for D = 50, K = 6, B = 64): they must stay close to the core (L1/L2 cache, 1 MB of L2
+ *     per core on the 6252N). Small B = little reuse of the sums; large B = buffers out of the
+ *     cache. Local sweep (Apple M5, 4 threads, synth_rare_p01 / synth_clean_p01, time per iteration):
+ *         B =  8: 166 / 9.4 ms   32: 149 / 8.5   64: 148 / 8.0   128: 175 / 8.4   512: 246 / 9.9
+ *         (fused pass without blocks: 309 / 14.4 ms)
+ *     B = 8 already gives most of the gain (the independent chains of (a)); beyond 128 the buffers
+ *     leave the cache. To be repeated on the cluster (BLOCK=... src/script/pemc-submit.sh full opt1,
+ *     logs in results/logs/block/, field "block" of the log).
  *
  * ========================================================================================
+ * WHY THE RESULT DOES NOT CHANGE
+ * ========================================================================================
+ *   - Mahalanobis distance: for every row the operations are the SAME as in the baseline and in the
+ *     same order (x - mu, the subtractions over b in increasing order, the DIVISION by L[a][a], not
+ *     a multiplication by its inverse): the value is bitwise identical;
+ *   - responsibilities and labels: same code as the baseline, row by row;
+ *   - sums Nk, sx, sxx: the same products (r_ik * x_ia) * x_ib, added in a different order (within
+ *     the block, then into the private copy of the thread): differences of rounding only (relative
+ *     ~1e-12), as between two layouts of ranks x threads. The number of iterations and the final
+ *     log-likelihood are the same as the baseline (|delta ll| / |ll| < 1e-8).
+ *
  * CONVERGENCE AND THE SUMS OF THE LAST ITERATION
- * ========================================================================================
- * ll must be known (summed over the ranks) BEFORE deciding whether to do the M-step. With the
- * fusion the local sums are already computed by then. The order is therefore:
- *     fused pass -> Allreduce(ll) -> converged?  yes: stop (sums discarded, no second Allreduce)
- *                                                no : Allreduce(sums) -> update parameters
- * The only extra work with respect to the baseline is the accumulation of the sums in the last
- * pass (thrown away): one pass out of all those performed. The number of iterations and the final
- * log-likelihood are the same as the baseline (up to rounding: the sums are added in a different
- * grouping among the threads).
+ *   ll must be known (summed over the ranks) BEFORE deciding whether to do the M-step. With the
+ *   fusion the local sums are already computed by then. The order is therefore:
+ *       fused pass -> Allreduce(ll) -> converged?  yes: stop (sums discarded, no second Allreduce)
+ *                                                  no : Allreduce(sums) -> update parameters
+ *   The only extra work with respect to the baseline is the accumulation of the sums in the last
+ *   pass (thrown away): one pass out of all those performed.
+ *
+ * The compiler flags are those of all the other versions (-O3, no -march): SSE2 vectors of 2
+ * doubles, no FMA. The gain therefore comes from the loop order, not from the flags. With
+ * "make ARCH=-march=cascadelake" (all the versions) the vectors become wider: separate experiment.
  *
  * TIMES: the fused pass cannot be split in E and M, so it is reported in t_estep (Cholesky
  * included, as in the baseline); t_mstep is only the update of the parameters from the global sums
- * (K*D^2 operations); t_comm as in the baseline.
+ * (K*D^2 operations); t_comm the MPI_Allreduce calls.
  *
  * Usage: see args_usage() (or run with -h).  Example:
- *   OMP_NUM_THREADS=4 mpiexec -n 2 bin/PEMC-opt1-MPI-OpenMP-full -d FILE.bin -k 4
+ *   OMP_NUM_THREADS=4 mpiexec -n 2 bin/PEMC-opt1-MPI-OpenMP-full -d FILE.bin -k 4 -b 64
  */
 
 #include <math.h>
@@ -85,9 +130,22 @@
 /* Name of the version: it ends up in the log and in the name of the default log file */
 #define VERSION_NAME "opt1-MPI-OpenMP-full"
 
+/* Rows per block when -b is not given (see the header for the choice) */
+#define BLOCK_DEFAULT 64
+/* Rows of the block processed together in the forward substitution: 8 doubles = one AVX-512
+ * register, or 4 SSE2 registers of 2 doubles (the compiler splits it) */
+#define TILE 8
+
+/* Number of doubles rounded up to a multiple of 8 (= 64 bytes, one cache line) */
+static size_t round_up8(size_t n /* in */)
+{
+    return (n + 7) & ~(size_t)7;
+}
+
 /* ----------------------------------------------------------------------------------------
  * Working memory of EM (of ONE rank). Allocated ONCE, reused at every iteration.
- * There is NO matrix of responsibilities: only the labels of the last pass.
+ * There is NO matrix of responsibilities (see (1)): only the labels of the last pass, and the
+ * per-thread block buffers (see (3), (4)).
  * ---------------------------------------------------------------------------------------- */
 typedef struct
 {
@@ -101,11 +159,22 @@ typedef struct
                        acc[K .. K+K*D-1]          sx  = sum_i r_ik x_id        (index k*D + d)
                        acc[K+K*D .. end]          sxx = sum_i r_ik x_ia x_ib   (index k*D*D + a*D + b,
                                                   lower triangle b <= a only) */
-    /* No per-thread buffers here: every thread keeps logp and z in local arrays (see (3)) */
+    int B;        /* rows per block */
+    int n_threads; /* threads for which tbuf has a slice */
+    /* Per-thread block buffers: n_threads slices of 'slice' doubles, 64-byte aligned. Inside a
+     * slice (each part rounded to a multiple of 8 doubles, so it starts on a cache line):
+     *   Xt  D*B   the block, TRANSPOSED: Xt[a*B + i] = x_ia (component a of the B rows contiguous)
+     *   Zt  D*B   solution of the forward substitution of the block; reused by Accumulate_block
+     *             as RX[a*B + i] = r_ik x_ia
+     *   LP  B*K   log(pi_k N(x_i|k)) of every row, then r_ik (row-major: the K values of a row are
+     *             contiguous, as log_sum_exp wants)
+     *   R   K*B   r_ik transposed: R[k*B + i] (the B rows of cluster k contiguous) */
+    size_t off_Z, off_LP, off_R, slice;
+    double *tbuf;
 } Workspace;
 
 static void workspace_alloc(Workspace *w /* out */, int n_local /* in */, int K /* in */,
-                            int D /* in */)
+                            int D /* in */, int B /* in */, int n_threads /* in */)
 {
     w->labels = (int *)malloc((size_t)n_local * sizeof(int));
     w->cov = (double *)malloc((size_t)K * D * D * sizeof(double));
@@ -117,6 +186,20 @@ static void workspace_alloc(Workspace *w /* out */, int n_local /* in */, int K 
     CHECK_ALLOC(w->L);
     CHECK_ALLOC(w->c);
     CHECK_ALLOC(w->acc);
+
+    /* Layout of one slice (offsets in doubles, all multiples of 8) */
+    w->B = B;
+    w->n_threads = n_threads;
+    const size_t db = round_up8((size_t)D * B), kb = round_up8((size_t)K * B);
+    w->off_Z = db;
+    w->off_LP = 2 * db;
+    w->off_R = 2 * db + kb;
+    w->slice = 2 * db + 2 * kb;
+    void *mem = NULL;
+    if (posix_memalign(&mem, 64, (size_t)n_threads * w->slice * sizeof(double)) != 0)
+        mem = NULL;
+    w->tbuf = (double *)mem;
+    CHECK_ALLOC(w->tbuf);
 }
 
 static void workspace_free(Workspace *w /* in/out */)
@@ -126,11 +209,164 @@ static void workspace_free(Workspace *w /* in/out */)
     free(w->L);
     free(w->c);
     free(w->acc);
+    free(w->tbuf);
 }
 
 /* ----------------------------------------------------------------------------------------
- * FUSED PASS on the LOCAL rows: Cholesky + E-step + local sums of the M-step, in ONE parallel
- * region
+ * Block kernels. They work on ONE block of nb <= B rows, in the buffers of the calling thread,
+ * and are called inside the parallel region (no OpenMP or MPI inside them).
+ * ---------------------------------------------------------------------------------------- */
+
+/* Copies the nb rows starting at X (row-major, D columns) into Xt, transposed: Xt[a*B + i] = x_ia */
+static void Load_block_transposed(const double *restrict X /* in  */, int nb /* in */,
+                                  int D /* in */, int B /* in */, double *restrict Xt /* out */)
+{
+    for (int i = 0; i < nb; i++)
+        for (int a = 0; a < D; a++)
+            Xt[(size_t)a * B + i] = X[(size_t)i * D + a];
+}
+
+/* Forward substitution L z = x - mu of vl <= TILE rows together (rows i0 .. i0+vl-1 of the
+ * block), and squared Mahalanobis distance s[v] = |z|^2 of each. For every row the operations
+ * are those of the baseline, in the same order; the loops over v are the vl INDEPENDENT rows, which go
+ * in one SIMD register. "static inline" with vl = TILE constant at the call: the compiler
+ * specializes the full tiles (fixed length 8) and keeps a generic copy for the last one. */
+static inline void Solve_tile(const double *restrict Xt /* in  */, const double *restrict mu /* in */,
+                              const double *restrict L /* in  */, int i0 /* in */, int vl /* in */,
+                              int D /* in */, int B /* in */, double *restrict Zt /* out */,
+                              double *restrict s /* out: vl values */)
+{
+    for (int v = 0; v < vl; v++)
+        s[v] = 0.0;
+    for (int a = 0; a < D; a++)
+    {
+        const double *restrict La = L + (size_t)a * D;     /* row a of L_k */
+        const double *restrict xa = Xt + (size_t)a * B + i0; /* x_ia of the vl rows */
+        double t[TILE];
+        for (int v = 0; v < vl; v++)
+            t[v] = xa[v] - mu[a];
+        for (int b = 0; b < a; b++)
+        {
+            const double l = La[b];                          /* ONE load, used for vl rows */
+            const double *restrict zb = Zt + (size_t)b * B + i0;
+#pragma omp simd
+            for (int v = 0; v < vl; v++)
+                t[v] -= l * zb[v];                           /* vl independent chains */
+        }
+        double *restrict za = Zt + (size_t)a * B + i0;
+        const double d = La[a];
+        for (int v = 0; v < vl; v++)
+        {
+            t[v] /= d; /* division as in the baseline (not * 1/d): same rounding */
+            za[v] = t[v];
+            s[v] += t[v] * t[v];
+        }
+    }
+}
+
+/* Log-density log(pi_k N(x_i | mu_k, Sigma_k)) = c_k - 0.5 |z|^2 of the nb rows of the block for
+ * ONE cluster k, written in LP[i*K + k]. Zt is scratch (the z of the rows). */
+static void Mahalanobis_block(const double *restrict Xt /* in */, const double *restrict mu /* in */,
+                              const double *restrict L /* in */, double ck /* in */, int k /* in */,
+                              int K /* in */, int nb /* in */, int D /* in */, int B /* in */,
+                              double *restrict Zt /* scratch */, double *restrict LP /* out */)
+{
+    double s[TILE];
+    for (int i0 = 0; i0 < nb; i0 += TILE)
+    {
+        const int vl = (nb - i0 < TILE) ? nb - i0 : TILE;
+        if (vl == TILE)
+            Solve_tile(Xt, mu, L, i0, TILE, D, B, Zt, s); /* full tile: length known */
+        else
+            Solve_tile(Xt, mu, L, i0, vl, D, B, Zt, s);   /* last, partial tile */
+        for (int v = 0; v < vl; v++)
+            LP[(size_t)(i0 + v) * K + k] = ck - 0.5 * s[v];
+    }
+}
+
+/* Normalization of every row of the block (same code as the baseline, row by row): log-sum-exp,
+ * responsibilities r_ik (overwriting LP), label = argmax_k, and the log-likelihood added to *ll.
+ * The responsibilities are also written transposed in R[k*B + i] for Accumulate_block. */
+static void Responsibilities_block(double *restrict LP /* in/out */, int nb /* in */, int K /* in */,
+                                   int B /* in */, double *restrict R /* out */,
+                                   int *restrict labels /* out: nb values */, double *ll /* in/out */)
+{
+    for (int i = 0; i < nb; i++)
+    {
+        double *restrict lp = LP + (size_t)i * K;
+        const double lse = log_sum_exp(lp, K);
+        *ll += lse;
+        int best = 0;
+        for (int k = 0; k < K; k++)
+        {
+            lp[k] = exp(lp[k] - lse);
+            if (lp[k] > lp[best])
+                best = k;
+        }
+        labels[i] = best;
+        for (int k = 0; k < K; k++)
+            R[(size_t)k * B + i] = lp[k];
+    }
+}
+
+/* M-step sums of the block, added to acc (the private copy of the thread):
+ *   Nk += sum_i r_ik      sx_k[a] += sum_i r_ik x_ia      sxx_k[a][b] += sum_i (r_ik x_ia) x_ib
+ * Every sum over the rows i is a contiguous SIMD reduction accumulated in a register, and each
+ * element of acc is read and written ONCE per block (row by row: once per row). RX is scratch
+ * (D*B): RX[a*B + i] = r_ik x_ia, the same product r_ik * x_ia of the baseline. */
+static void Accumulate_block(const double *restrict Xt /* in */, const double *restrict R /* in */,
+                             int nb /* in */, int K /* in */, int D /* in */, int B /* in */,
+                             double *restrict RX /* scratch */, double *restrict acc /* in/out */)
+{
+    for (int k = 0; k < K; k++)
+    {
+        const double *restrict rk = R + (size_t)k * B;
+        double *restrict sx = acc + K + (size_t)k * D;
+        double *restrict sxx = acc + K + (size_t)K * D + (size_t)k * D * D;
+
+        double nk = 0.0;
+#pragma omp simd reduction(+ : nk)
+        for (int i = 0; i < nb; i++)
+            nk += rk[i];
+        acc[k] += nk;
+
+        /* RX = r_k * x (per component), and its sum over the rows = sx */
+        for (int a = 0; a < D; a++)
+        {
+            const double *restrict xa = Xt + (size_t)a * B;
+            double *restrict rxa = RX + (size_t)a * B;
+            double s1 = 0.0;
+#pragma omp simd reduction(+ : s1)
+            for (int i = 0; i < nb; i++)
+            {
+                const double v = rk[i] * xa[i];
+                rxa[i] = v;
+                s1 += v;
+            }
+            sx[a] += s1;
+        }
+
+        /* Lower triangle of sum_i (r_ik x_ia) x_ib: one register sum per element (a, b) */
+        for (int a = 0; a < D; a++)
+        {
+            const double *restrict rxa = RX + (size_t)a * B;
+            double *restrict row = sxx + (size_t)a * D;
+            for (int b = 0; b <= a; b++)
+            {
+                const double *restrict xb = Xt + (size_t)b * B;
+                double s2 = 0.0;
+#pragma omp simd reduction(+ : s2)
+                for (int i = 0; i < nb; i++)
+                    s2 += rxa[i] * xb[i];
+                row[b] += s2; /* ONE read + ONE write per block */
+            }
+        }
+    }
+}
+
+/* ----------------------------------------------------------------------------------------
+ * FUSED PASS, BLOCKED, on the LOCAL rows: Cholesky + E-step + local sums of the M-step, in ONE
+ * parallel region (see (2)), with the rows processed in blocks of B (see (4)).
  *
  * Input:  local block ds, current parameters p and covariances w->cov (equal on all the ranks).
  * Output: w->L and w->c (cluster terms), w->acc = [Nk | sx | sxx] of the local rows (still to be
@@ -140,8 +376,9 @@ static void workspace_free(Workspace *w /* in/out */)
 static double fused_pass(const Dataset *ds /* in */, const GMMParams *p /* in */,
                          Workspace *w /* in/out */)
 {
-    const int n = ds->N, D = ds->D, K = p->K;
+    const int n = ds->N, D = ds->D, K = p->K, B = w->B;
     const int len = K + K * D + K * D * D;
+    const int nblk = (n + B - 1) / B; /* blocks of B rows; the last one may be shorter */
     double *acc = w->acc;
     /* Local copies of the pointers: the compiler cannot prove that the stores into acc / the
      * buffers do not modify the fields of w (or the arrays they point to), so it would reload them
@@ -149,32 +386,28 @@ static double fused_pass(const Dataset *ds /* in */, const GMMParams *p /* in */
     const double *restrict X = ds->X;
     const double *restrict mu_all = p->mu;
     const double *restrict cov = w->cov;
-    /* L and cterm are written (cluster terms) and then read in the same function: with restrict all
-     * the accesses must go through these pointers, so both are done through them */
     double *restrict L_all = w->L;
     double *restrict cterm = w->c;
     int *restrict labels = w->labels;
+    double *restrict tbuf = w->tbuf;
+    const size_t slice = w->slice, off_Z = w->off_Z, off_LP = w->off_LP, off_R = w->off_R;
 
     /* The OpenMP reduction ADDS the private copies to the value already in acc: zero it first */
     memset(acc, 0, (size_t)len * sizeof(double));
 
     double ll = 0.0;
     int bad = 0; /* k+1 of a cluster whose covariance cannot be factorized, 0 = all fine */
-#pragma omp parallel reduction(+ : ll) reduction(+ : acc[:len])
+#pragma omp parallel num_threads(w->n_threads) reduction(+ : ll) reduction(+ : acc[:len])
     {
-        /* My buffers: LOCAL arrays of this thread (on its own stack), so no cache line is shared
-         * with another thread (no false sharing, see (3) at the top).
-         *   logp[k]: log(pi_k N(x_i | mu_k, Sigma_k)), then overwritten with r_ik
-         *   z[a]   : solution of the forward substitution L_k z = x_i - mu_k */
-        double logp[K];
-        double z[D];
+        /* My slice of the block buffers (allocated once, 64-byte aligned, no shared lines) */
+        double *my = tbuf + (size_t)omp_get_thread_num() * slice;
+        double *Xt = my, *Zt = my + off_Z, *LP = my + off_LP, *R = my + off_R;
 
-        /* Cluster terms: the K Cholesky factorizations and c[k] (K*D^3/6 multiply-adds), one cluster
-         * per thread (they are independent). gmm_full_factorize is called on ONE cluster (K = 1)
-         * with the pointers moved to cluster k: same jitter rule, so the same factors as the
-         * serial call of the baseline. reduction(max) collects a failure from any thread; the
-         * implicit barrier at the end of the "omp for" makes L, c and bad visible to everybody
-         * before the main loop. */
+        /* Cluster terms: the K Cholesky factorizations, one cluster per thread (see (2)).
+         * gmm_full_factorize is called on ONE cluster (K = 1) with the pointers moved to cluster k:
+         * same jitter rule, so the same factors as the serial call of the baseline. reduction(max)
+         * collects a failure from any thread; the implicit barrier at the end of the "omp for"
+         * makes L, c and bad visible to everybody before the main loop. */
 #pragma omp for schedule(static) reduction(max : bad)
         for (int k = 0; k < K; k++)
         {
@@ -189,64 +422,22 @@ static double fused_pass(const Dataset *ds /* in */, const GMMParams *p /* in */
          * inside it). */
         if (bad == 0)
         {
-            /* Main loop: for every row, E-step (responsibilities in logp) and immediately the
-             * update of the sums. Every thread works on different rows (static: every row costs
-             * the same) and has private copies of acc and ll. */
+            /* Main loop over the BLOCKS (every block costs the same: static). Every thread has
+             * private copies of acc and ll (OpenMP reduction). */
 #pragma omp for schedule(static)
-            for (int i = 0; i < n; i++)
+            for (int blk = 0; blk < nblk; blk++)
             {
-                const double *restrict x = X + (size_t)i * D; /* beginning of row i */
+                const int i0 = blk * B;
+                const int nb = (n - i0 < B) ? n - i0 : B;
 
-                /* E-step of the row: log(pi_k N(x_i | mu_k, Sigma_k)) for every k (same code as
-                 * the baseline) */
+                Load_block_transposed(X + (size_t)i0 * D, nb, D, B, Xt);
+                /* E-step of the block: log-densities of all the rows for every cluster */
                 for (int k = 0; k < K; k++)
-                {
-                    const double *restrict mu = mu_all + (size_t)k * D;
-                    const double *restrict L = L_all + (size_t)k * D * D;
-                    /* forward substitution L z = x - mu; s = |z|^2 = squared Mahalanobis distance */
-                    double s = 0.0;
-                    for (int a = 0; a < D; a++)
-                    {
-                        double t = x[a] - mu[a];
-                        const double *restrict La = L + (size_t)a * D;
-                        for (int b = 0; b < a; b++)
-                            t -= La[b] * z[b];
-                        t /= La[a];
-                        z[a] = t;
-                        s += t * t;
-                    }
-                    logp[k] = cterm[k] - 0.5 * s;
-                }
-
-                /* Normalization (log-sum-exp); logp is overwritten with the responsibilities */
-                double lse = log_sum_exp(logp, K);
-                ll += lse;
-                int best = 0;
-                for (int k = 0; k < K; k++)
-                {
-                    logp[k] = exp(logp[k] - lse);
-                    if (logp[k] > logp[best])
-                        best = k;
-                }
-                labels[i] = best;
-
-                /* M-step of the row: accumulate in the private copy of acc, while x is still in
-                 * the cache (same code as m_step_local_sums of the baseline) */
-                for (int k = 0; k < K; k++)
-                {
-                    double rik = logp[k];
-                    acc[k] += rik;                                   /* Nk  */
-                    double *restrict sx = acc + K + (size_t)k * D;   /* sx  of cluster k */
-                    double *restrict sxx = acc + K + (size_t)K * D + (size_t)k * D * D; /* sxx */
-                    for (int a = 0; a < D; a++)
-                    {
-                        double rx = rik * x[a];
-                        sx[a] += rx;
-                        double *restrict row = sxx + (size_t)a * D;
-                        for (int b = 0; b <= a; b++) /* lower triangle only: sxx is symmetric */
-                            row[b] += rx * x[b];
-                    }
-                }
+                    Mahalanobis_block(Xt, mu_all + (size_t)k * D, L_all + (size_t)k * D * D,
+                                      cterm[k], k, K, nb, D, B, Zt, LP);
+                Responsibilities_block(LP, nb, K, B, R, labels + i0, &ll);
+                /* M-step sums of the block, while Xt is still in the cache (Zt reused as RX) */
+                Accumulate_block(Xt, R, nb, K, D, B, Zt, acc);
             }
         }
     } /* end of the parallel region: ll and acc are the sums of the private copies */
@@ -467,8 +658,10 @@ int main(int argc, char **argv)
     GMMParams p, best;
     gmm_alloc(&p, K, D);
     gmm_alloc(&best, K, D);
+    /* Rows per block: -b, or the default of this version */
+    const int B = a.block > 0 ? a.block : BLOCK_DEFAULT;
     Workspace w;
-    workspace_alloc(&w, n_local, K, D);
+    workspace_alloc(&w, n_local, K, D, B, n_threads);
     uint64_t *idx = (uint64_t *)malloc((size_t)K * sizeof(uint64_t));
     double *rows = (double *)malloc((size_t)K * D * sizeof(double));
     int *best_labels = (int *)malloc((size_t)n_local * sizeof(int)); /* LOCAL rows */
@@ -622,13 +815,14 @@ int main(int argc, char **argv)
         st.t_estep = t_estep_max;
         st.t_mstep = t_mstep_max;
         st.t_comm = t_comm_max;
-        /* Analytic work for the roofline (P10). The E-step runs iterations + 1 times per restart
-         * (the last one evaluates the log-likelihood). fused = 1: this version makes a single
-         * pass over X per iteration and never stores the responsibilities. */
+        /* Analytic work for the roofline (P10): the SAME as the fused pass without blocks (blocking changes the order of the
+         * operations, not their number; the block is copied from X once per pass, fused = 1). The
+         * E-step runs iterations + 1 times per restart (the last one evaluates the log-likelihood). */
         st.flops = pem_flops(PEM_FULL, N_total, D, K, total_iterations + a.restarts, total_iterations);
         st.bytes = pem_bytes(1, N_total, D, K, total_iterations + a.restarts, total_iterations);
         st.rank_compute = rank_compute;
         st.n_rank_compute = P;
+        st.block = B; /* written in the log ("block"), for the sweep over B */
 
         if (a.log_path != NULL && log_run(a.log_path, &st) != 0)
             fprintf(stderr, "warning: the log line was not written\n");
@@ -638,6 +832,7 @@ int main(int argc, char **argv)
         printf("covariance      : full\n");
         printf("rows x columns  : %ld x %d, K = %d\n", N_total, D, K);
         printf("ranks x threads : %d x %d\n", P, n_threads);
+        printf("block           : %d rows\n", B);
         printf("seed / restarts : %llu / %d\n", (unsigned long long)a.seed, a.restarts);
         printf("warm-up         : %d iterations, %.4f s (not in the times)\n", a.warmup, t_warmup_max);
         printf("iterations      : %d (%s)\n", best_res.iterations,

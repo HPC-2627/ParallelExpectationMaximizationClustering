@@ -25,10 +25,10 @@ Workflow, in order. Phases overlap on purpose: datasets are prepared while the c
 - [X] Define the PBS launch script (new file, location to decide)
 - [X] First test run on the cluster (also on 2 nodes) to find environment problems early
 - [X] Optimization 1, diagonal: `src/diagonal/PEMC-opt1-MPI-OpenMP-diagonal.c` (compared against `src/diagonal/PEMC-baseline-MPI-OpenMP-diagonal.c`) --> to choose
-- [X] Optimization 1, full covariance: `src/full/PEMC-opt1-MPI-OpenMP-full.c` (same optimization as the diagonal one, compared against `src/full/PEMC-baseline-MPI-OpenMP-full.c`). Written; correctness checked locally (same ll and iterations as the baseline); cluster measurements still to do
+- [X] Optimization 1, full covariance: `src/full/PEMC-opt1-MPI-OpenMP-full.c`: all the optimizations of the computation (fused E+M pass as in the diagonal opt1, plus blocks of B rows, option `-b`, default 64), compared against `src/full/PEMC-baseline-MPI-OpenMP-full.c`. Written; correctness checked locally (same iterations and ll)
+- [ ] Run opt1 full again on the cluster (16 jobs: `src/script/pemc-submit.sh full opt1`, first remove the old logs in `results/logs/full/opt1/` on the cluster), plus the sweep over B (`BLOCK=16|32|64|128 CONFIGS_LIST="1:1:8" PLACES_LIST="pack:excl" src/script/pemc-submit.sh full opt1`) and the 1-core runs (`CONFIGS_LIST="1:1:1"`) for speedup and efficiency
 - [X] Optimization 2, diagonal: `src/diagonal/PEMC-opt2-MPI-OpenMP-diagonal.c` (compared against `src/diagonal/PEMC-baseline-MPI-OpenMP-diagonal.c`) --> to choose
-- [X] Optimization 2, full covariance: `src/full/PEMC-opt2-MPI-OpenMP-full.c`: blocked fused pass (blocks of B rows, option `-b`, default 64), built on top of opt1 full and compared against `src/full/PEMC-opt1-MPI-OpenMP-full.c`. Different from the diagonal one (the full model is compute-bound for large D). Written; correctness checked locally (same iterations and ll as opt1); cluster measurements and sweep over B (`BLOCK=... src/script/pemc-submit.sh full opt2`) still to do
-- [ ] (maybe) Optimization 3, full covariance: communication on top of opt2 (one `MPI_Allreduce` per iteration, packed lower triangle of sxx), only if opt2 works
+- [ ] Optimization 2, full covariance: `src/full/PEMC-opt2-MPI-OpenMP-full.c`: communication between the MPI processes, same idea as the diagonal opt2 (one `MPI_Allreduce` per iteration, packed lower triangle of sxx). Placeholder (comment only); when written, add it to `MPI_BINS` in the `makefile` and to `WRITTEN` in `src/script/pemc-submit.sh`
 - [X] Build rules for all the versions in `makefile`
 - [ ] Check performances on course notes.
 

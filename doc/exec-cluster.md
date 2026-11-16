@@ -96,7 +96,7 @@ make clean
 make all mpi-omp
 ```
 
-This produces in `bin/` the executables of all the versions: the 2 sequential baselines (diagonal, full) and, for each model, the MPI + OpenMP baseline, `opt1` and `opt2`. `bin/` is not versioned. All the versions use the same flags (`-O3`, no `-march`); `make mpi-omp ARCH=-march=cascadelake` adds architecture flags to all of them, for a separate experiment only.
+This produces in `bin/` the executables of all the versions: the 2 sequential baselines (diagonal, full) and, for each model, the MPI + OpenMP baseline, `opt1` and `opt2` (except `opt2` full, still a placeholder, not built). `bin/` is not versioned. All the versions use the same flags (`-O3`, no `-march`); `make mpi-omp ARCH=-march=cascadelake` adds architecture flags to all of them, for a separate experiment only.
 
 ---
 
@@ -283,7 +283,7 @@ PBS_O_WORKDIR=$PWD REQUIRE_CPU= REPS=1 VERSION=baseline-sequential-full ONLY=hea
 
 ### Output
 
-- logs: `results/logs/<model>/<stage>/<version>_<placement>_<nodes>n<ranks>r<threads>t.log` (`<version>_seq.log` for the sequential ones), with model = `diagonal` | `full` and stage = `sequential` | `baseline` | `opt1` | `opt2` (folders already in the repository); sweeps in `results/logs/sweep/`; sweep over the block size of `opt2` full (`BLOCK=64 src/script/pemc-submit.sh full opt2`) in `results/logs/block/<version>_<layout>_b<B>.log`; clustering in `results/logs/cluster/` and `results/clusters/`;
+- logs: `results/logs/<model>/<stage>/<version>_<placement>_<nodes>n<ranks>r<threads>t.log` (`<version>_seq.log` for the sequential ones), with model = `diagonal` | `full` and stage = `sequential` | `baseline` | `opt1` | `opt2` (folders already in the repository); sweeps in `results/logs/sweep/`; sweep over the block size of `opt1` full (`BLOCK=64 src/script/pemc-submit.sh full opt1`) in `results/logs/block/<version>_<layout>_b<B>.log`; clustering in `results/logs/cluster/` and `results/clusters/`;
 - standard output/error of the jobs: `results/logs/pbs/<job>.out|.err` (not versioned).
 
 ---
@@ -338,7 +338,7 @@ $K$ used by the jobs: number of true classes of each dataset (`synth_clean` 4, `
 | `-s, --seed S` | seed of the initialization (default 42): the same seed gives the same initialization in every version |
 | `-r, --restarts R` | number of initializations, the best one is kept (default 1); the times are summed over all the restarts |
 | `-w, --warmup N` | warm-up EM iterations done before the timed run and then discarded (default 3, 0 = off). They wake up the OpenMP threads, MPI and the caches; the result is identical with and without warm-up, and their time is not in `t_total` nor in the other times (it is logged as `t_warmup`) |
-| `-b, --block B` | rows per block of `opt2` full (default 64); ignored by the other versions. Written in the log as `block` |
+| `-b, --block B` | rows per block of `opt1` full (default 64); ignored by the other versions. Written in the log as `block` |
 | `-l, --log FILE.log` | log file (default `results/logs/<name>.log`; the jobs pass `results/logs/<model>/<stage>/<version>_<placement>_<layout>.log`) |
 | `--no-log` | do not write the log |
 | `--save DIR` | save the clustering result (labels of every row, weights and means, log-likelihood curve) in `DIR`, see `include/cluster-out.h`. Sequential versions only; used by the clustering plots |
