@@ -103,10 +103,10 @@ All the versions of the same model must end with the same log-likelihood and the
 
 Every dataset is converted to the same binary format (header `int32` N, D + `float64` matrix in row-major order, labels in a separate file) and every column is standardized (z-score).
 
-- **Code:** [`src/dataset-managed/`](src/dataset-managed/) (generate the synthetic ones, download + convert + verify the real ones)
-- **How to run:** [doc/exec-cluster.md, Phase 2: Datasets](doc/exec-cluster.md#phase-2-datasets)
-- **Docs:** [doc/datasets.md](doc/datasets.md) (profiles, variables, sizes, format, sources, licenses, preprocessing, verification)
-- **Output:** `data/` (**not versioned**: generated or downloaded on the machine that runs the experiments)
+- **Code:** [`src/dataset-managed/`](src/dataset-managed/) (generate, download, convert, verify)
+- **How to run:** [exec-cluster.md, Phase 2: Datasets](doc/exec-cluster.md#phase-2-datasets)
+- **Docs:** [doc/datasets.md](doc/datasets.md) (profiles, sources, format)
+- **Output:** `data/` (not versioned, created on each machine)
 
 ### Synthetic datasets
 
@@ -137,24 +137,25 @@ Public datasets, mostly medical, used for the clustering quality (none has missi
 
 ## Running the experiments
 
-- **Code:** [`src/diagonal/`](src/diagonal/), [`src/full/`](src/full/), shared code in [`src/common/`](src/common/) + [`include/`](include/), PBS launchers in [`src/script/`](src/script/) (explained in [doc/script.md](doc/script.md))
-- **How to run:** [doc/exec-cluster.md](doc/exec-cluster.md) (VPN, clone, datasets, modules, build, PBS jobs). One version of one model on all the datasets per command: `src/script/pemc-submit.sh <diagonal|full> <sequential|baseline|opt1|opt2>`
-- **Output:** [`results/logs/`](results/logs/) (`<model>/<stage>/`)
+- **Code:** [`src/diagonal/`](src/diagonal/), [`src/full/`](src/full/), [`src/common/`](src/common/), [`include/`](include/) (shared code)
+- **Scripts:** [`src/script/`](src/script/) (PBS submit + job), explained in [doc/script.md](doc/script.md)
+- **How to run:** [doc/exec-cluster.md](doc/exec-cluster.md) (VPN, build, PBS jobs)
+- **Output:** [`results/logs/`](results/logs/) (one folder per model and version)
 
 ## Visualization of the algorithm
 
 A small local web page shows how EM works step by step on any dataset of `data/` (diagonal or full covariance): initial centroids, E-step, convergence test and M-step for every iteration, with the formulas filled with the real numbers and a check against the C binary.
 
-- **Code:** [`src/visual-sequential/`](src/visual-sequential/)
-- **How to run:** [doc/exec-visual.md](doc/exec-visual.md)
+- **Code:** [`src/visual-sequential/`](src/visual-sequential/) (web page + Python server)
+- **How to run:** [doc/exec-visual.md](doc/exec-visual.md) (local, in the browser)
 
 ## Plots
 
 Everything is regenerable from the logs. The performance plots P1-P11 (sweeps, speedup, strong and weak scaling, placement, ranks vs threads, time breakdown, optimization gain, roofline, load imbalance) come from the cluster runs; the clustering plots C1-C6 (convergence, choice of K with BIC/AIC, PCA, centroids, cluster sizes, full vs diagonal) come from the sequential runs on a range of K.
 
-- **Code:** [`src/plots-generate/`](src/plots-generate/) ([`plots-performance.py`](src/plots-generate/plots-performance.py) for P1-P11, [`plots-cluster.py`](src/plots-generate/plots-cluster.py) for C1-C6)
-- **How to run:** [doc/exec-cluster.md, Phase 5: Plots](doc/exec-cluster.md#phase-5-plots)
-- **Docs:** [doc/plots.md](doc/plots.md) (rules, catalog, experiment matrix), [doc/color.md](doc/color.md) (colors)
+- **Code:** [`src/plots-generate/`](src/plots-generate/) (performance P1-P11, clustering C1-C6)
+- **How to run:** [exec-cluster.md, Phase 5: Plots](doc/exec-cluster.md#phase-5-plots)
+- **Docs:** [doc/plots.md](doc/plots.md) (plot catalog), [doc/color.md](doc/color.md) (colors)
 - **Figures:** [`results/plots/`](results/plots/) (generated PDFs)
 
 ## Results
@@ -163,13 +164,13 @@ TODO
 
 ## Documentation
 
-- [doc/exec-visual.md](doc/exec-visual.md): run the step-by-step web visualization of the EM algorithm
-- [doc/exec-cluster.md](doc/exec-cluster.md): step-by-step procedure to run everything on the cluster (VPN, clone, datasets, modules, build, PBS jobs, plots)
-- [doc/script.md](doc/script.md): what the scripts in `src/script/` do (submit, job, UCX wrapper, clustering runs) and their variables
+- [doc/exec-visual.md](doc/exec-visual.md): run the step-by-step EM visualization
+- [doc/exec-cluster.md](doc/exec-cluster.md): run everything on the cluster, from VPN to plots
+- [doc/script.md](doc/script.md): the scripts in `src/script/` and their variables
 - [doc/todo.md](doc/todo.md): task list and workflow
-- [doc/todo-jobs.md](doc/todo-jobs.md): checklist of the submission commands on the cluster (batch A and batch B)
-- [doc/em-explained.md](doc/em-explained.md): study guide on the EM algorithm (formulas, notation, data, parallelism)
-- [doc/datasets.md](doc/datasets.md): all the datasets (synthetic profiles and variables, sizes and work per rank, file format, real sources and licenses, preprocessing, BrainWeb, verification report), ready to be reused in the report
-- [doc/papers.md](doc/papers.md): free papers for the state of the art (theory, parallel EM on one and several nodes, candidate optimizations); the PDFs are in `doc/papers/`, kept only locally
+- [doc/todo-jobs.md](doc/todo-jobs.md): checklist of the submission commands (batch A, B)
+- [doc/em-explained.md](doc/em-explained.md): EM algorithm (formulas, notation, parallelism)
+- [doc/datasets.md](doc/datasets.md): synthetic and real datasets (sources, format)
+- [doc/papers.md](doc/papers.md): papers for the state of the art (PDFs local only)
 - [doc/latex/Group6-Report.tex](doc/latex/Group6-Report.tex): IEEE-style report
-- [Presentation](https://docs.google.com/presentation/d/1nnzwo61ZBHoQlmlYfGVbIb39rVTOexQlnH01uqBfev0/edit?slide=id.g4dfce81f19_0_45#slide=id.g4dfce81f19_0_45): project presentation slides (Google Slides)
+- [Presentation](https://docs.google.com/presentation/d/1nnzwo61ZBHoQlmlYfGVbIb39rVTOexQlnH01uqBfev0/edit?slide=id.g4dfce81f19_0_45#slide=id.g4dfce81f19_0_45): slides (Google Slides)
