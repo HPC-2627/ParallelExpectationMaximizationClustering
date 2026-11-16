@@ -1,7 +1,4 @@
-# EM clustering explained from scratch
-
-Study guide, no machine learning prerequisites. The formulas render well in the VS Code Markdown preview.
-
+# EM clustering explained
 ## 1. The idea in short
 
 You have a table of data (for example patients, each described by age, blood pressure, glucose...). **Nobody told you which group each patient belongs to**, but you suspect that groups exist.
@@ -99,7 +96,7 @@ $$\Sigma = \begin{pmatrix} \mathrm{var}(\text{age}) & \mathrm{cov}(\text{age},\t
 | Cost per iteration | $O(NKD^2)$ + inversions $O(KD^3)$ | $O(NKD)$ |
 | Risk | unstable with high $D$ and few data | assumes independent variables inside the group |
 
-**The project implements both**, with the same versions each (sequential, baseline, 2 optimizations). It is easier to start from the diagonal (simpler formulas, no matrix inverses) and derive the full one from it.
+**The project implements both**, with the same versions each (sequential, baseline, 2 optimizations => computations and communications). 
 
 ### The Gaussian
 **In one dimension**, the bell with mean $\mu$ and variance $\sigma^2$:
@@ -160,86 +157,8 @@ Each formula is the usual mean or variance, with the points **weighted** by $r_{
 A point with $r_{ik}=0.9$ counts "almost fully" in group $k$. One with $r_{ik}=0.01$ almost does not count.
 
 ### Convergence check
-$\mathcal{L}$ is computed. If $|\mathcal{L}_{\text{new}}-\mathcal{L}_{\text{old}}|$ is below a tolerance (for example $10^{-6}$ relative), or the maximum number of iterations is reached, it stops. Otherwise it goes back to the E-step.
+$\mathcal{L}$ is computed. If $|\mathcal{L}_{\text{new}}-\mathcal{L}_{\text{old}}|$ is below a tolerance (for example $10^{-6}$ relative), or the maximum number of iterations is reached, it stops. 
 
-## 8. Numerical example by hand (1 dimension)
+Otherwise it goes back to the E-step.
 
-Data: $x = [1,\ 2,\ 5,\ 8,\ 9]$, so $N=5$, $D=1$ (the covariance becomes a simple variance), $K=2$.
-Start: $\mu_1=0$, $\mu_2=10$, $\sigma_1^2=\sigma_2^2=4$, $\pi_1=\pi_2=0.5$.
-
-**E-step.** With equal variances and weights, the probability depends only on $\exp(-(x-\mu)^2/8)$:
-
-| $x$ | group 1 (center 0) | group 2 (center 10) | $r_{i1}$ | $r_{i2}$ |
-|---|---|---|---|---|
-| 1 | $e^{-1/8}=0.8825$ | $e^{-81/8}=0.00004$ | 0.99995 | 0.00005 |
-| 2 | $e^{-4/8}=0.6065$ | $e^{-64/8}=0.00034$ | 0.99945 | 0.00055 |
-| 5 | $e^{-25/8}=0.0439$ | $e^{-25/8}=0.0439$ | **0.5** | **0.5** |
-| 8 | 0.00034 | 0.6065 | 0.00055 | 0.99945 |
-| 9 | 0.00004 | 0.8825 | 0.00005 | 0.99995 |
-
-The point in the middle ($x=5$) is exactly halfway: EM gives it 50% and 50%. A k-means would have had to choose.
-
-**M-step for group 1.**
-- $N_1 = 0.99995 + 0.99945 + 0.5 + 0.00055 + 0.00005 = 2.5$, so $\pi_1 = 2.5/5 = 0.5$.
-- $\mu_1 = \dfrac{1\cdot0.99995 + 2\cdot0.99945 + 5\cdot0.5 + 8\cdot0.00055 + 9\cdot0.00005}{2.5} = \dfrac{5.5037}{2.5} \approx 2.20$
-- $\sigma_1^2 = \dfrac{\sum_i r_{i1}(x_i-2.20)^2}{2.5} = \dfrac{5.42}{2.5} \approx 2.17$
-
-By symmetry, $\mu_2 \approx 7.80$ and $\sigma_2^2 \approx 2.17$.
-
-**Result after one iteration:** the centers moved closer to the data (from 0 and 10 to 2.2 and 7.8) and the bells narrowed (variance from 4 to 2.17). After a few iterations the centers settle near 1.5 and 8.5. That is all there is to it.
-
-## 9. Practical details
-
-- **Initialization:** chooses where the algorithm starts. Options: $K$ random points as means; or **k-means++** (more robust). Initial variances: the global variance of the data. Weights: $1/K$. With a fixed seed the results are reproducible, which is needed to compare the versions.
-- **Local minima:** different starts can give different results. Several initializations can be tried, keeping the best one.
-- **Numerical stability (log-sum-exp):** the probabilities $\pi_k\mathcal{N}$ can be tiny numbers (underflow). They are computed on a logarithmic scale and normalized by subtracting the maximum:
-  $\log r_{ik} = \ell_{ik} - \left(m_i + \log\sum_j e^{\ell_{ij}-m_i}\right)$, with $\ell_{ik}=\log(\pi_k\mathcal{N}_{ik})$ and $m_i=\max_k \ell_{ik}$.
-- **Regularization:** a variance that tends to 0 blows up the computation (a group that "locks onto" a single point). A small $\epsilon$ is added (for example $10^{-6}$): $\sigma^2 + \epsilon$ or $\Sigma + \epsilon I$.
-- **Choice of $K$:** several values are tried and **BIC** or **AIC** are examined, which reward the fit to the data and penalize models that are too complex. The value with the lowest BIC is chosen.
-- **Empty group:** if $N_k \approx 0$, the group is dead. It must be handled (reinitialize it or reduce $K$).
-
-## 10. Pseudocode and data structures in C
-
-```
-read X (N x D), normalize
-initialize pi[K], mu[K][D], var[K][D]            // diagonal
-repeat until convergence:
-    // E-step
-    for each point i:
-        for each group k:
-            logp[k] = log(pi[k]) + log-gaussian(x[i], mu[k], var[k])
-        r[i][k] = normalize with log-sum-exp
-        ll += log-sum-exp(logp)                    // contribution to the log-likelihood
-    // M-step
-    for each group k:
-        Nk = sum_i r[i][k]
-        mu[k] = (sum_i r[i][k] * x[i]) / Nk
-        var[k] = (sum_i r[i][k] * x[i]^2) / Nk - mu[k]^2  (+ epsilon)
-        pi[k] = Nk / N
-    check |ll - ll_prev| < tolerance
-```
-
-Arrays to allocate (all `double`):
-
-| Array | Size | Notes |
-|---|---|---|
-| `X` | $N \times D$ | the data, the largest |
-| `r` | $N \times K$ | responsibilities (can be avoided by fusing E-step and M-step) |
-| `mu` | $K \times D$ | means |
-| `var` | $K \times D$ (diagonal) or `Sigma` $K \times D \times D$ (full) | |
-| `pi` | $K$ | weights |
-| `Nk`, partial sums | $K$, $K \times D$ | M-step statistics |
-
-Data memory: $N \cdot D \cdot 8$ bytes, for example 1 million points with 10 variables are 80 MB.
-
-**Cost per iteration:** E-step $O(NKD)$ (diagonal) and M-step $O(NKD)$. With full covariance $O(NKD^2)$ plus $O(KD^3)$ for the inverses.
-
-## 11. Where the parallelism is
-
-- **E-step:** each point is **independent** of the others, so $X$ is split in blocks of rows among the MPI processes and, inside each one, among the OpenMP threads. No communication.
-- **M-step:** these are **sums over the points**. Each process computes the sums over its block:
-  $$N_k^{\text{loc}},\quad \sum_i r_{ik}x_i,\quad \sum_i r_{ik}x_i^2$$
-  then a single `MPI_Allreduce` adds them across all processes. The amount communicated depends on $K$ and $D$ and **not on $N$**.
-- **Parameters:** after the `Allreduce` every process has the same sums and recomputes $\mu_k$, $\sigma_k^2$, $\pi_k$ by itself (small computation, no broadcast).
-- **Log-likelihood:** local sum plus an `MPI_Allreduce` of a single number, so that everyone decides the convergence in the same way.
-- **Not parallelizable:** the iterations among themselves, because each uses the parameters of the previous one. This limits the speedup (Amdahl's law).
+**[For the code we need to insert a limit of iterations]**
