@@ -23,14 +23,13 @@ Workflow, in order. Phases overlap on purpose: datasets are prepared while the c
 - [X] (gabri) Baseline MPI + OpenMP: `src/diagonal/PEMC-baseline-MPI-OpenMP-diagonal.c`, checked against `src/diagonal/PEMC-baseline-sequential-diagonal.c` (same final log-likelihood on a small dataset, correctness reference and serial time)
 - [X] (mike) Baseline MPI + OpenMP, full covariance (equal in importance to the diagonal model; 4 versions per model: sequential, baseline, opt1, opt2): `src/full/PEMC-baseline-MPI-OpenMP-full.c` (variant of the diagonal baseline, checked against `src/full/PEMC-baseline-sequential-full.c`)
 - [X] Define the PBS launch script (new file, location to decide)
-- [ ] First test run on the cluster (also on 2 nodes) to find environment problems early
-- [ ] Optimization 1, diagonal: `src/diagonal/PEMC-opt1-MPI-OpenMP-diagonal.c` (compared against `src/diagonal/PEMC-baseline-MPI-OpenMP-diagonal.c`) --> to choose
+- [X] First test run on the cluster (also on 2 nodes) to find environment problems early
+- [X] Optimization 1, diagonal: `src/diagonal/PEMC-opt1-MPI-OpenMP-diagonal.c` (compared against `src/diagonal/PEMC-baseline-MPI-OpenMP-diagonal.c`) --> to choose
 - [X] Optimization 1, full covariance: `src/full/PEMC-opt1-MPI-OpenMP-full.c` (same optimization as the diagonal one, compared against `src/full/PEMC-baseline-MPI-OpenMP-full.c`). Written; correctness checked locally (same ll and iterations as the baseline); cluster measurements still to do
-- [ ] Optimization 2, diagonal: `src/diagonal/PEMC-opt2-MPI-OpenMP-diagonal.c` (compared against `src/diagonal/PEMC-baseline-MPI-OpenMP-diagonal.c`) --> to choose
+- [X] Optimization 2, diagonal: `src/diagonal/PEMC-opt2-MPI-OpenMP-diagonal.c` (compared against `src/diagonal/PEMC-baseline-MPI-OpenMP-diagonal.c`) --> to choose
 - [X] Optimization 2, full covariance: `src/full/PEMC-opt2-MPI-OpenMP-full.c`: blocked fused pass (blocks of B rows, option `-b`, default 64), built on top of opt1 full and compared against `src/full/PEMC-opt1-MPI-OpenMP-full.c`. Different from the diagonal one (the full model is compute-bound for large D). Written; correctness checked locally (same iterations and ll as opt1); cluster measurements and sweep over B (`BLOCK=... src/script/pemc-submit.sh full opt2`) still to do
 - [ ] (maybe) Optimization 3, full covariance: communication on top of opt2 (one `MPI_Allreduce` per iteration, packed lower triangle of sxx), only if opt2 works
-- [ ] Build rules for all the versions in `makefile`
-- [ ] Correctness test after every version, not only at the end
+- [X] Build rules for all the versions in `makefile`
 - [ ] Check performances on course notes.
 
 ## 3. Experiments
@@ -57,6 +56,7 @@ Run all the versions (`src/diagonal/PEMC-baseline-sequential-diagonal.c`, `src/d
 - [ ] Repo link (SET TO PUBLIC) and data sources cited
 - [ ] Report: insert the link to the execution on the cluster (TODO in Measurement Methodology, item "Execution on the cluster")
 - [ ] Report: insert the link to the visualization of the algorithm (TODO at the end of the subsection "The EM algorithm for Gaussian mixtures", paragraph "Visualization of the algorithm")
+- [ ] (IMPORTANT) --> compared performance for own algorithm with different paper with the same technique or differrentc ECC..
 - [X] Report at least 10 pages
 
 ## Final checks
