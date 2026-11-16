@@ -22,7 +22,7 @@ void args_defaults(RunArgs *a, const char *default_name)
     a->seed = 42;
     a->restarts = 1; /* a single run: the measured time is that of a single EM */
     a->warmup = 3; /* few iterations: enough to wake up threads, MPI and caches (see args.h) */
-    a->block = 0;  /* 0 = the blocked version uses its own default (opt1 full: 64 rows) */
+    a->block = 0;  /* 0 = the blocked version uses its own default (opt1/opt2 full: 64 rows) */
     a->verbose = 0;
     a->save_dir = NULL; /* by default the clustering result is not saved */
     a->log_path = NULL; /* the default path is decided in args_parse() */
@@ -47,7 +47,7 @@ void args_usage(const char *prog)
             "                       the times are summed over all the restarts\n"
             "  -w, --warmup N       EM iterations done before the timed run, then discarded: they\n"
             "                       wake up the OpenMP threads, MPI and the caches (default: 3, 0 = off)\n"
-            "  -b, --block B        rows per block of the blocked version (opt1 full only, default: 64);\n"
+            "  -b, --block B        rows per block of the blocked version (opt1/opt2 full, default: 64);\n"
             "                       ignored by the other versions\n"
             "  -l, --log FILE.log   append a block with the results and the times to this log file\n"
             "                       (default: results/logs/<name>.log, created if missing)\n"

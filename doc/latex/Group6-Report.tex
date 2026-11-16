@@ -133,7 +133,7 @@ The EM algorithm is the same for both covariance models (Algorithms~\ref{alg:seq
 \begin{itemize}
 \item \emph{Sequential}: single process, single thread. It is the correctness reference (the parallel versions must reach the same final log-likelihood) and gives the serial time used to compute speedup and efficiency.
 \item \emph{Baseline MPI+OpenMP}: the straightforward hybrid parallelization, without optimizations. It is the reference against which the optimizations are measured.
-\item \emph{Optimization 1} and \emph{Optimization 2}: two optimizations of the baseline of the same model. Each one starts from the baseline and changes one aspect only, so its effect is measured against the baseline alone. In both models Optimization~1 concerns the computation and Optimization~2 the communication between the MPI processes. The details differ because each model has its own bottleneck (the diagonal model is memory-bound, the full one is compute-bound for large $D$): for the full model Optimization~1 also processes the rows in blocks (Section~\ref{sec:design}).
+\item \emph{Optimization 1} and \emph{Optimization 2}: two optimizations of the same model, each changing one aspect only. Optimization~1 starts from the baseline and is measured against it. In the diagonal model Optimization~2 also starts from the baseline; in the full model it starts from Optimization~1 (the full baseline is several times slower, so the communication is measured on top of the optimized computation) and is measured against it. In both models Optimization~1 concerns the computation and Optimization~2 the communication between the MPI processes. The details differ because each model has its own bottleneck (the diagonal model is memory-bound, the full one is compute-bound for large $D$): for the full model Optimization~1 also processes the rows in blocks (Section~\ref{sec:design}).
 \end{itemize}
 The two models are compared only within themselves: \emph{diagonal} with \emph{diagonal} and \emph{full} with \emph{full}, because the log-likelihood of different models is not comparable.
 
@@ -416,7 +416,7 @@ read $X_p$ and initialize as in Algorithm~\ref{alg:base-diag}\;
 \end{algorithm}
 
 \subsection{Optimizations of the full model}
-\textcolor{red}{TODO: description and pseudocode of Optimization~1 of the full model (fused E+M pass, one parallel region, Cholesky split among the threads, blocks of $B$ rows: TRSV/SYR $\rightarrow$ TRSM/SYRK) and of Optimization~2 (communication: one \texttt{MPI\_Allreduce} per iteration, packed lower triangle of $\sum r x x^\top$; not written yet).}
+\textcolor{red}{TODO: description and pseudocode of Optimization~1 of the full model (fused E+M pass, one parallel region, Cholesky split among the threads, blocks of $B$ rows: TRSV/SYR $\rightarrow$ TRSM/SYRK) and of Optimization~2 (communication: one \texttt{MPI\_Allreduce} per iteration, packed lower triangle of $\sum r x x^\top$, built on Optimization~1 and compared with it; written, same iterations and $\mathcal{L}$ as Optimization~1 locally, to be measured on the cluster).}
 
 \section{Experimental Setup \& Dataset}
 \subsection{Hardware Infrastructure}\label{sec:hw}

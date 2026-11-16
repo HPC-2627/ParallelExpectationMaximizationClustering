@@ -30,13 +30,13 @@ vpath %.c src/diagonal src/full
 SEQ_BINS = $(BIN_DIR)/PEMC-baseline-sequential-diagonal \
            $(BIN_DIR)/PEMC-baseline-sequential-full
 
-# MPI + OpenMP versions. opt2 full (communication) is still a placeholder (comment only):
-# add $(BIN_DIR)/PEMC-opt2-MPI-OpenMP-full here when it is written.
+# MPI + OpenMP versions (baseline, opt1, opt2 of both models).
 MPI_BINS = $(BIN_DIR)/PEMC-baseline-MPI-OpenMP-diagonal \
            $(BIN_DIR)/PEMC-opt1-MPI-OpenMP-diagonal \
            $(BIN_DIR)/PEMC-opt2-MPI-OpenMP-diagonal \
            $(BIN_DIR)/PEMC-baseline-MPI-OpenMP-full \
-           $(BIN_DIR)/PEMC-opt1-MPI-OpenMP-full
+           $(BIN_DIR)/PEMC-opt1-MPI-OpenMP-full \
+           $(BIN_DIR)/PEMC-opt2-MPI-OpenMP-full
 
 .PHONY: all sequential mpi-omp clean
 

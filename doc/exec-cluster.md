@@ -96,7 +96,7 @@ make clean
 make all mpi-omp
 ```
 
-This produces in `bin/` the executables of all the versions: the 2 sequential baselines (diagonal, full) and, for each model, the MPI + OpenMP baseline, `opt1` and `opt2` (except `opt2` full, still a placeholder, not built). `bin/` is not versioned. All the versions use the same flags (`-O3`, no `-march`); `make mpi-omp ARCH=-march=cascadelake` adds architecture flags to all of them, for a separate experiment only.
+This produces in `bin/` the executables of all the versions: the 2 sequential baselines (diagonal, full) and, for each model, the MPI + OpenMP baseline, `opt1` and `opt2`. `bin/` is not versioned. All the versions use the same flags (`-O3`, no `-march`); `make mpi-omp ARCH=-march=cascadelake` adds architecture flags to all of them, for a separate experiment only.
 
 ---
 
@@ -161,20 +161,20 @@ export PLACES_LIST="pack scatter"
 src/script/pemc-submit.sh diagonal sequential        # 1 job
 src/script/pemc-submit.sh diagonal baseline          # 8 jobs
 src/script/pemc-submit.sh diagonal opt1              # 8 jobs
-src/script/pemc-submit.sh diagonal opt2              # 8 jobs, when opt2 is written
+src/script/pemc-submit.sh diagonal opt2              # 8 jobs
 src/script/pemc-submit.sh full sequential            # 1 job
 src/script/pemc-submit.sh full baseline              # 8 jobs
-src/script/pemc-submit.sh full opt1                  # 8 jobs, when opt1 full is written
-src/script/pemc-submit.sh full opt2                  # 8 jobs, when opt2 full is written
+src/script/pemc-submit.sh full opt1                  # 8 jobs
+src/script/pemc-submit.sh full opt2                  # 8 jobs
 
 # ---- batch B: pack:excl + scatter:excl (no sequential: it is already exclusive) -------------
 export PLACES_LIST="pack:excl scatter:excl"
 src/script/pemc-submit.sh diagonal baseline          # 8 jobs
 src/script/pemc-submit.sh diagonal opt1              # 8 jobs
-src/script/pemc-submit.sh diagonal opt2              # 8 jobs, when opt2 is written
+src/script/pemc-submit.sh diagonal opt2              # 8 jobs
 src/script/pemc-submit.sh full baseline              # 8 jobs
-src/script/pemc-submit.sh full opt1                  # 8 jobs, when opt1 full is written
-src/script/pemc-submit.sh full opt2                  # 8 jobs, when opt2 full is written
+src/script/pemc-submit.sh full opt1                  # 8 jobs
+src/script/pemc-submit.sh full opt2                  # 8 jobs
 ```
 
 Sweeps of K and D (plot P1: time per iteration vs K and vs D), one fixed layout (1 node, 1 rank x 8 threads, node used only by the job). 
@@ -273,7 +273,7 @@ watch -n 30 'qstat -u $USER | tail -n +6; echo; grep -c "^==== run" results/logs
 
 ### Output
 
-- logs: `results/logs/<model>/<stage>/<version>_<placement>_<nodes>n<ranks>r<threads>t.log` (`<version>_seq.log` for the sequential ones), with model = `diagonal` | `full` and stage = `sequential` | `baseline` | `opt1` | `opt2` (folders already in the repository); sweeps in `results/logs/sweep/`; sweep over the block size of `opt1` full (`BLOCK=64 src/script/pemc-submit.sh full opt1`) in `results/logs/block/<version>_<layout>_b<B>.log`; clustering in `results/logs/cluster/` and `results/clusters/`;
+- logs: `results/logs/<model>/<stage>/<version>_<placement>_<nodes>n<ranks>r<threads>t.log` (`<version>_seq.log` for the sequential ones), with model = `diagonal` | `full` and stage = `sequential` | `baseline` | `opt1` | `opt2` (folders already in the repository); sweeps in `results/logs/sweep/`; sweep over the block size of `opt1` (or `opt2`) full (`BLOCK=64 src/script/pemc-submit.sh full opt1`) in `results/logs/block/<version>_<layout>_b<B>.log`; clustering in `results/logs/cluster/` and `results/clusters/`;
 - standard output/error of the jobs: `results/logs/pbs/<job>.out|.err` (not versioned).
 
 ---
@@ -327,7 +327,7 @@ Without `--map-by slot:PE=T --bind-to core` all threads of a rank share one core
 | `-s S` | init seed (42), same init in every version |
 | `-r R` | restarts, best kept; times summed (1) |
 | `-w N` | untimed warm-up iterations (3), logged as `t_warmup` |
-| `-b B` | block rows for `opt1` full (64) |
+| `-b B` | block rows for `opt1` and `opt2` full (64) |
 | `-l FILE` / `--no-log` | log file (`results/logs/<name>.log`) / no log |
 | `--save DIR` | save labels, weights, means, loglik curve (sequential only) |
 | `-v` | print loglik every iteration |
