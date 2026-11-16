@@ -102,7 +102,7 @@ This produces in `bin/` the executables of all the versions: the 2 sequential ba
 
 ## Phase 4: Experiments (PBS)
 
-Submit from the root of the repository.
+Submit from the root of the repository. What every script does: [script.md](script.md).
 
 ### What the scripts guarantee (guidelines for comparable times)
 
