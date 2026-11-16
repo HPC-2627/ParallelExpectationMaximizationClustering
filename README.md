@@ -53,23 +53,23 @@ The model is different, so the results are compared only with runs of the same m
 
 Each model has four versions, for a total of eight programs: `sequential` (single process, no parallelism: correctness reference and serial time for the speedup), `baseline-MPI-OpenMP` (first hybrid parallelization: rows split among MPI ranks, OpenMP threads inside each rank; the reference of the parallel tests) and two optimizations of the baseline, `opt1-MPI-OpenMP` and `opt2-MPI-OpenMP`. In both models `opt1` optimizes the **computation** and `opt2` the **communication** between the MPI processes. The details can differ because each model has its own bottleneck (the diagonal one is memory-bound, $O(NKD)$; the full one is compute-bound for large $D$, $O(NKD^2)$): `opt1` full contains, besides the fused pass of `opt1` diagonal, the blocking of the rows. `opt2` diagonal starts from the baseline, while `opt2` full starts from `opt1` full (the full baseline is several times slower, so the communication is measured on top of the optimized computation) and is compared with it. Every optimization is compared only with versions of its own model.
 
-#### Diagonal covariance (`src/diagonal/`)
+#### Diagonal covariance ([`src/diagonal/`](src/diagonal/))
 
-| Version | What it is | State |
-|---|---|---|
-| `sequential` | correctness reference and serial time | done, measured on the cluster |
-| `baseline-MPI-OpenMP` | hybrid MPI + OpenMP parallelization, two `MPI_Allreduce` per iteration | done, measured on the cluster |
-| `opt1-MPI-OpenMP` | **computation**: E-step and M-step fused in one pass (no responsibility matrix), one parallel region per iteration, a thread-local buffer per thread (no false sharing); communication as in the baseline | done, measured on the cluster: same log-likelihood and iterations as the baseline on every layout |
-| `opt2-MPI-OpenMP` | **communication**: ONE `MPI_Allreduce` per iteration instead of two (the log-likelihood travels in the same buffer as the M-step sums); computation identical to the baseline | written (same log-likelihood and iterations as the baseline on one rank), to be measured on the cluster |
+| Version | What it is |
+|---|---|
+| [`sequential`](src/diagonal/PEMC-baseline-sequential-diagonal.c) | correctness reference and serial time |
+| [`baseline-MPI-OpenMP`](src/diagonal/PEMC-baseline-MPI-OpenMP-diagonal.c) | hybrid MPI + OpenMP parallelization, two `MPI_Allreduce` per iteration |
+| [`opt1-MPI-OpenMP`](src/diagonal/PEMC-opt1-MPI-OpenMP-diagonal.c) | **computation**: E-step and M-step fused in one pass (no responsibility matrix), one parallel region per iteration, a thread-local buffer per thread (no false sharing); communication as in the baseline |
+| [`opt2-MPI-OpenMP`](src/diagonal/PEMC-opt2-MPI-OpenMP-diagonal.c) | **communication**: ONE `MPI_Allreduce` per iteration instead of two (the log-likelihood travels in the same buffer as the M-step sums); computation identical to the baseline |
 
-#### Full covariance (`src/full/`)
+#### Full covariance ([`src/full/`](src/full/))
 
-| Version | What it is | State |
-|---|---|---|
-| `sequential` | correctness reference and serial time | done, measured on the cluster |
-| `baseline-MPI-OpenMP` | hybrid MPI + OpenMP parallelization (Cholesky), two `MPI_Allreduce` per iteration | done, measured on the cluster |
-| `opt1-MPI-OpenMP` | **computation, all the optimizations**: E-step and M-step fused in one pass (no responsibility matrix), one parallel region per iteration (the K Cholesky factorizations are also split among the threads), per-thread buffers without false sharing, and **blocks of B rows** (option `-b`, default 64) copied transposed into a per-thread buffer: the forward substitution runs 8 rows at a time (independent chains in one SIMD register, each element of `L_k` loaded once for 8 rows) and the sums `sxx` are accumulated in registers over the block and written once per block (matrix-vector -> matrix-matrix operations, Kwedlo 2023). Communication as in the baseline | written; same iterations and log-likelihood as the sequential version. **To be measured again on the cluster** (the previous logs, of the fused pass without and with blocks, were removed). Previous campaign: blocks ~1.7x faster than the fused pass alone on the large datasets, ~1.05x on `brainweb` (D = 1) |
-| `opt2-MPI-OpenMP` | **communication** (same idea as the diagonal `opt2`): ONE `MPI_Allreduce` per iteration instead of two (the log-likelihood in the same buffer as the sums) and `sxx` sent as its lower triangle only (K·D(D+1)/2 values instead of K·D²); computation identical to `opt1` full | written (same iterations and log-likelihood per iteration as `opt1` full, locally), to be measured on the cluster |
+| Version | What it is |
+|---|---|
+| [`sequential`](src/full/PEMC-baseline-sequential-full.c) | correctness reference and serial time |
+| [`baseline-MPI-OpenMP`](src/full/PEMC-baseline-MPI-OpenMP-full.c) | hybrid MPI + OpenMP parallelization (Cholesky), two `MPI_Allreduce` per iteration |
+| [`opt1-MPI-OpenMP`](src/full/PEMC-opt1-MPI-OpenMP-full.c) | **computation, all the optimizations**: E-step and M-step fused in one pass (no responsibility matrix), one parallel region per iteration (the K Cholesky factorizations are also split among the threads), per-thread buffers without false sharing, and **blocks of B rows** (option `-b`, default 64) copied transposed into a per-thread buffer: the forward substitution runs 8 rows at a time (independent chains in one SIMD register, each element of `L_k` loaded once for 8 rows) and the sums `sxx` are accumulated in registers over the block and written once per block (matrix-vector -> matrix-matrix operations, Kwedlo 2023). Communication as in the baseline |
+| [`opt2-MPI-OpenMP`](src/full/PEMC-opt2-MPI-OpenMP-full.c) | **communication** (same idea as the diagonal `opt2`): ONE `MPI_Allreduce` per iteration instead of two (the log-likelihood in the same buffer as the sums) and `sxx` sent as its lower triangle only (K·D(D+1)/2 values instead of K·D²); computation identical to `opt1` full |
 
 All the versions of the same model must end with the same log-likelihood and the same number of iterations (same dataset, `-k` and `-s`).
 
@@ -101,7 +101,12 @@ All the versions of the same model must end with the same log-likelihood and the
 
 ## Data
 
-All the datasets are described in **[doc/datasets.md](doc/datasets.md)** (profiles, variables, sizes, file format, sources, licenses, preprocessing, verification). The whole `data/` folder is **not versioned** (listed in `.gitignore`): the datasets are generated (synthetic) or downloaded (real) on the machine where the experiments run, following [doc/exec-cluster.md](doc/exec-cluster.md). Every dataset is converted to the same binary format (header `int32` N, D + `float64` matrix in row-major order, labels in a separate file) and every column is standardized (z-score).
+Every dataset is converted to the same binary format (header `int32` N, D + `float64` matrix in row-major order, labels in a separate file) and every column is standardized (z-score).
+
+- **Code:** [`src/dataset-managed/`](src/dataset-managed/) (generate the synthetic ones, download + convert + verify the real ones)
+- **How to run:** [doc/exec-cluster.md, Phase 2: Datasets](doc/exec-cluster.md#phase-2-datasets)
+- **Docs:** [doc/datasets.md](doc/datasets.md) (profiles, variables, sizes, format, sources, licenses, preprocessing, verification)
+- **Output:** `data/` (**not versioned**: generated or downloaded on the machine that runs the experiments)
 
 ### Synthetic datasets
 
@@ -132,15 +137,25 @@ Public datasets, mostly medical, used for the clustering quality (none has missi
 
 ## Running the experiments
 
-- **On the cluster:** [doc/exec-cluster.md](doc/exec-cluster.md) (VPN, clone, datasets, modules, build, PBS jobs, plots). One version of one model on all the datasets per command, to stay under the queue limit: `src/script/pemc-submit.sh <diagonal|full> <sequential|baseline|opt1|opt2>`.
+- **Code:** [`src/diagonal/`](src/diagonal/), [`src/full/`](src/full/), shared code in [`src/common/`](src/common/) + [`include/`](include/), PBS launchers in [`src/script/`](src/script/) (explained in [doc/script.md](doc/script.md))
+- **How to run:** [doc/exec-cluster.md](doc/exec-cluster.md) (VPN, clone, datasets, modules, build, PBS jobs). One version of one model on all the datasets per command: `src/script/pemc-submit.sh <diagonal|full> <sequential|baseline|opt1|opt2>`
+- **Output:** [`results/logs/`](results/logs/) (`<model>/<stage>/`)
 
 ## Visualization of the algorithm
 
-A small local web page shows how EM works step by step on any dataset of `data/` (diagonal or full covariance): initial centroids, E-step, convergence test and M-step for every iteration, with the formulas filled with the real numbers and a check against the C binary. How to run it: [doc/exec-visual.md](doc/exec-visual.md).
+A small local web page shows how EM works step by step on any dataset of `data/` (diagonal or full covariance): initial centroids, E-step, convergence test and M-step for every iteration, with the formulas filled with the real numbers and a check against the C binary.
+
+- **Code:** [`src/visual-sequential/`](src/visual-sequential/)
+- **How to run:** [doc/exec-visual.md](doc/exec-visual.md)
 
 ## Plots
 
-Everything is regenerable from the logs: the report uses only the static plots produced by the two scripts in `src/plots-generate/` (rules, catalog and experiment matrix: [doc/plots.md](doc/plots.md); colors: [doc/color.md](doc/color.md)). The performance plots P1-P11 (sweeps, speedup, strong and weak scaling, placement, ranks vs threads, time breakdown, optimization gain, roofline, load imbalance) come from the cluster runs; the clustering plots C1-C6 (convergence, choice of K with BIC/AIC, PCA, centroids, cluster sizes, full vs diagonal) come from the sequential runs on a range of K. How to produce them: [doc/exec-cluster.md](doc/exec-cluster.md).
+Everything is regenerable from the logs. The performance plots P1-P11 (sweeps, speedup, strong and weak scaling, placement, ranks vs threads, time breakdown, optimization gain, roofline, load imbalance) come from the cluster runs; the clustering plots C1-C6 (convergence, choice of K with BIC/AIC, PCA, centroids, cluster sizes, full vs diagonal) come from the sequential runs on a range of K.
+
+- **Code:** [`src/plots-generate/`](src/plots-generate/) ([`plots-performance.py`](src/plots-generate/plots-performance.py) for P1-P11, [`plots-cluster.py`](src/plots-generate/plots-cluster.py) for C1-C6)
+- **How to run:** [doc/exec-cluster.md, Phase 5: Plots](doc/exec-cluster.md#phase-5-plots)
+- **Docs:** [doc/plots.md](doc/plots.md) (rules, catalog, experiment matrix), [doc/color.md](doc/color.md) (colors)
+- **Figures:** [`results/plots/`](results/plots/) (generated PDFs)
 
 ## Results
 
@@ -150,6 +165,7 @@ TODO
 
 - [doc/exec-visual.md](doc/exec-visual.md): run the step-by-step web visualization of the EM algorithm
 - [doc/exec-cluster.md](doc/exec-cluster.md): step-by-step procedure to run everything on the cluster (VPN, clone, datasets, modules, build, PBS jobs, plots)
+- [doc/script.md](doc/script.md): what the scripts in `src/script/` do (submit, job, UCX wrapper, clustering runs) and their variables
 - [doc/todo.md](doc/todo.md): task list and workflow
 - [doc/todo-jobs.md](doc/todo-jobs.md): checklist of the submission commands on the cluster (batch A and batch B)
 - [doc/em-explained.md](doc/em-explained.md): study guide on the EM algorithm (formulas, notation, data, parallelism)
