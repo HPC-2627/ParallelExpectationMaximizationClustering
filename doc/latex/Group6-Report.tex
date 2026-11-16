@@ -490,6 +490,7 @@ The same procedure is used for every version, so that the times of sequential, b
 \item Preprocessing, equal for all: only numeric columns (identifiers removed), constant columns dropped, z-score standardization (hence the initialization $\sigma^2_{kd}=1$).
 \item Missing values are not imputed: a dataset with incomplete rows would be discarded.
 \item \texttt{parkinson} has continuous targets: no labels, $K$ chosen arbitrarily.
+\item \textcolor{red}{\texttt{gene\_rnaseq} is run only with the diagonal model, not with the full one. With $D=20\,264$ a single full covariance matrix $\Sigma_k$ has $D^2\approx4\cdot10^8$ values, about 3.3~GB; with $K=5$ clusters this is about 16~GB, and the code keeps three such arrays ($\Sigma_k$, its Cholesky factor $L_k$ and the sums $\sum_i r_{ik}x_ix_i^\top$), so about 50~GB for every MPI process (the parameters are copied on every process), far more than the 8~GB requested per chunk, and with several processes per node it would not fit in the memory of the node either. Even with enough memory it would not make sense: the dataset has only $N=801$ points, much fewer than $D$, so each $\Sigma_k$ cannot be estimated (it is singular) and the Cholesky factorization fails.}
 \end{itemize}
 
 \begin{table}[H]
