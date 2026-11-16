@@ -19,6 +19,7 @@
 
 \setlength{\parindent}{0pt}
 \usepackage{caption}
+\usepackage{etoolbox}
 \setlength{\textfloatsep}{6pt plus 1.0pt minus 1.5pt}
 \setlength{\floatsep}{6pt plus 1.0pt minus 1.5pt}
 \setlength{\intextsep}{6pt plus 1.0pt minus 1.5pt}
@@ -46,6 +47,9 @@
 % Table of contents (sections, subsections, subsubsections)
 \setcounter{tocdepth}{3}
 \tableofcontents
+
+% From here on every section (AI Statement, I, II, ..., References) starts on a new page
+\pretocmd{\section}{\clearpage}{}{}
 
 \section*{AI Statement}
 In this project we used an AI assistant (Claude, by Anthropic) for three purposes: (i) support in writing and debugging the code; (ii) searching for sources and papers for the state of the art and for the datasets; (iii) mathematical and grammatical correction of the report. The design choices, the experiments and the analysis of the results are our own, and we reviewed the output of the assistant.
@@ -368,8 +372,48 @@ read $X_p$ and initialize as in Algorithm~\ref{alg:base-diag}\;
 \label{alg:opt1-diag}
 \end{algorithm}
 
-\subsection{Optimization 2, diagonal model}
-\textcolor{red}{TODO: description and pseudocode (not measured yet).}
+\subsection{Optimization 2, diagonal model: communication}
+Optimization~2 starts again from the baseline and changes only the communication: the computation (two loops over the rows, stored responsibilities, OpenMP parallelization, per-thread buffers) is the one of Algorithm~\ref{alg:base-diag}, line by line. In this way the comparison with the baseline isolates the effect of the communication alone.
+\begin{itemize}
+\item \emph{One collective call per iteration.} The baseline reduces $\mathcal{L}$ right after the E-step and the M-step sums after the M-step: two \texttt{MPI\_Allreduce} per iteration. In Optimization~2 the local log-likelihood $\ell$ is written in one extra slot at the end of the M-step buffer, $[N_k\,|\,S\,|\,Q\,|\,\ell]$, and the whole buffer ($K+2KD+1$ doubles) is reduced with a single \texttt{MPI\_Allreduce}.
+\item \emph{Why it helps.} The diagonal messages are small (from a few hundred bytes to a few KB), so the cost of an \texttt{Allreduce} is mostly its latency ($\log_2 P$ steps; between nodes, over TCP), not the bandwidth: one call instead of two halves that cost. Each collective is also a synchronization point where a rank that finished early waits for the slowest one: with one call the ranks wait once per iteration instead of twice.
+\item \emph{Where it should matter.} The saving is a fixed amount per iteration (one latency), so it is visible when an iteration is short compared with the latency: several nodes and little work per rank. On one node the ranks communicate through shared memory and the call is already cheap; with long iterations the computation dominates.
+\item \emph{Convergence.} The global $\mathcal{L}$ of iteration $t$ is the same value as in the baseline (it is computed from the same parameters), so the convergence test takes the same decision at the same iteration. To send $\ell$ together with the sums, the local M-step sums are computed before the test: when the run has converged they are discarded and the parameters stay those of the last E-step. The cost is one extra M-step loop per run, with the same iterations and the same final $\mathcal{L}$ as the baseline.
+\end{itemize}
+The complete execution sequence is outlined in Algorithm~\ref{alg:opt2-diag}. Compared with Algorithm~\ref{alg:base-diag}, the M-step loop moves before the convergence test and the two collective calls become one; the loops over the rows are unchanged.
+
+\begin{algorithm}[H]
+\footnotesize
+\DontPrintSemicolon
+\SetAlgoLined
+\KwIn{file of $X$, $K$, seed, $\varepsilon$, $T_{\max}$; rank $p$ of $P$, $T$ threads per rank}
+\KwOut{$\pi,\mu,\sigma^2$ and $\mathcal{L}$ (on every rank); labels (on rank 0)}
+read $X_p$ and initialize as in Algorithm~\ref{alg:base-diag}\;
+\For{$t\leftarrow 1$ \KwTo $T_{\max}$}{
+  \tcp{E-step on the local rows: as in the baseline}
+  $c_k$, $\mathrm{iv}_{kd}$ \tcp*{master thread; every rank computes them}
+  \texttt{\#pragma omp parallel for schedule(static) reduction(+:$\ell$)}\;
+  \For{$i\in X_p$}{
+    $v_k$ in the thread's slice of one shared array; $m\leftarrow\texttt{log\_sum\_exp}(v)$; $\ell\mathrel{+}=m$; $r_{ik}\leftarrow e^{v_k-m}$\;
+  }
+  \tcp{M-step sums on the local rows: as in the baseline, but BEFORE the test}
+  \texttt{\#pragma omp parallel for schedule(static) reduction(+:acc[0:$K{+}2KD$])}\;
+  \For{$i\in X_p$}{
+    acc $=[N_k\,|\,S\,|\,Q]\mathrel{+}=[r_{ik}\,|\,r_{ik}x_{id}\,|\,r_{ik}x_{id}^2]$ for all $k,d$\;
+  }
+  acc$[K+2KD]\leftarrow\ell$ \tcp*{local log-likelihood in the extra last slot}
+  \tcp{Communication: ONE call for $\mathcal{L}$ and the sums}
+  \texttt{MPI\_Allreduce}(IN\_PLACE, acc, $K+2KD+1$, SUM) \tcp*{baseline: two calls}
+  $\mathcal{L}\leftarrow$ acc$[K+2KD]$ \tcp*{same value as in the baseline}
+  \lIf{$|\mathcal{L}-\mathcal{L}_{\mathrm{prev}}|\le\varepsilon|\mathcal{L}|$}{\textbf{break} \tcp*[f]{the sums of this iteration are discarded}}
+  update $\pi,\mu,\sigma^2$ from acc as in Algorithm~\ref{alg:seq-diag} \tcp*{every rank: no broadcast}
+  $\mathcal{L}_{\mathrm{prev}}\leftarrow\mathcal{L}$\;
+}
+\lIf{$T_{\max}$ reached}{repeat the E-step and its \texttt{MPI\_Allreduce} of $\ell$}
+\texttt{MPI\_Gatherv}(labels of $X_p$, rank 0) \tcp*{only for the evaluation, not timed}
+\caption{Optimization 2 MPI+OpenMP, diagonal model (rank $p$)}
+\label{alg:opt2-diag}
+\end{algorithm}
 
 \subsection{Optimizations of the full model}
 \textcolor{red}{TODO: description and pseudocode of Optimization~1 and Optimization~2 of the full model.}
@@ -419,7 +463,7 @@ The same procedure is used for every version, so that the times of sequential, b
 \begin{itemize}
 \item \emph{Same machine.} Every job runs on Xeon Gold 6252N nodes only (\texttt{cpu\_type} in the PBS request) and checks the CPU model of all its nodes before starting: a job on a different CPU stops without writing results. The CPU model is also written in every log entry.
 \item \emph{Same inputs.} Every version runs on the same datasets with the same $K$ (number of true classes), the same seed (42), tolerance $\varepsilon=10^{-6}$, $T_{\max}=200$ and one initialization ($R=1$).
-\item \emph{Correctness check.} All the versions of a model must reach the same number of iterations and the same final $\mathcal{L}$ on every dataset and layout. On the measured campaigns the iterations are identical and the relative difference of $\mathcal{L}$ is below $10^{-8}$ \textcolor{red}{(TODO: check again on the final campaign, including Optimization~2)}.
+\item \emph{Correctness check.} All the versions of a model must reach the same number of iterations and the same final $\mathcal{L}$ on every dataset and layout. For the diagonal model (sequential, baseline, Optimization~1 and~2, all layouts and placements) the iterations are identical and the relative difference of $\mathcal{L}$ is below $5\cdot10^{-9}$ \textcolor{red}{(TODO: check the full model with its optimizations)}.
 \item \emph{Warm-up.} Before the measured run, 3 EM iterations are executed and discarded, with the same OpenMP regions and the same \texttt{MPI\_Allreduce} calls as the measured run. They remove one-time costs: first touch of the memory, creation of the thread pool, opening of the MPI connections, CPU frequency ramp-up. The parameters are then re-initialized with the same seed, so the result is the same as without warm-up.
 \item \emph{Timers.} Times are wall-clock times, taken with \texttt{MPI\_Wtime} (\texttt{gettimeofday} in the sequential versions). An \texttt{MPI\_Barrier} aligns the ranks only before the global timers (start of reading, initialization, EM); there is no barrier inside the loop, because it would add a cost that the algorithm does not have.
 \item \emph{What is measured.} Per run: $t_{\mathrm{read}}$, $t_{\mathrm{init}}$, $t_E$ and $t_M$ (the loops only, without MPI calls) and $t_{\mathrm{comm}}$ (time inside the \texttt{MPI\_Allreduce} calls, including the waiting for the slowest rank). Each time is the maximum over the ranks. The main metric is the time per iteration, $t_{\mathrm{it}}=(t_E+t_M+t_{\mathrm{comm}})/\text{iterations}$: it does not depend on how many iterations a dataset needs to converge, so datasets and versions can be compared. The compute time of every rank is also logged, to measure the load imbalance.
