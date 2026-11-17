@@ -172,5 +172,5 @@ TODO
 - [doc/em-explained.md](doc/em-explained.md): EM algorithm (formulas, notation, parallelism)
 - [doc/datasets.md](doc/datasets.md): synthetic and real datasets (sources, format)
 - [doc/papers.md](doc/papers.md): papers for the state of the art (PDFs local only)
-- [doc/latex/Group6-Report.tex](doc/latex/Group6-Report.tex): IEEE-style report
+- [doc/latex/Group6-Report.pdf](doc/latex/Group6-Report.pdf): IEEE-style report
 - [Presentation](https://docs.google.com/presentation/d/1nnzwo61ZBHoQlmlYfGVbIb39rVTOexQlnH01uqBfev0/edit?slide=id.g4dfce81f19_0_45#slide=id.g4dfce81f19_0_45): slides (Google Slides)
