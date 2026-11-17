@@ -81,7 +81,7 @@ All the versions of the same model must end with the same log-likelihood and the
 │   ├── diagonal/          # Diagonal covariance: PEMC-<version>-diagonal.c (sequential, baseline, opt1, opt2)
 │   ├── full/              # Full covariance (Cholesky): PEMC-<version>-full.c (sequential, baseline, opt1, opt2)
 │   ├── common/            # Shared code (no MPI): dataset I/O, GMM core, CLI options, logging, perf model, evaluation, timing
-│   ├── script/            # PBS launchers for the cluster + UCX wrapper for multi-node mpiexec
+│   ├── script/            # PBS launchers for the cluster + UCX wrapper for multi-node mpiexec + hardware of the nodes
 │   ├── dataset-managed/   # Python scripts that generate, download, verify and convert the datasets -> data/
 │   ├── plots-generate/    # Python scripts that generate the performance and clustering plots -> results/plots/ (EM steps figure -> doc/img/)
 │   └── visual-sequential/ # Local web visualization of the EM algorithm, step by step (see below)
