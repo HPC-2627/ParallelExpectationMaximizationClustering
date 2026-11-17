@@ -340,7 +340,7 @@ int main(int argc, char **argv)
 {
     /* main is the same as in the diagonal version, with two differences: the workspace now holds
      * the K covariance matrices (w.cov), and after choosing the initial means the covariances
-     * are set to the identity (cov_init_identity). Everything else (arguments, reading, restarts,
+     * are set to the identity (gmm_full_init_identity). Everything else (arguments, reading, restarts,
      * ARI, log, summary) is unchanged. */
     /* 0. Command-line arguments (-h prints the help and terminates successfully) */
     RunArgs a;

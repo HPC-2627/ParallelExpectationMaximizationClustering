@@ -29,8 +29,9 @@
  * (3) NO FALSE SHARING ON THE PER-THREAD BUFFER
  *     baseline: the K values of the row live in ONE malloc'ed array w->logp, one slice per thread
  *               (stride K rounded to 8 doubles = 64 bytes). malloc aligns only to 16 bytes, so the
- *               slice of a thread shares a 64-byte cache line with the slice of its neighbour:
- *               every write of one thread invalidates the line in the cache of the other
+ *               slices are not aligned to the cache lines: the slice of a thread can share one
+ *               64-byte cache line (at its boundary) with the slice of its neighbour, and every
+ *               write of one thread to that line invalidates it in the cache of the other
  *               (false sharing), at every row. The fused loop uses the buffer much more (written,
  *               overwritten with r_ik, read K*D times by the M-step part), so with this layout
  *               opt1 measured on the cluster was ~2x SLOWER than the baseline with 2-4 threads

@@ -269,7 +269,7 @@ $\pi_k\leftarrow 1/K$; $\sigma^2_{kd}\leftarrow 1$; $\mathcal{L}_{\mathrm{prev}}
   $c_k$, $\mathrm{iv}_{kd}$ \tcp*{master thread; every rank computes them}
   \texttt{\#pragma omp parallel for schedule(static) reduction(+:$\ell$)} \tcp*{rows split among threads}
   \For{$i\in X_p$}{
-    $v_k$ in the thread's slice of one shared array \tcp*{neighbouring slices share cache lines}
+    $v_k$ in the thread's slice of one shared array \tcp*{neighbouring slices can share a cache line}
     $m\leftarrow\texttt{log\_sum\_exp}(v)$; $\ell\mathrel{+}=m$; $r_{ik}\leftarrow e^{v_k-m}$\;
   }
   \tcp{Communication 1: global log-likelihood}
@@ -329,7 +329,7 @@ Optimization~1 keeps the communication of the baseline (two \texttt{Allreduce} p
 \begin{itemize}
 \item \emph{Fusion of E-step and M-step.} One loop over the rows: the $K$ responsibilities of a row are computed in a small buffer and used immediately to update $N_k$, $\sum_i r_{ik}x_i$ and $\sum_i r_{ik}x_i^2$. The matrix of the responsibilities no longer exists, and $X$ is read once per iteration instead of twice. The labels are stored during the same pass.
 \item \emph{One parallel region per iteration.} The cluster terms ($1/\sigma^2_{kd}$ and the constant of the log-density), the fused loop and the reductions are inside a single \texttt{omp parallel} region, instead of two \texttt{parallel for} with the cluster terms computed by the master thread alone.
-\item \emph{No false sharing.} In the baseline the per-thread buffers of the $K$ log-densities are slices of one allocated array: the slices of neighbouring threads share cache lines, so every write of a thread invalidates the line in the cache of the others. In Optimization~1 the buffer is a local array of each thread (on its own stack).
+\item \emph{No false sharing.} In the baseline the per-thread buffers of the $K$ log-densities are slices of one allocated array. Each slice is padded to a multiple of 64 bytes, but \texttt{malloc} aligns the array only to 16 bytes, so the slices are not aligned to the cache lines: two neighbouring slices can share one cache line at their boundary, and every write of a thread to that line invalidates it in the cache of the other (false sharing). In Optimization~1 the buffer is a local array of each thread (on its own stack).
 \item \emph{Convergence.} $\mathcal{L}$ must be reduced before deciding whether to apply the M-step, but with the fusion the local sums are already computed. If the run has converged the sums of the last pass are discarded: one pass out of all those performed, with the same iterations and the same final $\mathcal{L}$ as the baseline.
 \end{itemize}
 The complete execution sequence is outlined in Algorithm~\ref{alg:opt1-diag}. Compared with Algorithm~\ref{alg:base-diag}, the two loops over the rows become one, the per-row buffer moves to the stack of each thread, and the communication is unchanged.
