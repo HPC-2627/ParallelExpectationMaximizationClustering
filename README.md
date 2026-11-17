@@ -83,7 +83,7 @@ All the versions of the same model must end with the same log-likelihood and the
 │   ├── common/            # Shared code (no MPI): dataset I/O, GMM core, CLI options, logging, perf model, evaluation, timing
 │   ├── script/            # PBS launchers for the cluster + UCX wrapper for multi-node mpiexec
 │   ├── dataset-managed/   # Python scripts that generate, download, verify and convert the datasets -> data/
-│   ├── plots-generate/    # Python scripts that generate the performance and clustering plots -> results/plots/
+│   ├── plots-generate/    # Python scripts that generate the performance and clustering plots -> results/plots/ (EM steps figure -> doc/img/)
 │   └── visual-sequential/ # Local web visualization of the EM algorithm, step by step (see below)
 ├── include/               # Headers of the shared code, plus MPI-only helpers and timer macros (compile with -Iinclude -lm)
 ├── data/                  # NOT versioned: filled locally by src/dataset-managed/

@@ -126,7 +126,13 @@ $\ln\sum_{k}e^{v_k}=m+\ln\sum_{k}e^{v_k-m}$, where $m=\max_k v_k$: the largest t
 \item Empty clusters. If $N_k<10^{-10}$ no point is assigned to the cluster and the formulas would divide by zero: mean and variances stay as before and the weight is set to the minimum $\pi_k=10^{-12}$, never 0, because the E-step uses $\ln\pi_k$.
 \end{itemize}
 
-\paragraph{Visualization of the algorithm.} \textcolor{red}{TODO: insert the link to the visualization of the algorithm (how EM moves the means and the covariances iteration after iteration).}
+\paragraph{Visualization of the algorithm.} Figure~\ref{fig:em-steps} shows EM at work on a small example: the $K$ means start on $K$ rows of the data, and at every iteration the E-step assigns each point to the clusters in proportion to $r_{ik}$, while the M-step moves the means and reshapes the ellipses towards the points they received; $\mathcal{L}$ grows quickly in the first iterations and then flattens until the stopping test is met. The full step-by-step animation (E-step, convergence test and M-step of every iteration, with the formulas evaluated on the real numbers) is an interactive web page in the repository, \srclink{https://github.com/HPC-2627/ParallelExpectationMaximizationClustering/blob/main/doc/exec-visual.md}{\texttt{doc/exec-visual.md}}; it runs the same EM as the sequential C program, starting from the same rows, and checks that the log-likelihood of every iteration matches the one printed by the binary.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\textwidth]{../img/em-steps.pdf}
+\caption{EM with diagonal covariance on \texttt{synth\_clean} (first 300 rows, $D=10$, $K=4$, seed 12). Points are coloured by their responsibilities $r_{ik}$ (gray before the first E-step), crosses are the means $\mu_k$ with the path followed so far, ellipses are the $2\sigma$ contours. EM works in all 10 dimensions; the picture is the 2D projection where the two closest clusters found at convergence are furthest apart.}\label{fig:em-steps}
+\end{figure}
 
 \subsection{Implemented versions and cost}\label{sec:versions}
 The EM algorithm is the same for both covariance models (Algorithms~\ref{alg:seq-diag} and~\ref{alg:seq-full}, with the same safeguards): only $\sigma^2_{kd}$ is replaced by $\Sigma_k$ in the density of the E-step and in the covariance update of the M-step. Each model has four versions, for a total of eight programs:

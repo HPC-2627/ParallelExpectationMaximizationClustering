@@ -16,11 +16,13 @@
 \@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {I-A}0d}Initialization and stopping.}{4}{paragraph.1.1.0.4}\protected@file@percent }
 \@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {I-A}0e}Numerical safeguards.}{4}{paragraph.1.1.0.5}\protected@file@percent }
 \@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {I-A}0f}Visualization of the algorithm.}{4}{paragraph.1.1.0.6}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces EM with diagonal covariance on \texttt  {synth\_clean} (first 300 rows, $D=10$, $K=4$, seed 12). Points are coloured by their responsibilities $r_{ik}$ (gray before the first E-step), crosses are the means $\mu _k$ with the path followed so far, ellipses are the $2\sigma $ contours. EM works in all 10 dimensions; the picture is the 2D projection where the two closest clusters found at convergence are furthest apart.}}{5}{figure.caption.4}\protected@file@percent }
+\newlabel{fig:em-steps}{{1}{5}{EM with diagonal covariance on \texttt {synth\_clean} (first 300 rows, $D=10$, $K=4$, seed 12). Points are coloured by their responsibilities $r_{ik}$ (gray before the first E-step), crosses are the means $\mu _k$ with the path followed so far, ellipses are the $2\sigma $ contours. EM works in all 10 dimensions; the picture is the 2D projection where the two closest clusters found at convergence are furthest apart}{figure.caption.4}{}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {I-B}}Implemented versions and cost}{5}{subsection.1.2}\protected@file@percent }
 \newlabel{sec:versions}{{\mbox  {I-B}}{5}{Implemented versions and cost}{subsection.1.2}{}}
 \@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {I-B}0a}Full model: Cholesky factorization.}{5}{paragraph.1.2.0.1}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {I-B}0b}Cost of one iteration.}{5}{paragraph.1.2.0.2}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {I-B}0c}Sequential versions.}{5}{paragraph.1.2.0.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {I-B}0b}Cost of one iteration.}{6}{paragraph.1.2.0.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {I-B}0c}Sequential versions.}{6}{paragraph.1.2.0.3}\protected@file@percent }
 \@writefile{loa}{\contentsline {algocf}{\numberline {1}{\ignorespaces Sequential EM, diagonal model}}{6}{algocf.1}\protected@file@percent }
 \newlabel{alg:seq-diag}{{1}{6}{Sequential versions}{algocf.1}{}}
 \@writefile{loa}{\contentsline {algocf}{\numberline {2}{\ignorespaces Sequential EM, full model}}{7}{algocf.2}\protected@file@percent }
@@ -37,10 +39,10 @@
 \@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {II-D}}Optimization 1, diagonal model: computation}{10}{subsection.2.4}\protected@file@percent }
 \@writefile{loa}{\contentsline {algocf}{\numberline {5}{\ignorespaces Optimization 1 MPI+OpenMP, diagonal model (rank $p$)}}{10}{algocf.5}\protected@file@percent }
 \newlabel{alg:opt1-diag}{{5}{10}{Optimization 1, diagonal model: computation}{algocf.5}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {II-E}}Optimization 2, diagonal model: communication}{10}{subsection.2.5}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {II-E}}Optimization 2, diagonal model: communication}{11}{subsection.2.5}\protected@file@percent }
 \@writefile{loa}{\contentsline {algocf}{\numberline {6}{\ignorespaces Optimization 2 MPI+OpenMP, diagonal model (rank $p$)}}{11}{algocf.6}\protected@file@percent }
 \newlabel{alg:opt2-diag}{{6}{11}{Optimization 2, diagonal model: communication}{algocf.6}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {II-F}}Optimization 1, full model: computation}{11}{subsection.2.6}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {II-F}}Optimization 1, full model: computation}{12}{subsection.2.6}\protected@file@percent }
 \@writefile{loa}{\contentsline {algocf}{\numberline {7}{\ignorespaces Optimization 1 MPI+OpenMP, full model (rank $p$)}}{13}{algocf.7}\protected@file@percent }
 \newlabel{alg:opt1-full}{{7}{13}{Optimization 1, full model: computation}{algocf.7}{}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {II-G}}Optimization 2, full model: communication}{13}{subsection.2.7}\protected@file@percent }
@@ -49,28 +51,28 @@
 \@writefile{toc}{\contentsline {section}{\numberline {III}Experimental Setup \& Dataset}{15}{section.3}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {III-A}}Hardware Infrastructure}{15}{subsection.3.1}\protected@file@percent }
 \newlabel{sec:hw}{{\mbox  {III-A}}{15}{Hardware Infrastructure}{subsection.3.1}{}}
-\@writefile{lot}{\contentsline {table}{\numberline {II}{\ignorespaces Compute nodes used for all the measurements. Values marked \emph  {catalog} are Intel specifications, not measured on the cluster.}}{15}{table.caption.4}\protected@file@percent }
-\newlabel{tab:hw}{{II}{15}{Compute nodes used for all the measurements. Values marked \emph {catalog} are Intel specifications, not measured on the cluster}{table.caption.4}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {II}{\ignorespaces Compute nodes used for all the measurements. Values marked \emph  {catalog} are Intel specifications, not measured on the cluster.}}{15}{table.caption.5}\protected@file@percent }
+\newlabel{tab:hw}{{II}{15}{Compute nodes used for all the measurements. Values marked \emph {catalog} are Intel specifications, not measured on the cluster}{table.caption.5}{}}
 \@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {III-A}0a}Process and thread placement.}{15}{paragraph.3.1.0.1}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {III-B}}Measurement Methodology}{15}{subsection.3.2}\protected@file@percent }
 \newlabel{sec:method}{{\mbox  {III-B}}{15}{Measurement Methodology}{subsection.3.2}{}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {III-C}}Dataset}{16}{subsection.3.3}\protected@file@percent }
 \@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {III-C}0a}Common format.}{16}{paragraph.3.3.0.1}\protected@file@percent }
 \@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {III-C}0b}Real datasets}{16}{paragraph.3.3.0.2}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {III}{\ignorespaces Real datasets. $N$ and $D$ are the values actually used by the EM after preprocessing; $K$ is the number of ground-truth classes (used only for evaluation).}}{17}{table.caption.5}\protected@file@percent }
-\newlabel{tab:real}{{III}{17}{Real datasets. $N$ and $D$ are the values actually used by the EM after preprocessing; $K$ is the number of ground-truth classes (used only for evaluation)}{table.caption.5}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {III}{\ignorespaces Real datasets. $N$ and $D$ are the values actually used by the EM after preprocessing; $K$ is the number of ground-truth classes (used only for evaluation).}}{17}{table.caption.6}\protected@file@percent }
+\newlabel{tab:real}{{III}{17}{Real datasets. $N$ and $D$ are the values actually used by the EM after preprocessing; $K$ is the number of ground-truth classes (used only for evaluation)}{table.caption.6}{}}
 \@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {III-C}0c}Synthetic profiles}{17}{paragraph.3.3.0.3}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {IV}{\ignorespaces Synthetic profiles. $\delta $ is the distance between cluster means in units of the within-cluster standard deviation.}}{17}{table.caption.6}\protected@file@percent }
-\newlabel{tab:synth-profiles}{{IV}{17}{Synthetic profiles. $\delta $ is the distance between cluster means in units of the within-cluster standard deviation}{table.caption.6}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {IV}{\ignorespaces Synthetic profiles. $\delta $ is the distance between cluster means in units of the within-cluster standard deviation.}}{17}{table.caption.7}\protected@file@percent }
+\newlabel{tab:synth-profiles}{{IV}{17}{Synthetic profiles. $\delta $ is the distance between cluster means in units of the within-cluster standard deviation}{table.caption.7}{}}
 \@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {III-C}0d}Variables of the synthetic data}{17}{paragraph.3.3.0.4}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {V}{\ignorespaces Clinical variables used to build the synthetic data (typical mean $\pm $ std and physiological limits).}}{18}{table.caption.7}\protected@file@percent }
-\newlabel{tab:synth-vars}{{V}{18}{Clinical variables used to build the synthetic data (typical mean $\pm $ std and physiological limits)}{table.caption.7}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {V}{\ignorespaces Clinical variables used to build the synthetic data (typical mean $\pm $ std and physiological limits).}}{18}{table.caption.8}\protected@file@percent }
+\newlabel{tab:synth-vars}{{V}{18}{Clinical variables used to build the synthetic data (typical mean $\pm $ std and physiological limits)}{table.caption.8}{}}
 \@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {III-C}0e}Weak scaling files}{18}{paragraph.3.3.0.5}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {VI}{\ignorespaces Weak scaling: rows and data file size for each profile ($N_0 = 250\,000$ rows per process; labels file of $4N$ bytes for every profile). MB $= 10^6$ bytes.}}{18}{table.caption.8}\protected@file@percent }
-\newlabel{tab:weak}{{VI}{18}{Weak scaling: rows and data file size for each profile ($N_0 = 250\,000$ rows per process; labels file of $4N$ bytes for every profile). MB $= 10^6$ bytes}{table.caption.8}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {VI}{\ignorespaces Weak scaling: rows and data file size for each profile ($N_0 = 250\,000$ rows per process; labels file of $4N$ bytes for every profile). MB $= 10^6$ bytes.}}{18}{table.caption.9}\protected@file@percent }
+\newlabel{tab:weak}{{VI}{18}{Weak scaling: rows and data file size for each profile ($N_0 = 250\,000$ rows per process; labels file of $4N$ bytes for every profile). MB $= 10^6$ bytes}{table.caption.9}{}}
 \@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {III-C}0f}Strong scaling}{18}{paragraph.3.3.0.6}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {VII}{\ignorespaces Strong scaling (fixed $N = 4\,000\,000$): data per rank and work per rank $N \cdot K \cdot D / p$. The work is an operation count proportional to the cost of an iteration, not a measured time.}}{19}{table.caption.9}\protected@file@percent }
-\newlabel{tab:strong}{{VII}{19}{Strong scaling (fixed $N = 4\,000\,000$): data per rank and work per rank $N \cdot K \cdot D / p$. The work is an operation count proportional to the cost of an iteration, not a measured time}{table.caption.9}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {VII}{\ignorespaces Strong scaling (fixed $N = 4\,000\,000$): data per rank and work per rank $N \cdot K \cdot D / p$. The work is an operation count proportional to the cost of an iteration, not a measured time.}}{19}{table.caption.10}\protected@file@percent }
+\newlabel{tab:strong}{{VII}{19}{Strong scaling (fixed $N = 4\,000\,000$): data per rank and work per rank $N \cdot K \cdot D / p$. The work is an operation count proportional to the cost of an iteration, not a measured time}{table.caption.10}{}}
 \@writefile{toc}{\contentsline {section}{\numberline {IV}Performance Evaluation}{20}{section.4}\protected@file@percent }
 \newlabel{sec:perf}{{IV}{20}{Performance Evaluation}{section.4}{}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-A}}Execution Time and Throughput}{20}{subsection.4.1}\protected@file@percent }
@@ -80,5 +82,5 @@
 \@writefile{toc}{\contentsline {section}{\numberline {V}Discussion}{21}{section.5}\protected@file@percent }
 \@writefile{toc}{\contentsline {section}{\numberline {VI}Conclusion}{22}{section.6}\protected@file@percent }
 \bibcite{bishop}{1}
-\@writefile{toc}{\contentsline {section}{References}{23}{section*.10}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{References}{23}{section*.11}\protected@file@percent }
 \gdef \@abspage@last{23}
