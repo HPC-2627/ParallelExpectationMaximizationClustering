@@ -5,8 +5,8 @@
  * It is the PARALLEL BASELINE: the algorithm is exactly the one of
  * PEMC-baseline-sequential-diagonal.c (read that file first for the model, the formulas and the
  * memory layout), and it must reach the same final log-likelihood, the same number of
- * iterations and the same ARI starting from the same seed. The three optimizations
- * (PEMC-opt1/2/3) are compared against this file, so it is deliberately the simple version:
+ * iterations and the same ARI starting from the same seed. The two optimizations
+ * (PEMC-opt1/2) are compared against this file, so it is deliberately the simple version:
  * it stores the matrix of responsibilities and makes two separate passes (E-step, M-step).
  *
  * ========================================================================================
@@ -89,8 +89,9 @@ typedef struct
     double *logp;    /* n_threads*logp_stride: log(pi_k N(x_i | ...)), one slice per thread
                         (a buffer shared by the threads would be a data race) */
     int logp_stride; /* distance (in doubles) between the slices of two threads: K rounded up to
-                        a multiple of 8 doubles = 64 bytes, so two threads never write in the same
-                        cache line (false sharing) */
+                        a multiple of 8 doubles = 64 bytes. malloc aligns only to 16 bytes, so a
+                        slice can still share a cache line with the slice of its neighbour (false
+                        sharing): removed in opt1, see its header (3) */
     double *acc;     /* K + 2*K*D: the M-step sums, in one contiguous buffer so that a single
                         MPI_Allreduce is enough. Layout:
                           acc[0 .. K-1]            Nk  = sum_i r_ik

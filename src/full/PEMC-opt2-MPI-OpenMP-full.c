@@ -209,7 +209,7 @@ static void Load_block_transposed(const double *restrict X /* in  */, int nb /* 
 /* Forward substitution L z = x - mu of vl <= TILE rows together (rows i0 .. i0+vl-1 of the
  * block), and squared Mahalanobis distance s[v] = |z|^2 of each. For every row the operations
  * are those of the baseline, in the same order; the loops over v are the vl INDEPENDENT rows, which go
- * in one SIMD register. "static inline" with vl = TILE constant at the call: the compiler
+ * in SIMD registers (4 SSE2 registers with the default flags, one with AVX-512). "static inline" with vl = TILE constant at the call: the compiler
  * specializes the full tiles (fixed length 8) and keeps a generic copy for the last one. */
 static inline void Solve_tile(const double *restrict Xt /* in  */, const double *restrict mu /* in */,
                               const double *restrict L /* in  */, int i0 /* in */, int vl /* in */,

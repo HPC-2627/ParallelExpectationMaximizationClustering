@@ -96,8 +96,9 @@ typedef struct
     double *z;       /* n_threads*stride: scratch vector of the forward substitution, one slice
                         per thread */
     int stride;      /* distance (in doubles) between the slices of two threads: max(K, D) rounded
-                        up to a multiple of 8 doubles = 64 bytes, so two threads never write in the
-                        same cache line (false sharing) */
+                        up to a multiple of 8 doubles = 64 bytes. malloc aligns only to 16 bytes, so
+                        a slice can still share a cache line with the slice of its neighbour (false
+                        sharing): removed in opt1, see its header (3) */
     double *acc;     /* K + K*D + K*D*D: the M-step sums, in one contiguous buffer so that a single
                         MPI_Allreduce is enough. Layout:
                           acc[0 .. K-1]              Nk  = sum_i r_ik

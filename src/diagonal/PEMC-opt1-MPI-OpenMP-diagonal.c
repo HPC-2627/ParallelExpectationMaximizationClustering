@@ -40,7 +40,7 @@
  *               Measured with an OpenMP replica of the loop, 8 threads: 1.7-2x faster.
  *
  * Communication is the same as the baseline on purpose (two MPI_Allreduce per iteration: ll, then
- * the packed sums), so the effect of (1) and (2) is measured alone.
+ * the packed sums), so the effect of (1)-(3) is measured alone.
  *
  * ========================================================================================
  * CONVERGENCE AND THE SUMS OF THE LAST ITERATION

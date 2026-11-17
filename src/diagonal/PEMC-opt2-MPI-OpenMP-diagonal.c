@@ -94,8 +94,10 @@ typedef struct
     double *logp;    /* n_threads*logp_stride: log(pi_k N(x_i | ...)), one slice per thread
                         (a buffer shared by the threads would be a data race) */
     int logp_stride; /* distance (in doubles) between the slices of two threads: K rounded up to
-                        a multiple of 8 doubles = 64 bytes, so two threads never write in the same
-                        cache line (false sharing) */
+                        a multiple of 8 doubles = 64 bytes. malloc aligns only to 16 bytes, so a
+                        slice can still share a cache line with the slice of its neighbour (false
+                        sharing): kept as in the baseline on purpose, opt2 changes only the
+                        communication */
     double *acc;     /* K + 2*K*D + 1: the M-step sums AND the log-likelihood, in one contiguous
                         buffer so that a single MPI_Allreduce per iteration is enough (OPT2).
                         Layout:
