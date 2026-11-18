@@ -118,6 +118,17 @@ Three profiles generated from a known Gaussian mixture (true labels available, d
 | Covariance inside a cluster | diagonal | correlated | diagonal |
 | What it tests | correctness, reference for scaling | overlapping clusters, diagonal model mismatch | rare group (1%), 2% outliers, high $D$ |
 
+### Sweep datasets
+
+The sweeps check in practice the cost of an iteration, $O(NKD)$ for the diagonal model and $O(NKD^2)$ for the full model, by changing **one parameter at a time** with $N = 250\,000$ and the layout fixed (1 node, 1 rank × 8 threads, `pack:excl`). Only the four baselines are run. On a log-log plot the expected slope is 1 in $K$ for both models, and 1 (diagonal) or 2 (full) in $D$. Only time is measured, not memory.
+
+| Sweep | Dataset | Varies | Fixed |
+|---|---|---|---|
+| $K$ | `synth_clean_p01` (no new file) | $K \in \{2, 4, 8, 16, 32, 64\}$ | $D = 10$ |
+| $D$ | `synth_sweep_d005` … `synth_sweep_d050` (same parameters as `synth_clean`, about 240 MB) | $D \in \{5, 10, 20, 35, 50\}$ | $K = 4$ |
+
+Run with `src/script/pemc-submit.sh sweep` (8 jobs); the logs go to `results/logs/sweep/`. Details in [datasets.md, 3.7](doc/datasets.md#37-k-and-d-sweeps).
+
 ### Real datasets
 
 Public datasets, mostly medical, used for the clustering quality (none has missing values in the numeric columns):
@@ -186,7 +197,7 @@ TODO
 - [doc/todo.md](doc/todo.md): task list and workflow
 - [doc/todo-jobs.md](doc/todo-jobs.md): checklist of the submission commands (batch A, B)
 - [doc/em-explained.md](doc/em-explained.md): EM algorithm (formulas, notation, parallelism)
-- [doc/datasets.md](doc/datasets.md): synthetic and real datasets (sources, format)
+- [doc/datasets.md](doc/datasets.md): synthetic, sweep and real datasets (sources, format)
 - [doc/papers.md](doc/papers.md): papers for the state of the art (PDFs local only)
 - [doc/latex/Group6-Report.pdf](doc/latex/Group6-Report.pdf): IEEE-style report
 - [Presentation](https://docs.google.com/presentation/d/1nnzwo61ZBHoQlmlYfGVbIb39rVTOexQlnH01uqBfev0/edit?slide=id.g4dfce81f19_0_45#slide=id.g4dfce81f19_0_45): slides (Google Slides)

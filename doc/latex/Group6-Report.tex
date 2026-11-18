@@ -555,7 +555,7 @@ The nodes differ only in the memory and in the model of the network card (always
 The same procedure is used for every version, so that the times of sequential, baseline and optimizations can be compared and repeated.
 \begin{itemize}
 \item \emph{Same machine.} Every job runs on Xeon Gold 6252N nodes only (\texttt{cpu\_type} in the PBS request) and checks the CPU model of all its nodes before starting: a job on a different CPU stops without writing results. The CPU model is also written in every log entry.
-\item \emph{Same inputs.} Every version runs on the same datasets with the same $K$ (number of true classes), the same seed (42), tolerance $\varepsilon=10^{-6}$, $T_{\max}=200$ and one initialization ($R=1$).
+\item \emph{Same inputs.} Every version runs on the same datasets with the same $K$ (number of true classes), the same seed (42), tolerance $\varepsilon=10^{-6}$, $T_{\max}=200$ and one initialization ($R=1$). The only exception is the sweep over $K$ (Section~\ref{sec:sweeps}), where $K$ is the parameter being varied.
 \item \emph{Correctness check.} All the versions of a model must reach the same number of iterations and the same final $\mathcal{L}$ on every dataset and layout. For the diagonal model (sequential, baseline, Optimization~1 and~2, all layouts and placements) the iterations are identical and the relative difference of $\mathcal{L}$ is below $5\cdot10^{-9}$ \textcolor{red}{(TODO: check the full model with its optimizations)}.
 \item \emph{Warm-up.} Before the measured run, 3 EM iterations are executed and discarded, with the same OpenMP regions and the same \texttt{MPI\_Allreduce} calls as the measured run. They remove one-time costs: first touch of the memory, creation of the thread pool, opening of the MPI connections, CPU frequency ramp-up. The parameters are then re-initialized with the same seed, so the result is the same as without warm-up.
 \item \emph{Timers.} Times are wall-clock times, taken with \texttt{MPI\_Wtime} (\texttt{gettimeofday} in the sequential versions). An \texttt{MPI\_Barrier} aligns the ranks only before the global timers (start of reading, initialization, EM); there is no barrier inside the loop, because it would add a cost that the algorithm does not have.
@@ -735,6 +735,37 @@ What it tests & correctness, scaling reference & slow convergence, choice of $K$
 4  & 1\,000\,000 & 80 MB  & 160 MB & 400 MB    & $4.0 \cdot 10^7$ & $1.0 \cdot 10^8$ & $3.0 \cdot 10^8$ \\
 8  & 500\,000    & 40 MB  & 80 MB  & 200 MB    & $2.0 \cdot 10^7$ & $5.0 \cdot 10^7$ & $1.5 \cdot 10^8$ \\
 16 & 250\,000    & 20 MB  & 40 MB  & 100 MB    & $1.0 \cdot 10^7$ & $2.5 \cdot 10^7$ & $7.5 \cdot 10^7$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Sweeps over $K$ and $D$}\label{sec:sweeps} (Table~\ref{tab:sweeps}).
+\begin{itemize}
+\item \emph{Purpose.} They check in practice the cost per iteration of Table~\ref{tab:models}, $O(NKD)$ for the diagonal model and $O(NKD^2)$ for the full model. Across the three profiles $K$, $D$ and the data all change together. In a sweep only one parameter changes, while $N$ and the layout stay fixed. On a log-log plot of the time per iteration the expected slopes are 1 in $K$ for both models, and 1 (diagonal) or 2 (full) in $D$.
+\item \emph{Sweep over $K$.} The same file \texttt{synth\_clean\_p01} ($N=250\,000$, $D=10$, 4 true clusters) is run with $K\in\{2,4,8,16,32,64\}$. The number of iterations changes with $K$, but the time per iteration does not depend on it.
+\item \emph{Sweep over $D$.} Five files \texttt{synth\_sweep\_d}$D$ have the parameters of \texttt{synth\_clean} (4 balanced clusters, $\delta=6.0$, diagonal covariance, no outliers, skewness or clipping) and $D\in\{5,10,20,35,50\}$. Columns beyond 20 are the generic biomarkers. They are run with $K=4$ and $N=250\,000$, and are generated deterministically (seed 42).
+\item \emph{Runs.} Only the four baselines are run: sequential and MPI+OpenMP, diagonal and full. The MPI+OpenMP versions use one fixed layout (1 node, 1 rank $\times$ 8 threads, \texttt{pack:excl}). Every point is repeated 3 times. Only time is measured; memory use is not logged.
+\end{itemize}
+
+\begin{table}[H]
+\centering
+\caption{Sweeps over $K$ and $D$ ($N=250\,000$, 1 node). The work is an operation count proportional to the cost of an iteration, not a measured time. Data file sizes: $8+8ND$ bytes, plus a labels file of 1 MB per file.}
+\label{tab:sweeps}
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{llrrrr}
+\toprule
+\textbf{Sweep} & \textbf{File} & \textbf{Value} & \textbf{Data} & \textbf{Work, diagonal} & \textbf{Work, full} \\
+ & & & & ($NKD$) & ($NKD^2$) \\
+\midrule
+$K$ ($D=10$) & \texttt{synth\_clean\_p01} & $K=2$  & 20 MB & $5.0\cdot10^6$ & $5.0\cdot10^7$ \\
+             &                            & $K=64$ & 20 MB & $1.6\cdot10^8$ & $1.6\cdot10^9$ \\
+\midrule
+$D$ ($K=4$)  & \texttt{synth\_sweep\_d005} & $D=5$  & 10 MB  & $5.0\cdot10^6$ & $2.5\cdot10^7$ \\
+             & \texttt{synth\_sweep\_d010} & $D=10$ & 20 MB  & $1.0\cdot10^7$ & $1.0\cdot10^8$ \\
+             & \texttt{synth\_sweep\_d020} & $D=20$ & 40 MB  & $2.0\cdot10^7$ & $4.0\cdot10^8$ \\
+             & \texttt{synth\_sweep\_d035} & $D=35$ & 70 MB  & $3.5\cdot10^7$ & $1.2\cdot10^9$ \\
+             & \texttt{synth\_sweep\_d050} & $D=50$ & 100 MB & $5.0\cdot10^7$ & $2.5\cdot10^9$ \\
 \bottomrule
 \end{tabular}
 \end{table}
