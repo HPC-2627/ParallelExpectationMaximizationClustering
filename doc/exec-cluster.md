@@ -229,10 +229,12 @@ If a rank shows only one `B`, the threads share one core: the times are wrong, c
 Clustering runs (sequential baseline, K range per dataset, input of plots C1-C6):
 
 ```bash
-src/script/pemc-cluster.sh               # ONLY=heart KMAX=8 src/script/pemc-cluster.sh to test
+rm -rf results/logs/cluster results/clusters   # only before a new launch: the runs are appended, not skipped
+qsub src/script/pemc-cluster.sh                # one exclusive Xeon 6252N node, ~21 processes in parallel (~30 min)
+ONLY=heart KMAX=8 src/script/pemc-cluster.sh   # to test: one dataset, one process, in this shell
 ```
 
-It can also be submitted with `qsub`.
+Resources are in the `#PBS` lines of the script (24 cores, 48 GB, `place=excl`, 6 h). It starts one process per dataset and one per K for `brainweb` (alone it takes about 2 h). Progress: `tail -n 1 results/logs/cluster/run_*.txt` (`done, 0 failure(s)` = finished); at the end `pemc-cluster.o<id>` in the root of the repository ends with `all done, 0 process(es) with failures`. If the job stays queued for long (no free node), comment the line `#PBS -l place=excl`.
 
 ### Monitor the jobs
 

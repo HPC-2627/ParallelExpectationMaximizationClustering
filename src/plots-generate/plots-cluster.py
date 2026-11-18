@@ -7,7 +7,7 @@ summary table. The clustering result is the same in every version (the final log
 checked), so everything here comes from the SEQUENTIAL BASELINE, diagonal and full.
 
 Usage (from the root of the repository):
-    src/script/pemc-cluster.sh                          # 1. the runs (see that file)
+    qsub src/script/pemc-cluster.sh                     # 1. the runs, on the cluster (see that file)
     python3 src/plots-generate/plots-cluster.py         # 2. the plots, in results/plots/
     python3 src/plots-generate/plots-cluster.py --plots C2 C6 --datasets heart_failure parkinson
 

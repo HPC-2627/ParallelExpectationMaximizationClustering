@@ -17,7 +17,7 @@ Performance runs (sequential, baseline, opt1, opt2, sweeps) and clustering runs.
 | [`pemc-submit.sh`](../src/script/pemc-submit.sh) | submits the PBS jobs: one job per version × layout | you |
 | [`pemc-job.sh`](../src/script/pemc-job.sh) | body of one job: runs one version on all the datasets with one layout | `qsub`, called by `pemc-submit.sh` |
 | [`mpi_wrapper.sh`](../src/script/mpi_wrapper.sh) | forces UCX (OpenMPI transport) onto the cluster Ethernet interface, then starts the binary | `mpiexec`, on every rank |
-| [`pemc-cluster.sh`](../src/script/pemc-cluster.sh) | sequential runs over a range of K for the clustering plots C1-C6 | you (directly or with `qsub`) |
+| [`pemc-cluster.sh`](../src/script/pemc-cluster.sh) | sequential runs over a range of K for the clustering plots C1-C6, in parallel on one exclusive node | you, with `qsub` |
 
 Chain of a parallel run:
 
@@ -65,16 +65,20 @@ Finds the network interface that reaches `192.168.108.1`, sets `UCX_TLS=tcp,self
 ### `pemc-cluster.sh`
 
 ```bash
-src/script/pemc-cluster.sh                 # all the real datasets + synth_clean_p01, synth_overlap_p01
-ONLY=heart src/script/pemc-cluster.sh      # only the datasets whose name contains "heart"
+qsub src/script/pemc-cluster.sh            # everything, in parallel on one exclusive node (~30 min)
+ONLY=heart src/script/pemc-cluster.sh      # only the datasets whose name contains "heart", one process
 ```
 
 Runs `PEMC-baseline-sequential-{diagonal,full}` for every K in `KMIN..KMAX` (default 2..10, plus the true K if larger), without warm-up.
 
+- **PBS** (lines `#PBS` of the script): one whole node (`place=excl`) with `cpu_type=Xeon6252N`, 24 cores, 48 GB, 6 h. The times are not used by C1-C6: the exclusive node only makes it finish sooner.
+- **Parallel:** without `ONLY` and `KS` it starts one process per dataset, and one per K for `brainweb` (`SPLIT_K`: alone it takes about 2 h), about 21 processes, then waits for all of them. Output of each process: `results/logs/cluster/run_<dataset>[_k<K>].txt`, ending with `done, 0 failure(s)`. `PARALLEL=0` runs everything in one process.
 - `results/logs/cluster/baseline-sequential-<model>.log`: one block per run (BIC/AIC vs K, C2, C6).
 - `results/clusters/`: labels, means and log-likelihood curve, saved **only** for the true K (C1, C3, C4, C5).
 
-Variables: `KMIN`, `KMAX`, `ONLY`, `SETS` (`real | synthetic | all`).
+Variables: `KMIN`, `KMAX`, `KS` (explicit list of K, replaces the range), `ONLY`, `SETS` (`real | synthetic | all`), `SPLIT_K`, `PARALLEL`.
+
+The script does not skip runs already in the logs: before a new launch remove `results/logs/cluster/` and `results/clusters/`, otherwise the blocks are duplicated.
 
 ---
 
