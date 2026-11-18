@@ -287,6 +287,13 @@ It fills the table "Hardware Infrastructure" of the report, because the nodes ar
 src/script/pemc-hwinfo.sh submit      # one job per node
 src/script/pemc-hwinfo.sh status      # repeat until "missing 0, queued 0"
 src/script/pemc-hwinfo.sh software    # compiler, MPI, UCX
+src/script/pemc-hwinfo.sh summary     # same on all the nodes vs different (RAM, DIMMs, NIC, kernel)
+```
+
+Raw outputs in `results/hwinfo/` (not versioned); to read them on the local machine:
+
+```bash
+scp -r username@hpc3-login1.unitn.it:ParallelExpectationMaximizationClustering/results/hwinfo results/
 ```
 
 ---

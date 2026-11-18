@@ -1,6 +1,15 @@
 # Scripts in `src/script/`
 
-Bash scripts that run the experiments on the cluster (PBS queue `shortCPUQ`). Run them from the **root of the repository** after `make all mpi-omp`. The full procedure is in [exec-cluster.md](exec-cluster.md).
+Bash scripts for the HPC3 cluster (PBS queue `shortCPUQ`), in two groups: the ones that **run the experiments** and the ones that **collect the hardware of the nodes**. Run them from the **root of the repository**; the full procedure is in [exec-cluster.md](exec-cluster.md).
+
+- [1. Experiments](#1-experiments): `pemc-submit.sh`, `pemc-job.sh`, `mpi_wrapper.sh`, `pemc-cluster.sh`
+- [2. Cluster hardware](#2-cluster-hardware): `pemc-hwinfo.sh`, `pemc-hwprobe.sh`
+
+---
+
+## 1. Experiments
+
+Performance runs (sequential, baseline, opt1, opt2, sweeps) and clustering runs. They need the binaries: `make all mpi-omp` first.
 
 | Script | What it does | Run by |
 |---|---|---|
@@ -8,8 +17,6 @@ Bash scripts that run the experiments on the cluster (PBS queue `shortCPUQ`). Ru
 | [`pemc-job.sh`](../src/script/pemc-job.sh) | body of one job: runs one version on all the datasets with one layout | `qsub`, called by `pemc-submit.sh` |
 | [`mpi_wrapper.sh`](../src/script/mpi_wrapper.sh) | forces UCX (OpenMPI transport) onto the cluster Ethernet interface, then starts the binary | `mpiexec`, on every rank |
 | [`pemc-cluster.sh`](../src/script/pemc-cluster.sh) | sequential runs over a range of K for the clustering plots C1-C6 | you (directly or with `qsub`) |
-| [`pemc-hwinfo.sh`](../src/script/pemc-hwinfo.sh) | hardware of all the nodes used (table "Hardware Infrastructure" of the report): one small job per node, status, summary | you, on the login node |
-| [`pemc-hwprobe.sh`](../src/script/pemc-hwprobe.sh) | body of one of those jobs: prints the hardware of the node where it runs | `qsub`, called by `pemc-hwinfo.sh` |
 
 Chain of a parallel run:
 
@@ -17,7 +24,7 @@ Chain of a parallel run:
 pemc-submit.sh ──qsub──> pemc-job.sh ──mpiexec──> mpi_wrapper.sh ──exec──> bin/PEMC-<version>
 ```
 
-## `pemc-submit.sh`
+### `pemc-submit.sh`
 
 ```bash
 src/script/pemc-submit.sh <diagonal|full> [sequential|baseline|opt1|opt2]   # one model, one stage (or all written stages)
@@ -41,7 +48,7 @@ src/script/pemc-submit.sh sweep                                            # K a
 | `BLOCK=64` | rows per block of `opt1` full (sweep over B, logs in `results/logs/block/`) |
 | `NODE_FILTER=` / `REQUIRE_CPU=` | empty = any node / no CPU check |
 
-## `pemc-job.sh`
+### `pemc-job.sh`
 
 Not submitted by hand: it receives the layout from `qsub` and the variables with `-v` (`VERSION`, `NODES`, `RANKS_PER_NODE`, `THREADS`, `PLACE`, `REPS`, `SETS`, `SYNTH_P`, `ONLY`, `SWEEP`, `BLOCK`, `REQUIRE_CPU`).
 
@@ -50,11 +57,11 @@ Not submitted by hand: it receives the layout from `qsub` and the variables with
 3. **Launch:** MPI versions with `mpiexec --hostfile $PBS_NODEFILE --map-by slot:PE=THREADS --bind-to core` through `mpi_wrapper.sh`; `OMP_PROC_BIND=close`, `OMP_PLACES=cores`.
 4. **Logs:** `results/logs/<model>/<stage>/<version>_<place>_<N>n<R>r<T>t.log` (sequential: `_seq`); sweeps in `results/logs/sweep/`, block sweeps in `results/logs/block/`.
 
-## `mpi_wrapper.sh`
+### `mpi_wrapper.sh`
 
 Finds the network interface that reaches `192.168.108.1`, sets `UCX_TLS=tcp,self,sm` and `UCX_NET_DEVICES=<iface>`, prints the choice on stderr (in the `.err` file) and replaces itself with the program (`exec "$@"`). Without it multi-node runs fail.
 
-## `pemc-cluster.sh`
+### `pemc-cluster.sh`
 
 ```bash
 src/script/pemc-cluster.sh                 # all the real datasets + synth_clean_p01, synth_overlap_p01
@@ -68,7 +75,25 @@ Runs `PEMC-baseline-sequential-{diagonal,full}` for every K in `KMIN..KMAX` (def
 
 Variables: `KMIN`, `KMAX`, `ONLY`, `SETS` (`real | synthetic | all`).
 
-## `pemc-hwinfo.sh`
+---
+
+## 2. Cluster hardware
+
+Hardware of the 40 nodes used by the experiments, for the table "Hardware Infrastructure" of the report and the table in the README. They need no binaries and no root. Summary of the results: [`results/tables/hardware.md`](../results/tables/hardware.md).
+
+| Script | What it does | Run by |
+|---|---|---|
+| [`pemc-hwinfo.sh`](../src/script/pemc-hwinfo.sh) | one small job per node, status of the jobs, software versions, summary | you, on the login node |
+| [`pemc-hwprobe.sh`](../src/script/pemc-hwprobe.sh) | body of one of those jobs: prints the hardware of the node where it runs | `qsub`, called by `pemc-hwinfo.sh` |
+
+Chain:
+
+```
+pemc-hwinfo.sh submit ──qsub (host=<node>)──> pemc-hwprobe.sh ──> results/hwinfo/<node>.txt
+pemc-hwinfo.sh summary ──reads──> results/hwinfo/*.txt   (summary written by hand in results/tables/hardware.md)
+```
+
+### `pemc-hwinfo.sh`
 
 Collects the hardware of all the nodes used by the experiments, for the table "Hardware Infrastructure" of the report. Run it on the login node, from the root of the repository:
 
@@ -85,7 +110,7 @@ src/script/pemc-hwinfo.sh summary     # same on all the nodes vs different: RAM,
 - **Re-runs:** `submit` skips the nodes already done or still in the queue, so it can be run again at any time; when the per-user limit of the queue is reached it waits 30 s and tries again.
 - **Long waits:** a job stays in the queue (`Insufficient amount of resource: host`) while other users' jobs fill its node; PBS gives no estimate (`qstat -T`). Leave it there or remove it with `qdel`.
 
-## `pemc-hwprobe.sh`
+### `pemc-hwprobe.sh`
 
 Body of the jobs of `pemc-hwinfo.sh`; it can also be run by hand on one node. It prints one `key: value` line per item, without root:
 
