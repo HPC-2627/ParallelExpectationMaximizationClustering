@@ -230,11 +230,11 @@ Clustering runs (sequential baseline, K range per dataset, input of plots C1-C6)
 
 ```bash
 rm -rf results/logs/cluster results/clusters   # only before a new launch: the runs are appended, not skipped
-qsub src/script/pemc-cluster.sh                # one exclusive Xeon 6252N node, ~21 processes in parallel (~30 min)
+qsub src/script/pemc-cluster.sh                # 24 cores of a Xeon 6252N node, ~21 processes in parallel (~30-60 min)
 ONLY=heart KMAX=8 src/script/pemc-cluster.sh   # to test: one dataset, one process, in this shell
 ```
 
-Resources are in the `#PBS` lines of the script (24 cores, 48 GB, `place=excl`, 6 h). It starts one process per dataset and one per K for `brainweb` (alone it takes about 2 h). Progress: `tail -n 1 results/logs/cluster/run_*.txt` (`done, 0 failure(s)` = finished); at the end `pemc-cluster.o<id>` in the root of the repository ends with `all done, 0 process(es) with failures`. If the job stays queued for long (no free node), comment the line `#PBS -l place=excl`.
+Resources are in the `#PBS` lines of the script (24 cores, 48 GB, 6 h; `place=excl` is commented out, since no 6252N node is ever completely free). It starts one process per dataset and one per K for `brainweb` (alone it takes about 2 h). Progress: `tail -n 1 results/logs/cluster/run_*.txt` (`done, 0 failure(s)` = finished); at the end `pemc-cluster.o<id>` in the root of the repository ends with `all done, 0 process(es) with failures`.
 
 ### Monitor the jobs
 
@@ -313,7 +313,8 @@ Then, from the root of the repository:
 
 ```bash
 python3 src/plots-generate/plots-performance.py     # P1-P11 -> results/plots/
-python3 src/plots-generate/plots-cluster.py         # C1-C6 + results/tables/clustering-summary.csv
+python3 src/plots-generate/plots-cluster.py         # C1-C6 (+ results/tables/clustering-summary.csv)
+python3 src/tables/clustering-summary.py            # only the table results/tables/clustering-summary.csv
 ```
 
 Options, catalog and experiment matrix: [plots.md](plots.md).

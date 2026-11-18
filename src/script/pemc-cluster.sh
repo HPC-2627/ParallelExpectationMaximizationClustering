@@ -2,7 +2,7 @@
 # Runs the SEQUENTIAL BASELINE (diagonal and full) on the datasets of the clustering plots C1-C6
 # and saves what src/plots-generate/plots-cluster.py needs. Run from the root of the repository,
 # after "make" (sequential versions). Works both directly and with qsub (the PBS lines below):
-#   qsub src/script/pemc-cluster.sh            everything, in parallel on one exclusive node (~30 min)
+#   qsub src/script/pemc-cluster.sh            everything, in parallel on one node, 24 cores (~30-60 min)
 #   src/script/pemc-cluster.sh                 the same, in this shell
 #   ONLY=heart src/script/pemc-cluster.sh      only the datasets whose name contains "heart", in ONE process
 #
@@ -26,12 +26,13 @@
 #                    NOT added (to split a slow dataset over several processes, each with its own K)
 #             SPLIT_K  datasets with one process per K [default brainweb].  PARALLEL=0  one process only
 #
-# PBS: one whole node (place=excl: no other job on it) with the same CPU as all the runs, 24 cores for
-# the ~21 processes. The times are not used by C1-C6: the exclusive node is only to finish sooner.
+# PBS: 24 cores of one node with the same CPU as all the runs, one core for each of the ~21 processes.
+# The times are not used by C1-C6, so the node can be shared. place=excl (a whole node, no other job)
+# is commented: no 6252N node is ever completely free and the job stayed queued; remove one "#" to use it.
 #PBS -q shortCPUQ
 #PBS -N pemc-cluster
 #PBS -l select=1:ncpus=24:mem=48gb:cpu_type=Xeon6252N
-#PBS -l place=excl
+##PBS -l place=excl
 #PBS -l walltime=06:00:00
 #PBS -j oe
 

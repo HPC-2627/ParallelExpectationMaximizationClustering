@@ -85,7 +85,7 @@ The clustering result is the same in every version (we check the final log-likel
 | C5 | Are the clusters balanced? | bars of cluster sizes | same as C3. Can be merged with C4 |
 | C6 | Diagonal or full, which fits better? | bars of the BIC difference (full - diagonal) | all real |
 
-Table instead of plot: the 10 real datasets with N, D, K, log-likelihood, BIC, iterations, for both models. It is written by `plots-cluster.py` in `results/tables/clustering-summary.csv`.
+Table instead of plot: the 10 real datasets with N, D, K, log-likelihood, BIC, iterations, for both models. It is written in `results/tables/clustering-summary.csv` by `src/tables/clustering-summary.py` (also by `plots-cluster.py`, same content).
 
 How the data is produced: `src/script/pemc-cluster.sh` runs the sequential baseline (both models) on the datasets for every K of a range (default 2..10, plus the true K) and appends to `results/logs/cluster/`. Only at the true K it also passes `--save results/clusters` (`include/cluster-out.h`): labels of every row, weights and means, log-likelihood after every iteration. BIC and AIC are computed by the script from the log (`loglik`, N, D, K, model), with `p = (K-1) + K*D + K*D` free parameters for diagonal and `(K-1) + K*D + K*D*(D+1)/2` for full.
 
