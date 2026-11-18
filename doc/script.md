@@ -4,6 +4,7 @@ Bash scripts for the HPC3 cluster (PBS queue `shortCPUQ`), in two groups: the on
 
 - [1. Experiments](#1-experiments): `pemc-submit.sh`, `pemc-job.sh`, `mpi_wrapper.sh`, `pemc-cluster.sh`
 - [2. Cluster hardware](#2-cluster-hardware): `pemc-hwinfo.sh`, `pemc-hwprobe.sh`
+- [3. Roofs of the roofline](#3-roofs-of-the-roofline): `pemc-stream.sh`
 
 ---
 
@@ -120,3 +121,30 @@ Body of the jobs of `pemc-hwinfo.sh`; it can also be run by hand on one node. It
 - every DIMM (label `PROC_<socket>_DIMM_<slot>` on `c10`/`c11`, `CPU_SrcID#<socket>_MC#_Chan#_DIMM#` on `c12`; size, type) from the EDAC driver, and their speed only if `dmidecode` is allowed (otherwise `not allowed`);
 - frequency governor, driver and turbo (empty if Linux exposes no frequency driver);
 - network interfaces that are up (speed, MTU, card model) and InfiniBand if present.
+
+---
+
+## 3. Roofs of the roofline
+
+The two roofs of plot P10: the memory bandwidth of the node, **measured** with [STREAM](https://www.cs.virginia.edu/stream/), and the peak GFLOP/s, **calculated**. No EM run is needed: the points of P10 come from the `flops` and `bytes` keys of the logs that are already there.
+
+### `pemc-stream.sh`
+
+```bash
+src/script/pemc-stream.sh submit     # downloads stream.c into bin/stream/ (login node), submits 1 job
+src/script/pemc-stream.sh summary    # Triad GB/s and peak GFLOP/s per thread count, flags for P10
+```
+
+- **Job:** `stream`, a whole Xeon 6252N node (`ncpus=96`, `place=pack:excl`, so no other job uses the memory bandwidth), 20 minutes. The CPU is checked as in `pemc-job.sh`. STREAM is compiled on the node (GCC 12.3.0, `-O3 -march=native -fopenmp`), with arrays of 200M doubles (1.6 GB each, much larger than the 4 × 35.75 MB of L3).
+- **Runs:** `OMP_PLACES=cores`, T = 1 2 4 8 16 24 48 96 threads with `OMP_PROC_BIND=close` (as in the EM runs), plus T = 8 and 96 with `spread` (threads spread over the 4 sockets).
+- **Output:** `results/logs/stream/stream_<node>.txt`, the raw STREAM output (one block per T); PBS output in `results/logs/pbs/stream.{out,err}`.
+- **Peak GFLOP/s** = T × 2.3 GHz (base clock) × FLOP/cycle per core, in double precision: 4 with SSE2 (what the binaries use: `-O3` without `-march`), 16 with AVX2+FMA, 32 with AVX-512 FMA (the machine peak, 2 FMA ports). It is an upper bound: with AVX-512 the clock drops below 2.3 GHz.
+- **For P10:** the 1-node points use 8 cores, so `summary` prints the roofs for T = 8 (`close`), ready for `plots-performance.py --plots P10 --peak-bw <GB/s> --peak-gflops <GFLOP/s>`.
+
+| Variable | Effect |
+|---|---|
+| `ARRAY_SIZE` | elements per array, default 200000000 |
+| `NTIMES` | repetitions per kernel (STREAM keeps the best), default 20 |
+| `THREADS_LIST` | thread counts, default `1 2 4 8 16 24 48 96` |
+| `GHZ` | clock for the peak, default 2.3 |
+| `NODE_FILTER=` / `REQUIRE_CPU=` | empty = any node / no CPU check |

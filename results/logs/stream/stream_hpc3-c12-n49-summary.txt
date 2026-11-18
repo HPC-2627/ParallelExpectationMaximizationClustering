@@ -1,0 +1,19 @@
+== results/logs/stream/stream_hpc3-c12-n49.txt
+### node hpc3-c12-n49  CPU Intel(R) Xeon(R) Gold 6252N CPU @ 2.30GHz  cores 96  2026-11-18T15:28:05+01:00
+threads  bind      Triad GB/s |       SSE2       AVX2    AVX-512
+                              |          peak GFLOP/s at 2.3 GHz
+1        close           12.7 |        9.2       36.8       73.6
+2        close           25.4 |       18.4       73.6      147.2
+4        close           51.0 |       36.8      147.2      294.4
+8        close           97.0 |       73.6      294.4      588.8
+16       close          167.4 |      147.2      588.8     1177.6
+24       close          197.7 |      220.8      883.2     1766.4
+48       close          218.5 |      441.6     1766.4     3532.8
+96       close          203.3 |      883.2     3532.8     7065.6
+8        spread          53.3 |       73.6      294.4      588.8
+96       spread         202.2 |      883.2     3532.8     7065.6
+
+P10 (1-node points use 8 cores):
+  machine peak : --peak-bw 97.0 --peak-gflops 588.8
+  as compiled  : --peak-bw 97.0 --peak-gflops 73.6    (SSE2, -O3 without -march)
+
