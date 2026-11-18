@@ -13,27 +13,30 @@
 #
 # Then copy results/hwinfo/ to the laptop (scp -r, see doc/exec-cluster.md).
 #
-# The nodes are those of results/hwinfo/nodes.txt (in the repository: the 40 nodes used by all the
-# runs, taken from the PBS outputs of both team members). If the file does not exist it is rebuilt
-# from results/logs/pbs/*.out (nodes assigned to every job) and from the "hostname" line of the
-# logs; NODES_FILE=<file> uses another list.
+# The nodes are the 40 of the list NODES below: all the nodes used by the runs of both team members,
+# taken from their PBS outputs (results/logs/pbs/*.out). NODES_FILE=<file> uses another list.
+# The raw outputs in results/hwinfo/ are not versioned: the summary is results/tables/hardware.md.
 # A node is "done" when results/hwinfo/<node>.txt contains the line MemTotal (job completed). A node
 # can stay in the queue for a long time if other users' jobs fill it ("Insufficient amount of
 # resource: host"): PBS gives no estimate, the job starts when the node is free.
 
 set -u
 OUT=results/hwinfo
-NODES_FILE=${NODES_FILE:-$OUT/nodes.txt}
 PROBE=$PWD/src/script/pemc-hwprobe.sh
 
-mkdir -p "$OUT"
+# Nodes used by the experiments (1 in c10, 18 in c11, 21 in c12)
+NODES="
+    hpc3-c10-n01 hpc3-c11-n01 hpc3-c11-n02 hpc3-c11-n03 hpc3-c11-n04 hpc3-c11-n05 hpc3-c11-n06
+    hpc3-c11-n10 hpc3-c11-n13 hpc3-c11-n19 hpc3-c11-n22 hpc3-c11-n23 hpc3-c11-n24 hpc3-c11-n25
+    hpc3-c11-n26 hpc3-c11-n27 hpc3-c11-n28 hpc3-c11-n29 hpc3-c11-n30 hpc3-c12-n08 hpc3-c12-n19
+    hpc3-c12-n20 hpc3-c12-n22 hpc3-c12-n23 hpc3-c12-n24 hpc3-c12-n25 hpc3-c12-n26 hpc3-c12-n27
+    hpc3-c12-n28 hpc3-c12-n30 hpc3-c12-n31 hpc3-c12-n32 hpc3-c12-n33 hpc3-c12-n40 hpc3-c12-n41
+    hpc3-c12-n42 hpc3-c12-n43 hpc3-c12-n46 hpc3-c12-n47 hpc3-c12-n51
+"
 
-# List of the nodes: rebuilt only if missing (the version in the repository is the complete one)
-if [ ! -s "$NODES_FILE" ]; then
-    { cat results/logs/pbs/*.out 2>/dev/null; grep -h "^hostname" results/logs/*/*/*.log 2>/dev/null; } \
-        | grep -oE "hpc3-c[0-9]+-n[0-9]+" | sort -u > "$NODES_FILE"
-    echo "node list rebuilt from the logs: $NODES_FILE"
-fi
+mkdir -p "$OUT"
+NODES_FILE=${NODES_FILE:-$OUT/nodes.txt}
+[ -s "$NODES_FILE" ] || echo $NODES | tr ' ' '\n' > "$NODES_FILE"
 
 # done <node>: the job of the node has completed and written its data
 done_node() { grep -q "^MemTotal" "$OUT/$1.txt" 2>/dev/null; }
@@ -96,11 +99,11 @@ summary)
             "$(grep '^NIC' "$f" | awk '{print $2, $3}' | xargs)" "$(grep '^Kernel' "$f" | cut -d' ' -f2)"
     done | sort -t'|' -k2,3
 
-    echo; echo "== DIMMs per socket, per group (label PROC_<socket>_DIMM_<slot>)"
+    echo; echo "== DIMMs per socket, per group (labels PROC_<socket>_DIMM_<slot> or CPU_SrcID#<socket>_...)"
     for g in $(cut -d- -f2 "$NODES_FILE" | sort -u); do
         echo "-- $g"
         for f in $(echo "$files" | grep -- "-$g-"); do
-            echo "$(grep -c '^DIMM: ' "$f") DIMMs: $(grep '^DIMM: ' "$f" | awk '{print $2}' | cut -d_ -f2 | sort | uniq -c | awk '{printf "socket%s=%s ", $2, $1}')"
+            echo "$(grep -c '^DIMM: ' "$f") DIMMs: $(grep '^DIMM: ' "$f" | awk '{print $2}' | sed -E 's/^(PROC_|CPU_SrcID#)([0-9]+).*/\2/' | sort | uniq -c | awk '{printf "socket%s=%s ", $2, $1}')"
         done | sort | uniq -c
     done
     ;;

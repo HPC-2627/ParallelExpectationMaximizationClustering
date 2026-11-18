@@ -278,6 +278,19 @@ watch -n 30 'qstat -u $USER | tail -n +6; echo; grep -c "^==== run" results/logs
 
 ---
 
+## Hardware of the nodes (report table)
+
+One small PBS job on each of the 40 nodes used by the runs reads CPU, RAM and DIMMs, NUMA, caches, network and OS.
+It fills the table "Hardware Infrastructure" of the report, because the nodes are not all the same (RAM and memory channels differ); summary in [results/tables/hardware.md](../results/tables/hardware.md).
+
+```bash
+src/script/pemc-hwinfo.sh submit      # one job per node
+src/script/pemc-hwinfo.sh status      # repeat until "missing 0, queued 0"
+src/script/pemc-hwinfo.sh software    # compiler, MPI, UCX
+```
+
+---
+
 ## Phase 5: Plots
 
 When all the jobs are finished, either generate the plots on the cluster (Python 3 with `numpy`, `pandas`, `matplotlib`) or copy the logs to the local machine. From the local machine:

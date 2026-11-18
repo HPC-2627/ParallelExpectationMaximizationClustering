@@ -22,7 +22,8 @@ echo "MemTotal: $(awk '/MemTotal/{printf "%.1f GiB", $2/1048576}' /proc/meminfo)
 numactl -H 2>/dev/null | grep -E "^available|size:"
 
 # DIMMs seen by the kernel (EDAC driver, readable without root): slot label, size, type.
-# The labels PROC_<socket>_DIMM_<slot> give the number of DIMMs per socket (6 channels per socket).
+# Labels: PROC_<socket>_DIMM_<slot> on c10/c11 (12 slots per socket, 2 per channel),
+# CPU_SrcID#<socket>_MC#<m>_Chan#<c>_DIMM#<d> on c12 (channel explicit). 6 channels per socket.
 for d in /sys/devices/system/edac/mc/mc*/dimm*; do
     [ -e "$d/size" ] || continue
     echo "DIMM: $(tr ' ' _ < "$d/dimm_label") $(cat "$d/size")MB $(cat "$d/dimm_mem_type")"
@@ -37,8 +38,7 @@ else
     echo "dmidecode: not allowed"
 fi
 
-# CPU frequency: governor, driver, turbo. Empty = no frequency driver exposed to Linux (the
-# frequency is managed by the firmware and cannot be read or set by the user)
+# CPU frequency: governor, driver, turbo (empty if Linux exposes no frequency driver)
 echo "Governor: $(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor 2>/dev/null)"
 echo "Freq driver: $(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_driver 2>/dev/null)"
 echo "no_turbo: $(cat /sys/devices/system/cpu/intel_pstate/no_turbo 2>/dev/null)"

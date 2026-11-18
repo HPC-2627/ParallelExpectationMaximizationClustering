@@ -521,28 +521,26 @@ All the measurements were run on the HPC3 cluster of the University of Trento, m
 
 \begin{table}[H]
 \centering
-\caption{Compute nodes used for all the measurements. Values marked \emph{catalog} are Intel specifications, not measured on the cluster.}
+\caption{Compute nodes used for all the measurements (turbo frequency from the Intel catalog).}
 \label{tab:hw}
 \footnotesize
-\begin{tabular}{ll}
+\begin{tabular}{lp{0.75\textwidth}}
 \toprule
 \textbf{Item} & \textbf{Value} \\
 \midrule
-CPU & 2 $\times$ Intel Xeon Gold 6252N (Cascade Lake), 2.3~GHz \\
-Cores per node & 2 sockets $\times$ 24 cores = 48 physical cores \\
-CPU (catalog) & max turbo 3.6~GHz, L3 35.75~MB per socket, 6 channels DDR4-2933, AVX-512 \\
-RAM per node & \textcolor{red}{TODO: not the same on all the nodes; list the sizes (per node or per group \texttt{c11}/\texttt{c12})} \\
-Memory configuration & \textcolor{red}{TODO: DIMMs per channel and real speed, per group if they differ} \\
-NUMA & \textcolor{red}{TODO: one NUMA node per socket or sub-NUMA clustering} \\
-Hyper-threading & \textcolor{red}{TODO} (one OpenMP thread per physical core in all the runs) \\
-L1d / L2 cache & \textcolor{red}{TODO} \\
-Nodes used & 29 (11 in group \texttt{c11}, 18 in group \texttt{c12}) \\
-Network & Ethernet, NIC \texttt{ens1f0} (\texttt{c11}) and \texttt{enp109s0f0np0} (\texttt{c12}); \textcolor{red}{TODO: link speed, switch} \\
-Operating system & \textcolor{red}{TODO: distribution and kernel} \\
-Compiler, MPI & GCC 12.3.0 (\texttt{-O3 -fopenmp}), Open MPI 4.1.5 with UCX over TCP \\
+CPU & 4 $\times$ Intel Xeon Gold 6252N (Cascade Lake), 2.3~GHz (turbo 3.6~GHz), AVX-512 \\
+Cores & 96 per node (4 sockets $\times$ 24), no hyper-threading, 4 NUMA nodes (one per socket) \\
+Caches & L1d 32~KB and L2 1~MB per core, L3 35.75~MB per socket \\
+Memory & 256~GB to 2~TB DDR4 per node, 6 channels per socket (2, 4 or 6 populated) \\
+Network & Ethernet 10~Gb/s \\
+Nodes used & 40 (groups \texttt{c10}, \texttt{c11}, \texttt{c12}) \\
+Software & Rocky Linux 9.8, GCC 12.3.0 (\texttt{-O3 -fopenmp}, no \texttt{-march}), Open MPI 4.1.5 + UCX 1.14.1 over TCP \\
 \bottomrule
 \end{tabular}
 \end{table}
+
+The nodes differ only in the memory and in the model of the network card (always 10~Gb/s). The number of populated channels fixes the peak memory bandwidth of a socket (for \texttt{c10}/\texttt{c11} the channels are inferred from the DIMM slot numbers): at the nominal DDR4-2933 a channel gives 23.5~GB/s, so 141~GB/s with 6 channels, 94~GB/s with 4 and 47~GB/s with 2. The data come from one small job per node (\texttt{src/script/pemc-hwinfo.sh}).
+
 
 \paragraph{Process and thread placement.}
 \begin{itemize}
@@ -550,10 +548,8 @@ Compiler, MPI & GCC 12.3.0 (\texttt{-O3 -fopenmp}), Open MPI 4.1.5 with UCX over
 \item Inside a node the ranks communicate through shared memory, between nodes through TCP.
 \item With \texttt{place=pack} PBS put all the chunks of a job on one node: the 2- and 4-chunk layouts therefore use 16 and 32 cores of the same node. Only \texttt{place=scatter} spreads the ranks over 2 or 4 nodes.
 \item With \texttt{:excl} no other job shares the nodes. Without it, the ranks on the nodes after the first of a \texttt{scatter} job are not confined to the cores reserved by PBS and may share cores with other users' jobs, which makes those times unreliable.
-\item The nodes do not all have the same amount of RAM. This does not change the measurements: every job requests at most 8~GB per chunk and every dataset fits in memory, so no run swaps. What can matter is the memory bandwidth (channels populated and DIMM speed), \textcolor{red}{TODO: check that it is the same on the nodes used}.
+\item The nodes do not all have the same amount of RAM. This does not change the measurements: every job requests at most 8~GB per chunk and every dataset fits in memory, so no run swaps. What can matter is the memory bandwidth, which is not the same everywhere: depending on the node 6, 4 or 2 of the 6 channels per socket are populated (full, 2/3 or 1/3 of the peak bandwidth). \textcolor{red}{TODO: check whether the times of the memory-bound runs depend on the node type.}
 \end{itemize}
-
-\textcolor{red}{TODO (optional): measured memory bandwidth (STREAM) and point-to-point latency and bandwidth between two nodes.}
 
 \subsection{Measurement Methodology}\label{sec:method}
 The same procedure is used for every version, so that the times of sequential, baseline and optimizations can be compared and repeated.
@@ -567,7 +563,7 @@ The same procedure is used for every version, so that the times of sequential, b
 \item \emph{Repetitions.} Every (version, layout, dataset) is run 3 times, as separate processes. The plots show the median, with the minimum and the maximum as error bar.
 \item \emph{Placement.} Every layout is run with four PBS placements: \texttt{pack} and \texttt{scatter} (nodes possibly shared with other jobs) and \texttt{pack:excl}, \texttt{scatter:excl} (nodes reserved for the job). Threads are bound to physical cores (Section~\ref{sec:hw}).
 \item \emph{Stability.} On the exclusive placements the spread of the 3 repetitions (max$-$min over median) is a few percent; on shared nodes it is larger, because other jobs use the memory bandwidth and the caches \textcolor{red}{(TODO: check the final values per placement and report them)}.
-\item \emph{Not controlled.} The CPU frequency (turbo) is not fixed by the jobs \textcolor{red}{(TODO: check the frequency governor of the nodes)}; the network between nodes is shared with the other users of the cluster.
+\item \emph{Not controlled.} The CPU frequency (turbo) is not fixed by the jobs; the network between nodes is shared with the other users of the cluster.
 \item \emph{Raw data.} Every run appends one entry to a text log (version, dataset, layout, node, CPU, iterations, $\mathcal{L}$, all the times); all the tables and plots are generated from these logs.
 \item \emph{Execution on the cluster.} \textcolor{red}{TODO: insert the link to the execution on the cluster (scripts and instructions to compile and launch the PBS jobs).}
 \end{itemize}

@@ -8,6 +8,8 @@ Bash scripts that run the experiments on the cluster (PBS queue `shortCPUQ`). Ru
 | [`pemc-job.sh`](../src/script/pemc-job.sh) | body of one job: runs one version on all the datasets with one layout | `qsub`, called by `pemc-submit.sh` |
 | [`mpi_wrapper.sh`](../src/script/mpi_wrapper.sh) | forces UCX (OpenMPI transport) onto the cluster Ethernet interface, then starts the binary | `mpiexec`, on every rank |
 | [`pemc-cluster.sh`](../src/script/pemc-cluster.sh) | sequential runs over a range of K for the clustering plots C1-C6 | you (directly or with `qsub`) |
+| [`pemc-hwinfo.sh`](../src/script/pemc-hwinfo.sh) | hardware of all the nodes used (table "Hardware Infrastructure" of the report): one small job per node, status, summary | you, on the login node |
+| [`pemc-hwprobe.sh`](../src/script/pemc-hwprobe.sh) | body of one of those jobs: prints the hardware of the node where it runs | `qsub`, called by `pemc-hwinfo.sh` |
 
 Chain of a parallel run:
 
@@ -65,3 +67,31 @@ Runs `PEMC-baseline-sequential-{diagonal,full}` for every K in `KMIN..KMAX` (def
 - `results/clusters/`: labels, means and log-likelihood curve, saved **only** for the true K (C1, C3, C4, C5).
 
 Variables: `KMIN`, `KMAX`, `ONLY`, `SETS` (`real | synthetic | all`).
+
+## `pemc-hwinfo.sh`
+
+Collects the hardware of all the nodes used by the experiments, for the table "Hardware Infrastructure" of the report. Run it on the login node, from the root of the repository:
+
+```bash
+src/script/pemc-hwinfo.sh submit      # one job per node still without data (waits and retries if the queue is full)
+src/script/pemc-hwinfo.sh status      # done / queued (with the reason) / missing, per node
+src/script/pemc-hwinfo.sh software    # GCC, Open MPI, UCX -> results/hwinfo/software.txt
+src/script/pemc-hwinfo.sh summary     # same on all the nodes vs different: RAM, DIMMs per socket, NIC, kernel
+```
+
+- **Nodes:** the list `NODES` in the script: the 40 nodes of all the runs (1 in `c10`, 18 in `c11`, 21 in `c12`), taken from the PBS outputs of both team members; `NODES_FILE=<file>` uses another list.
+- **Output:** raw files in `results/hwinfo/` (not versioned); the summary used by the report is [`results/tables/hardware.md`](../results/tables/hardware.md).
+- **Jobs:** `hw-<node>`, 1 core, 1 GB, 2 minutes, `-l select=...:host=<node>`, body `pemc-hwprobe.sh`; output in `results/hwinfo/<node>.txt`. A node is done when its file contains the line `MemTotal`.
+- **Re-runs:** `submit` skips the nodes already done or still in the queue, so it can be run again at any time; when the per-user limit of the queue is reached it waits 30 s and tries again.
+- **Long waits:** a job stays in the queue (`Insufficient amount of resource: host`) while other users' jobs fill its node; PBS gives no estimate (`qstat -T`). Leave it there or remove it with `qdel`.
+
+## `pemc-hwprobe.sh`
+
+Body of the jobs of `pemc-hwinfo.sh`; it can also be run by hand on one node. It prints one `key: value` line per item, without root:
+
+- OS and kernel;
+- CPU model, sockets, cores per socket, threads per core (hyper-threading), NUMA nodes, L1/L2/L3 caches;
+- total RAM and RAM per NUMA node;
+- every DIMM (label `PROC_<socket>_DIMM_<slot>` on `c10`/`c11`, `CPU_SrcID#<socket>_MC#_Chan#_DIMM#` on `c12`; size, type) from the EDAC driver, and their speed only if `dmidecode` is allowed (otherwise `not allowed`);
+- frequency governor, driver and turbo (empty if Linux exposes no frequency driver);
+- network interfaces that are up (speed, MTU, card model) and InfiniBand if present.

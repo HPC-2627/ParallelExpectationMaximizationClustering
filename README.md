@@ -142,6 +142,22 @@ Public datasets, mostly medical, used for the clustering quality (none has missi
 - **How to run:** [doc/exec-cluster.md](doc/exec-cluster.md) (VPN, build, PBS jobs)
 - **Output:** [`results/logs/`](results/logs/) (one folder per model and version)
 
+### Cluster hardware
+
+All the runs use the HPC3 cluster of the University of Trento (PBS Pro, queue `shortCPUQ`), only on nodes of type `cpu_type=Xeon6252N`.
+
+| Item | Value |
+|---|---|
+| CPU | 4 × Intel Xeon Gold 6252N (Cascade Lake), 2.3 GHz (turbo 3.6 GHz, Intel catalog), AVX-512 |
+| Cores | 96 per node (4 sockets × 24), no hyper-threading, 4 NUMA nodes (one per socket) |
+| Caches | L1d 32 KB and L2 1 MB per core, L3 35.75 MB per socket |
+| Memory | 256 GB to 2 TB DDR4 per node, 6 channels per socket (2, 4 or 6 populated) |
+| Network | Ethernet 10 Gb/s |
+| Nodes used | 40 (groups `c10`, `c11`, `c12`) |
+| Software | Rocky Linux 9.8, GCC 12.3.0 (`-O3 -fopenmp`, no `-march`), Open MPI 4.1.5 + UCX 1.14.1 over TCP |
+
+Collected with [`src/script/pemc-hwinfo.sh`](src/script/pemc-hwinfo.sh); details in [results/tables/hardware.md](results/tables/hardware.md).
+
 ## Visualization of the algorithm
 
 A small local web page shows how EM works step by step on any dataset of `data/` (diagonal or full covariance): initial centroids, E-step, convergence test and M-step for every iteration, with the formulas filled with the real numbers and a check against the C binary.
