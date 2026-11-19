@@ -30,6 +30,8 @@ Plots (diagonal and full in the SAME figure, colors in MODEL_COLOR; only C4 has 
     C5 sizes         share of the points per class: truth, diagonal, full (3 bars per class)
     C6 BIC full - diagonal at the true K, one bar per real dataset, colored by the winning model
 Every figure: bold title in plain words, one legend above the panels, dataset name on every panel.
+Real and synthetic datasets: two blocks, the REAL ones on top and the SYNTHETIC ones below, each
+with its own header (C1, C2, C3, C5: two datasets per block; C4: one real, one synthetic).
 Table: results/tables/clustering-summary.csv (N, D, K, loglik, BIC, AIC, iterations, ARI).
 
 Number of free parameters (for BIC = -2 loglik + p ln N, AIC = -2 loglik + 2 p):
@@ -159,12 +161,6 @@ def saved(clusters, ds, model, K):
     return lab, par, ll
 
 
-def pick(available, wanted, n):
-    """The first n datasets of 'wanted' that are available; if there are none, any n available."""
-    got = [d for d in wanted if d in available][:n]
-    return got or sorted(available)[:n]
-
-
 def save(fig, out, name, fmts):
     """Writes the figure in every requested format and frees its memory."""
     for f in fmts:
@@ -223,24 +219,51 @@ def top_legend(fig, handles, labels, ncol=None, handlelength=2.2):
 FIG_W = 7.0
 
 
-def panel_grid(n, row_h, width_ratios=None, ncols=2):
-    """n panels in a grid with ncols columns (2: four panels = 2 x 2), FIG_W wide, row_h inches
-    per row. width_ratios (one per panel) sets the width of the panels of each row; an incomplete
-    last row keeps the same column widths. Returns (fig, list of the n axes, ncols)."""
-    ncols = min(ncols, n)
-    nrows = -(-n // ncols)  # ceiling division
-    fig = plt.figure(figsize=(FIG_W, row_h * nrows + 0.3), layout="constrained")
-    gs = fig.add_gridspec(nrows, 1)
-    axs = []
-    for r in range(nrows):
-        idx = list(range(r * ncols, min(n, (r + 1) * ncols)))
-        wr = None
-        if width_ratios is not None:
-            wr = [width_ratios[i] for i in idx]
-            wr += [float(np.mean(wr))] * (ncols - len(idx))  # empty slot of an incomplete row
-        sub = gs[r].subgridspec(1, ncols, width_ratios=wr)
-        axs += [fig.add_subplot(sub[0, c]) for c in range(len(idx))]
-    return fig, axs, ncols
+def is_synth(ds):
+    """True for the synthetic datasets (generated, known truth), False for the real ones."""
+    return ds.startswith("synth_")
+
+
+def pick_rs(available, wanted, n_each):
+    """Up to n_each REAL and n_each SYNTHETIC datasets among the available ones, in the order of
+    'wanted' (if none of a kind is wanted, the first available of that kind). Returns (real, synth)."""
+    out = []
+    for synth in (False, True):
+        got = [d for d in wanted if d in available and is_synth(d) == synth][:n_each]
+        out.append(got or sorted(d for d in available if is_synth(d) == synth)[:n_each])
+    return out[0], out[1]
+
+
+BLOCK_TITLE = {False: "Real datasets", True: "Synthetic datasets"}
+
+
+def two_blocks(real, synth, row_h, width=None):
+    """Figure in two blocks, the REAL datasets on top and the SYNTHETIC ones below, each block one
+    row of panels (one per dataset) under its own bold header. width: {dataset: relative width}.
+    Returns (fig, {dataset: axes}, [first axes of every block], i.e. where the y label goes)."""
+    blocks = [(BLOCK_TITLE[k], l) for k, l in ((False, real), (True, synth)) if l]
+    ncols = max(len(l) for _, l in blocks)
+    fig = plt.figure(figsize=(FIG_W, row_h * len(blocks) + 0.3), layout="constrained")
+    subs = fig.subfigures(len(blocks), 1)
+    subs = [subs] if len(blocks) == 1 else list(subs)
+    axes, left = {}, []
+    for sf, (head, l) in zip(subs, blocks):
+        kw = None
+        if width is not None:  # same column widths as the other block when it has fewer panels
+            wr = [width[d] for d in l]
+            kw = {"width_ratios": wr + [float(np.mean(wr))] * (ncols - len(l))}
+        axs = sf.subplots(1, ncols, squeeze=False, gridspec_kw=kw)[0]
+        for ax in axs[len(l):]:
+            ax.set_visible(False)
+        axes.update(zip(l, axs))
+        left.append(axs[0])
+        block_header(sf, head)
+    return fig, axes, left
+
+
+def block_header(sf, head):
+    """Header of a block of panels (Real / Synthetic datasets): bold, on the left."""
+    sf.suptitle(head, x=0.0, ha="left", fontsize=9, fontweight="bold", color=TEXT)
 
 
 def true_k_runs(ctx, ds):
@@ -324,11 +347,11 @@ def c1_convergence(ctx, models):
     """C1: log-likelihood per point at every EM iteration, one panel per dataset, the two models
     in the same panel (same y scale: the higher curve fits the data better)."""
     avail = {d for d in TRUE_K if any(saved(ctx.clusters, d, m, TRUE_K[d]) for m in models)}
-    dss = pick(avail, ctx.args.datasets, 4)
-    need(dss, "no saved run")
-    fig, axs, nc = panel_grid(len(dss), row_h=2.25)
+    real, synth = pick_rs(avail, ctx.args.datasets, 2)
+    need(real or synth, "no saved run")
+    fig, axes, left = two_blocks(real, synth, row_h=2.35)
     stopped = False  # some run hit the iteration limit: one more legend entry
-    for ax, ds in zip(axs, dss):
+    for ds, ax in axes.items():
         runs = true_k_runs(ctx, ds)
         lows = []
         for m in models:
@@ -353,7 +376,7 @@ def c1_convergence(ctx, models):
             ax.set_ylim(bottom - 0.05 * (top - bottom), top)
         ax.set_title(f"{ds}  (K = {TRUE_K[ds]})", fontsize=8, fontweight="bold")
         ax.set_xlabel("EM iteration")
-    for ax in axs[::nc]:  # left column
+    for ax in left:  # first panel of every block
         ax.set_ylabel("log-likelihood per point\n(higher = better; from iteration 1)")
     h = [plt.Line2D([], [], color=MODEL_COLOR[m], ls=MODEL_LS[m], marker=MODEL_MARKER[m], ms=4)
          for m in models]
@@ -371,14 +394,14 @@ def c2_choose_k(ctx, models):
     the distance from its best value over BOTH models: 0 = the best (model, K) of the panel."""
     d = ctx.logs[ctx.logs.model.isin(models)]
     avail = {x for x, g in d.groupby("dataset") if g.K.nunique() >= 3}  # a curve needs >= 3 K
-    dss = pick(avail, ctx.args.datasets, 3)
+    real, synth = pick_rs(avail, ctx.args.datasets, 2)
     # synth_clean is pure Gaussian data with K = 4: the CONTROL case where BIC must find the true
-    # K. It is always shown (as the last panel), so the real datasets can be judged against it
-    if CONTROL in avail and CONTROL not in dss:
-        dss.append(CONTROL)
-    need(dss, "no dataset with a range of K")
-    fig, axs, nc = panel_grid(len(dss), row_h=2.4)
-    for ax, ds in zip(axs, dss):
+    # K. It is always shown (last synthetic panel), so the real datasets can be judged against it
+    if CONTROL in avail and CONTROL not in synth:
+        synth = synth[:1] + [CONTROL]
+    need(real or synth, "no dataset with a range of K")
+    fig, axes, left = two_blocks(real, synth, row_h=2.5)
+    for ds, ax in axes.items():
         g = d[d.dataset == ds]
         span = 1.0
         for crit, lw, alpha in (("bic", 1.6, 1.0), ("aic", 1.0, 0.55)):
@@ -403,7 +426,7 @@ def c2_choose_k(ctx, models):
         ax.set_xlabel("number of clusters K")
         ax.set_title(ds + ("  (control: pure Gaussian)" if ds == CONTROL else ""),
                      fontsize=8, fontweight="bold")
-    for ax in axs[::nc]:  # left column
+    for ax in left:  # first panel of every block
         ax.set_ylabel("criterion minus its best value\n(lower = better)")
     h, lab = [], []
     for m in models:
@@ -457,52 +480,63 @@ def scatter_classes(ax, xy, labels):
 
 def c3_pca(ctx, models):
     """C3: the data projected on its first 2 principal components (PCA), the same points drawn
-    three times: colored by true class (top row), by the clusters of the diagonal model and by
-    the clusters of the full model. The found clusters are renamed after the true class they
-    overlap most (match_to_truth), so the SAME color means the same group in every row."""
-    avail = {d for d in TRUE_K if all(saved(ctx.clusters, d, m, TRUE_K[d]) for m in models)}
-    dss = []  # datasets that can be drawn
-    for ds in pick(avail, ctx.args.datasets, 4):
-        p = data_path(ds, ctx.data)
-        if p.exists() and np.fromfile(p, dtype="<i4", count=2)[1] >= 2:  # PCA needs D >= 2
-            dss.append(ds)
-    need(dss, "no saved run with D >= 2 and its data file")
-    rows = ["truth"] + list(models)
-    side = (FIG_W - 0.6) / len(dss)  # panels about square
-    fig, axs = plt.subplots(len(rows), len(dss), figsize=(FIG_W, side * len(rows) + 0.5),
-                            squeeze=False, layout="constrained")
-    for j, ds in enumerate(dss):
-        N, D = np.fromfile(data_path(ds, ctx.data), dtype="<i4", count=2)  # header of the .bin
-        # memory map: the file is not loaded in RAM, only the sampled rows are read
-        X = np.memmap(data_path(ds, ctx.data), dtype="<f8", mode="r", offset=8, shape=(N, D))
-        xy, idx, expl = project_pca(X, ctx.args.max_points)  # same sample and projection in every row
-        truth = true_labels(ds, ctx.data)
-        truth = truth if truth is not None and len(truth) == N else None
-        runs = true_k_runs(ctx, ds)
-        axs[0, j].set_title(f"{ds}\nK={TRUE_K[ds]}  N={N:,}  D={D}\n"
-                            f"PCA: {100 * expl:.0f}% of variance", fontsize=7, fontweight="bold")
-        for i, r in enumerate(rows):
-            ax = axs[i, j]
-            if r == "truth":
-                if truth is None:
-                    ax.axis("off")
-                    ax.text(0.5, 0.5, "no true labels", ha="center", va="center", color=MISSING)
+    three times in a row: colored by true class, by the clusters of the diagonal model and by the
+    clusters of the full model. One row per dataset: the REAL ones in the top block, the SYNTHETIC
+    ones below. The found clusters are renamed after the true class they overlap most
+    (match_to_truth), so the SAME color means the same group in every panel of a row."""
+    avail = set()
+    for d in TRUE_K:
+        p = data_path(d, ctx.data)
+        if (all(saved(ctx.clusters, d, m, TRUE_K[d]) for m in models) and p.exists()
+                and np.fromfile(p, dtype="<i4", count=2)[1] >= 2):  # PCA needs D >= 2
+            avail.add(d)
+    real, synth = pick_rs(avail, ctx.args.datasets, 2)
+    need(real or synth, "no saved run with D >= 2 and its data file")
+    cols = ["truth"] + list(models)
+    side = 1.75  # inches per panel (about square)
+    blocks = [(BLOCK_TITLE[k], l) for k, l in ((False, real), (True, synth)) if l]
+    fig = plt.figure(figsize=(FIG_W, sum(side * len(l) + 0.45 for _, l in blocks)), layout="constrained")
+    subs = fig.subfigures(len(blocks), 1, height_ratios=[len(l) + 0.3 for _, l in blocks])
+    subs = [subs] if len(blocks) == 1 else list(subs)
+    for sf, (head, dss) in zip(subs, blocks):
+        block_header(sf, head)
+        axs = sf.subplots(len(dss), len(cols), squeeze=False)
+        for i, ds in enumerate(dss):
+            N, D = np.fromfile(data_path(ds, ctx.data), dtype="<i4", count=2)  # header of the .bin
+            # memory map: the file is not loaded in RAM, only the sampled rows are read
+            X = np.memmap(data_path(ds, ctx.data), dtype="<f8", mode="r", offset=8, shape=(N, D))
+            xy, idx, expl = project_pca(X, ctx.args.max_points)  # same sample and projection in the row
+            truth = true_labels(ds, ctx.data)
+            truth = truth if truth is not None and len(truth) == N else None
+            runs = true_k_runs(ctx, ds)
+            axs[i, 0].set_ylabel(f"{ds}\nK={TRUE_K[ds]}  N={N:,}  D={D}\nPCA: {100 * expl:.0f}% of var.",
+                                 fontsize=7, fontweight="bold")
+            for j, c in enumerate(cols):
+                ax = axs[i, j]
+                if c == "truth":
+                    if truth is None:
+                        ax.set_xticks([])
+                        ax.set_yticks([])
+                        ax.text(0.5, 0.5, "no true labels", ha="center", va="center", color=MISSING,
+                                transform=ax.transAxes)
+                        continue
+                    scatter_classes(ax, xy, truth[idx])
                     continue
-                scatter_classes(ax, xy, truth[idx])
-                continue
-            lab = saved(ctx.clusters, ds, r, TRUE_K[ds])[0]
-            if truth is not None:
-                lab = match_to_truth(lab, truth)
-            scatter_classes(ax, xy, lab[idx])
-            if r in runs.index and not np.isnan(runs.loc[r, "ari"]):
-                panel_label(ax, f"ARI = {runs.loc[r, 'ari']:.2f}", loc="lower right")
-            for s in ax.spines.values():  # frame in the color of the model: which row is which
-                s.set_visible(True)
-                s.set_color(MODEL_COLOR[r])
-                s.set_linewidth(1.6)
-    axs[0, 0].set_ylabel("true classes", fontweight="bold")
-    for i, m in enumerate(models, start=1):
-        axs[i, 0].set_ylabel(f"found clusters\n{MODEL_LABEL[m]}", color=MODEL_COLOR[m], fontweight="bold")
+                lab = saved(ctx.clusters, ds, c, TRUE_K[ds])[0]
+                if truth is not None:
+                    lab = match_to_truth(lab, truth)
+                scatter_classes(ax, xy, lab[idx])
+                if c in runs.index and not np.isnan(runs.loc[c, "ari"]):
+                    panel_label(ax, f"ARI = {runs.loc[c, 'ari']:.2f}", loc="lower right")
+                for sp in ax.spines.values():  # frame in the color of the model: which column is which
+                    sp.set_visible(True)
+                    sp.set_color(MODEL_COLOR[c])
+                    sp.set_linewidth(1.6)
+        # column headers on the first row of every block
+        axs[0, 0].set_title("true classes", fontsize=8, fontweight="bold")
+        for j, m in enumerate(models, start=1):
+            axs[0, j].set_title(f"found clusters\n{MODEL_LABEL[m]}", fontsize=8, fontweight="bold",
+                                color=MODEL_COLOR[m])
     # legend: what the colors mean (they are classes, different in every dataset) and the ARI
     h = [plt.Line2D([], [], color=CLASS_COLOR[k], marker=CLASS_MARKER[k], ls="", ms=5) for k in range(4)]
     h.append(plt.Line2D([], [], color="none"))
@@ -529,7 +563,9 @@ def variable_names(ds, D, data_root):
 def c4_centroids(ctx, model):
     avail = {d for d in TRUE_K if saved(ctx.clusters, d, model, TRUE_K[d])}
     cand = [d for d in avail if saved(ctx.clusters, d, model, TRUE_K[d])[1].shape[1] - 2 <= 30]
-    dss = pick(set(cand), ctx.args.datasets, 2)  # small / medium D only: a heatmap must be readable
+    # one real and one synthetic dataset, small / medium D only (a heatmap must be readable)
+    real, synth = pick_rs(set(cand), ctx.args.datasets, 1)
+    dss = real + synth
     need(dss, "no saved run with D <= 30")
     # Data of every panel. Clusters ordered by weight, the largest on the left. The matrix is
     # transposed (one ROW per variable, one COLUMN per cluster): the variable names, long, stay
@@ -555,19 +591,20 @@ def c4_centroids(ctx, model):
     # means do not wash out all the others
     LIM = 2.0
     lim = max(1e-6, min(LIM, max(np.abs(M).max() for _, M, _, _ in panels)))
-    maxD = max(M.shape[0] for _, M, _, _ in panels)
-    # panel width proportional to the number of clusters (plus room for the variable names)
-    fig, axs = plt.subplots(1, len(panels), squeeze=False, layout="constrained",
-                            figsize=(FIG_W, 1.1 + 0.16 * maxD),
-                            gridspec_kw={"width_ratios": [M.shape[1] + 3 for _, M, _, _ in panels]})
-    for ax, (ds, M, names, xlab) in zip(axs[0], panels):
+    # real dataset on top, synthetic below; panel height proportional to its number of variables
+    Ds = [M.shape[0] for _, M, _, _ in panels]
+    fig, axs = plt.subplots(len(panels), 1, squeeze=False, layout="constrained",
+                            figsize=(FIG_W, 0.6 + sum(0.13 * D + 0.75 for D in Ds)),
+                            gridspec_kw={"height_ratios": [D + 6 for D in Ds]})
+    for ax, (ds, M, names, xlab) in zip(axs[:, 0], panels):
         im = ax.imshow(M, cmap="RdBu_r", vmin=-lim, vmax=lim, aspect="auto", interpolation="nearest")
         ax.grid(False)
         ax.set_yticks(range(M.shape[0]), names, fontsize=7)
         ax.set_xticks(range(M.shape[1]), xlab, fontsize=6.5)
         ax.tick_params(length=0)
         ax.set_xlabel("cluster, named after its true class\n(share of the points)")
-        ax.set_title(f"{ds}  (K = {M.shape[1]}, D = {M.shape[0]})", fontweight="bold", fontsize=9)
+        ax.set_title(f"{BLOCK_TITLE[is_synth(ds)][:-1]}: {ds}  (K = {M.shape[1]}, D = {M.shape[0]})",
+                     fontweight="bold", fontsize=9, loc="left")
         # thin white lines between the cells: the clusters stay distinct even with similar colors
         ax.set_xticks(np.arange(-0.5, M.shape[1]), minor=True)
         ax.set_yticks(np.arange(-0.5, M.shape[0]), minor=True)
@@ -576,7 +613,7 @@ def c4_centroids(ctx, model):
         for s in ax.spines.values():
             s.set_visible(False)
     clip = f" (clipped at $\\pm${lim:g})" if lim == LIM else ""
-    fig.colorbar(im, ax=axs[0].tolist(), shrink=0.85, aspect=25, pad=0.02,
+    fig.colorbar(im, ax=axs[:, 0].tolist(), shrink=0.6, aspect=30, pad=0.02,
                  label=f"standardized mean{clip}\nred: above average, blue: below")
     fig.suptitle(f"Cluster centroids: mean of every variable in each cluster ({model} covariance)",
                  fontweight="bold", fontsize=10)
@@ -589,14 +626,14 @@ def c5_sizes(ctx, models):
     the full model matched to it (match_to_truth). A good clustering has the colored bars as high
     as the gray one. Without true labels the clusters are only sorted by size."""
     avail = {d for d in TRUE_K if all(saved(ctx.clusters, d, m, TRUE_K[d]) for m in models)}
-    dss = pick(avail, ctx.args.datasets, 4)
-    need(dss, "no saved run")
-    width = [max(TRUE_K[ds], 3) + 2 for ds in dss]  # panel width ~ number of classes
-    fig, axs, nc = panel_grid(len(dss), row_h=2.3, width_ratios=width)
+    real, synth = pick_rs(avail, ctx.args.datasets, 2)
+    need(real or synth, "no saved run")
+    width = {ds: max(TRUE_K[ds], 3) + 2 for ds in real + synth}  # panel width ~ number of classes
+    fig, axes, left = two_blocks(real, synth, row_h=2.45, width=width)
     series = [("truth", TRUTH_COLOR, None)] + [(m, MODEL_COLOR[m], None) for m in models]
     bw = 0.8 / len(series)
     extra, matched = False, False  # for the note under the figure
-    for ax, ds in zip(axs, dss):
+    for ds, ax in axes.items():
         truth = true_labels(ds, ctx.data)
         lab = {m: saved(ctx.clusters, ds, m, TRUE_K[ds])[0] for m in models}
         if truth is not None and len(truth) == len(next(iter(lab.values()))):
@@ -626,7 +663,7 @@ def c5_sizes(ctx, models):
         extra = extra or n > TRUE_K[ds]
         ax.set_xlabel(xname)  # x axis named under EVERY panel
         ax.set_title(ds, fontsize=8, fontweight="bold")
-    for ax in axs[::nc]:  # left column
+    for ax in left:  # first panel of every block
         ax.set_ylabel("share of the points (%)")
     # note under the figure: how a found cluster is put above a true class
     note = []

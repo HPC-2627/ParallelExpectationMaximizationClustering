@@ -53,7 +53,7 @@ Run all the versions (`src/diagonal/PEMC-baseline-sequential-diagonal.c`, `src/d
 - [ ] Clustering plots in `src/plots-generate/plots-cluster.py` (PCA, centroid heatmap, cluster sizes, log-likelihood, ...), output in `results/plots/cluster/`
 - [ ] Abstract and keywords of the report (empty)
 - [ ] Parallel design section (Foster, communication): data distribution by blocks of rows, one `MPI_Allreduce` of a contiguous buffer per iteration, per-thread buffers with padding, results equal to the sequential up to rounding, meaning of `t_comm` (includes load imbalance)
-- [ ] (IMPORTANT) Data dependence analysis (Lecture 19, "Data dependences and OpenMP"): new subsection of "Parallel Design Methodology" in the report, no code change expected. For every parallel loop of every version (baseline, opt1, opt2, diagonal and full) apply the 3 steps of the lecture:
+- [ ] (IMPORTANT) --> example table slide 23 Lecture 19 --> Data dependence analysis (Lecture 19, "Data dependences and OpenMP"): new subsection of "Parallel Design Methodology" in the report, no code change expected. For every parallel loop of every version (baseline, opt1, opt2, diagonal and full) apply the 3 steps of the lecture:
   - detection: every variable written in the loop (scalars and arrays), including the functions called inside (`log_sum_exp`, `exp`, `log`: no `static` or global state)
   - classification: table as in slide 23 (memory location, earlier/later statement, loop-carried or not, flow / anti / output)
   - removal: how each one is handled (`reduction(+:ll)`, array reduction `reduction(+:acc[:len])` + `MPI_Allreduce`, per-thread slice of `logp`/`z` = privatization, `reduction(max:bad)`, `simd reduction` of the full opt versions)
