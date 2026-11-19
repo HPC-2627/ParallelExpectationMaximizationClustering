@@ -83,7 +83,7 @@ All the versions of the same model must end with the same log-likelihood and the
 │   ├── common/            # Shared code (no MPI): dataset I/O, GMM core, CLI options, logging, perf model, evaluation, timing
 │   ├── script/            # PBS launchers for the cluster + UCX wrapper for multi-node mpiexec + hardware of the nodes
 │   ├── dataset-managed/   # Python scripts that generate, download, verify and convert the datasets -> data/
-│   ├── plots-generate/    # Python scripts that generate the performance and clustering plots -> results/plots/ (EM steps figure -> doc/img/)
+│   ├── plots-generate/    # Python scripts that generate the performance and clustering plots -> results/plots/performance/ and results/plots/cluster/ (EM steps figure -> doc/img/)
 │   └── visual-sequential/ # Local web visualization of the EM algorithm, step by step (see below)
 ├── include/               # Headers of the shared code, plus MPI-only helpers and timer macros (compile with -Iinclude -lm)
 ├── data/                  # NOT versioned: filled locally by src/dataset-managed/
@@ -183,7 +183,7 @@ Everything is regenerable from the logs. The performance plots P1-P11 (sweeps, s
 - **Code:** [`src/plots-generate/`](src/plots-generate/) (performance P1-P11, clustering C1-C6)
 - **How to run:** [exec-cluster.md, Phase 5: Plots](doc/exec-cluster.md#phase-5-plots)
 - **Docs:** [doc/plots.md](doc/plots.md) (plot catalog), [doc/color.md](doc/color.md) (colors)
-- **Figures:** [`results/plots/`](results/plots/) (generated PDFs)
+- **Figures:** [`results/plots/`](results/plots/) (generated PDFs: `performance/` P1-P11, `cluster/` C1-C6)
 
 ## Results
 
