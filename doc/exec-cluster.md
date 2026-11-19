@@ -185,6 +185,50 @@ They need the D sweep files made in Phase 2 (`generate-synthetic-dataset.py --sw
 src/script/pemc-submit.sh sweep
 ```
 
+#### Runs on 1, 2 and 4 cores of one node (speedup curves below 8 cores)
+
+The default layouts start at 8 cores, and 8 -> 16 -> 32 cores also changes 1 -> 2 -> 4 nodes: without these runs P2/P3, P4 and P5 jump from 1 to 8 cores. They give:
+
+- the **scaling inside one node** (1 -> 2 -> 4 -> 8 cores), separated from the network;
+- every version **on 1 core** (`1:1:1`): the gain of the optimization alone, so the efficiency above 1 of opt1/opt2 full (P2, P5) can be split into optimization x parallelism;
+- two more points of the **weak scaling** (`synth_clean_p02` on 2 cores, `p04` on 4 cores).
+
+All the splits of 1, 2 and 4 cores, as for 8 cores:
+
+| Cores | Layouts (`NODES:RANKS_PER_NODE:THREADS`) |
+|---|---|
+| 1 | `1:1:1` |
+| 2 | `1:1:2`, `1:2:1` |
+| 4 | `1:1:4`, `1:2:2`, `1:4:1` |
+
+One node, so only `pack` and `pack:excl` (scatter = pack): 6 layouts x 2 placements = **12 jobs per version**, 72 in all (baseline, opt1, opt2 x 2 models). The logs are new files (`<version>_pack_1n1r1t.log`, ...): nothing is overwritten. The longest jobs are the 1-core ones of the full model, about 2-2.5 h for all the datasets (the sequential full takes 148 min): the 6 h walltime is enough.
+
+```bash
+export CONFIGS_LIST="1:1:1 1:1:2 1:2:1 1:1:4 1:2:2 1:4:1"
+DRY_RUN=1 src/script/pemc-submit.sh diagonal baseline   # check: prints the 12 qsub, submits nothing
+
+# ---- batch A: pack -------------------------------------------------------------------------
+export PLACES_LIST="pack"
+src/script/pemc-submit.sh diagonal baseline          # 6 jobs
+src/script/pemc-submit.sh diagonal opt1              # 6 jobs
+src/script/pemc-submit.sh diagonal opt2              # 6 jobs
+src/script/pemc-submit.sh full baseline              # 6 jobs
+src/script/pemc-submit.sh full opt1                  # 6 jobs
+src/script/pemc-submit.sh full opt2                  # 6 jobs
+
+# ---- batch B: pack:excl (can stay queued for long: no node is ever completely free) ---------
+export PLACES_LIST="pack:excl"
+src/script/pemc-submit.sh diagonal baseline          # 6 jobs
+src/script/pemc-submit.sh diagonal opt1              # 6 jobs
+src/script/pemc-submit.sh diagonal opt2              # 6 jobs
+src/script/pemc-submit.sh full baseline              # 6 jobs
+src/script/pemc-submit.sh full opt1                  # 6 jobs
+src/script/pemc-submit.sh full opt2                  # 6 jobs
+unset CONFIGS_LIST PLACES_LIST                       # back to the default layouts and placements
+```
+
+Batch A is enough for the plots (`plots-performance.py` uses the placement `pack` by default); batch B only completes the set of placements. After "per-user limit" errors resume the same group with `SKIP=<jobs already submitted>`. When the jobs are done copy `results/logs/diagonal/` and `results/logs/full/` to the laptop and run `plots-performance.py` again: the new core counts are picked up from the logs, no change to the scripts (P7 keeps only the splits of the 8 cores of the node).
+
 One job = one version with one layout, and it runs **all the datasets** (10 real + 15 synthetic; `gene_rnaseq` is skipped with full covariance). The sequential jobs use 1 core on an exclusive node. For the MPI + OpenMP versions the layout is `NODES x RANKS_PER_NODE x THREADS` (`ncpus` per node = `RANKS_PER_NODE x THREADS`, `mpiprocs` = `RANKS_PER_NODE`) and is combined with the 4 PBS placements:
 
 | Placement | Meaning |

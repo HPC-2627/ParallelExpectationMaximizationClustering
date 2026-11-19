@@ -182,7 +182,7 @@ Everything is regenerable from the logs. The performance plots P1-P11 (sweeps, s
 
 - **Code:** [`src/plots-generate/`](src/plots-generate/) (performance P1-P11, clustering C1-C6)
 - **How to run:** [exec-cluster.md, Phase 5: Plots](doc/exec-cluster.md#phase-5-plots)
-- **Docs:** [doc/plots.md](doc/plots.md) (plot catalog), [doc/color.md](doc/color.md) (colors)
+- **Docs:** [doc/plots.md](doc/plots.md) (plot catalog)
 - **Figures:** [`results/plots/`](results/plots/) (generated PDFs: `performance/` P1-P11, `cluster/` C1-C6)
 
 ## Results

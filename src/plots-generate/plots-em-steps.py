@@ -94,7 +94,7 @@ em.snapshot = _snapshot_raw
 # Style
 # ---------------------------------------------------------------------------------------------
 
-# Cluster colors of doc/color.md (C3-C5), in the same order
+# Cluster colors (the same as C3-C5), in the same order
 CLASS_COLOR = ["#ff0000", "#22C55E", "#69d2ff", "#dca500", "#912603", "#006326",
                "#002fb0", "#7904d3", "#502B00", "#e44aff", "#ff8d35", "#2c79ff"]
 # TEXT = text and axes, GRAY = points not assigned yet (initialization), GRID = background grid

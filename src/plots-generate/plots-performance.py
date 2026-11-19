@@ -2,7 +2,7 @@
 """
 plots-performance.py
 
-Performance plots of the report (catalog P1-P11 of doc/plots.md, colors of doc/color.md).
+Performance plots of the report (catalog P1-P11 of doc/plots.md).
 Reads all the logs in results/logs/<model>/<stage>/*.log and writes PDF files in results/plots/performance/.
 
 Usage (from the root of the repository):
@@ -65,7 +65,7 @@ from matplotlib.ticker import FixedLocator, FormatStrFormatter, ScalarFormatter
 ROOT = Path(__file__).resolve().parents[2]
 
 # ---------------------------------------------------------------------------------------------
-# Style: one role per color (doc/color.md). Never pick colors by hand elsewhere in this file.
+# Style: one role per color. Never pick colors by hand elsewhere in this file.
 # ---------------------------------------------------------------------------------------------
 VERSION_COLOR = {"sequential": "#6B7280", "baseline": "#2579ff", "opt1": "#ff2e2e", "opt2": "#38ffca"}
 VERSION_MARKER = {"sequential": "s", "baseline": "o", "opt1": "^", "opt2": "D"}
@@ -536,6 +536,9 @@ def p7_heatmap(ctx, model):
     d = a[(a.label == v) & (a.model == model) & (a.dataset == ds[0]) & (a.nodes == 1)
           & (a.placement.isin([ctx.args.placement, ctx.args.placement.split(":")[0]]))]
     need(not d.empty, "no single-node runs")
+    # only the splits of ALL the cores of the node (8): the runs on 1, 2, 4 cores of one node (for
+    # the speedup curves) are not splits of the same cores and must not be compared here
+    d = d[d.cores == d.cores.max()]
     # one bar per split (several placements for the same split: the fastest), from all-MPI to
     # all-OpenMP
     d = d.loc[d.groupby(["ranks", "threads"])["t"].idxmin()].sort_values("ranks", ascending=False)

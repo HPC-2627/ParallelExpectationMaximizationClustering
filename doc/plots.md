@@ -87,7 +87,7 @@ The clustering result is the same in every version (we check the final log-likel
 | C5 | Are the clusters balanced? | bars of the share of points per class: truth, diagonal, full | same as C3 | `C5-sizes` |
 | C6 | Diagonal or full, which fits better? | bars of BIC(full) - BIC(diagonal), colored by the model that wins. Hatched (†): log-likelihood of full < diagonal, i.e. a worse local optimum, not a model comparison. Gray (‡): D = 1, the two models are the same | all real | `C6-bic-full-vs-diagonal` |
 
-Every figure has a bold title in plain words, ONE legend above the panels (never on the data), and the dataset name on every panel. The found clusters are paired one-to-one with the true classes (Hungarian algorithm on the overlap table), so a cluster has the same name and color in C3, C4 and C5. Datasets of C1-C5: `--datasets`, in order of preference. Colors: [color.md](color.md#models-in-the-clustering-plots-diagonal-vs-full).
+Every figure has a bold title in plain words, ONE legend above the panels (never on the data), and the dataset name on every panel. The found clusters are paired one-to-one with the true classes (Hungarian algorithm on the overlap table), so a cluster has the same name and color in C3, C4 and C5. Datasets of C1-C5: `--datasets`, in order of preference.
 
 Table instead of plot: the 10 real datasets with N, D, K, log-likelihood, BIC, iterations, for both models. It is written in `results/tables/clustering-summary.csv` by `src/tables/clustering-summary.py` (also by `plots-cluster.py`, same content).
 

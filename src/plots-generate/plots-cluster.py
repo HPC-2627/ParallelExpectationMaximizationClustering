@@ -2,7 +2,7 @@
 """
 plots-cluster.py
 
-Clustering plots of the report (catalog C1-C6 of doc/plots.md, colors of doc/color.md) and the
+Clustering plots of the report (catalog C1-C6 of doc/plots.md) and the
 summary table. The clustering result is the same in every version (the final log-likelihood is
 checked), so everything here comes from the SEQUENTIAL BASELINE, diagonal and full.
 
@@ -57,7 +57,7 @@ import pandas as pd
 ROOT = Path(__file__).resolve().parents[2]
 
 # ---------------------------------------------------------------------------------------------
-# Style: one role per color (doc/color.md)
+# Style: one role per color
 # ---------------------------------------------------------------------------------------------
 # Clusters / classes: categorical, in this order, each class with its own marker
 CLASS_COLOR = ["#ff0000", "#22C55E", "#69d2ff", "#dca500", "#912603", "#006326",
