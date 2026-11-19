@@ -58,6 +58,7 @@ In this project we used an AI assistant (Claude, by Anthropic) for three purpose
 \end{abstract}
 
 \begin{IEEEkeywords}
+Expectation--Maximization, Gaussian Mixture Models, Diagonal and Full Covariance, Hybrid MPI+OpenMP, Data Dependence Analysis, Row-Block Data Partitioning, Allreduce Collective, E-Step/M-Step Fusion, Message Aggregation, Process Placement, Roofline Model, Strong Scaling, Weak Scaling.
 \end{IEEEkeywords}
 
 \section{Introduction}
@@ -556,7 +557,7 @@ The same procedure is used for every version, so that the times of sequential, b
 \begin{itemize}
 \item \emph{Same machine.} Every job runs on Xeon Gold 6252N nodes only (\texttt{cpu\_type} in the PBS request) and checks the CPU model of all its nodes before starting: a job on a different CPU stops without writing results. The CPU model is also written in every log entry.
 \item \emph{Same inputs.} Every version runs on the same datasets with the same $K$ (number of true classes), the same seed (42), tolerance $\varepsilon=10^{-6}$, $T_{\max}=200$ and one initialization ($R=1$). The only exception is the sweep over $K$ (Section~\ref{sec:sweeps}), where $K$ is the parameter being varied.
-\item \emph{Correctness check.} All the versions of a model must reach the same number of iterations and the same final $\mathcal{L}$ on every dataset and layout. For the diagonal model (sequential, baseline, Optimization~1 and~2, all layouts and placements) the iterations are identical and the relative difference of $\mathcal{L}$ is below $5\cdot10^{-9}$ \textcolor{red}{(TODO: check the full model with its optimizations)}.
+\item \emph{Correctness check.} All the versions of a model must reach the same number of iterations and the same final $\mathcal{L}$ on every dataset and layout. This holds for both models: over all the versions (sequential, baseline, Optimization~1 and~2), layouts and placements (3\,675 runs of the diagonal model, 3\,528 of the full one) the number of iterations is identical on every dataset, and the relative difference of $\mathcal{L}$ from the sequential version is at most $4.4\cdot10^{-9}$ (diagonal) and $7.6\cdot10^{-9}$ (full). Both maxima are on \texttt{brainweb}, which runs all the $T_{\max}=200$ iterations; on the other datasets the difference is at most $1.4\cdot10^{-10}$ in the full model and zero, to the digits written in the log, in the diagonal one. The differences come only from the order of the floating-point sums (threads, ranks, blocks).
 \item \emph{Warm-up.} Before the measured run, 3 EM iterations are executed and discarded, with the same OpenMP regions and the same \texttt{MPI\_Allreduce} calls as the measured run. They remove one-time costs: first touch of the memory, creation of the thread pool, opening of the MPI connections, CPU frequency ramp-up. The parameters are then re-initialized with the same seed, so the result is the same as without warm-up.
 \item \emph{Timers.} Times are wall-clock times, taken with \texttt{MPI\_Wtime} (\texttt{gettimeofday} in the sequential versions). An \texttt{MPI\_Barrier} aligns the ranks only before the global timers (start of reading, initialization, EM); there is no barrier inside the loop, because it would add a cost that the algorithm does not have.
 \item \emph{What is measured.} Per run: $t_{\mathrm{read}}$, $t_{\mathrm{init}}$, $t_E$ and $t_M$ (computation only, without MPI calls) and $t_{\mathrm{comm}}$ (time inside the \texttt{MPI\_Allreduce} calls, including the waiting for the slowest rank). In the sequential versions, the baselines and Optimization~2 diagonal, $t_E$ and $t_M$ are the E-step and M-step loops (the M-step also includes the update of the parameters). In the versions with the fused pass (Optimization~1 of both models and Optimization~2 full) the pass cannot be split: $t_E$ is the whole fused pass (Cholesky factorizations included in the full model) and $t_M$ only the update of the parameters from the global sums. In Optimization~2 full $t_{\mathrm{comm}}$ also includes the pack and unpack copies of the buffer. Each time is the maximum over the ranks. The main metric is the time per iteration, $t_{\mathrm{it}}=(t_E+t_M+t_{\mathrm{comm}})/\text{iterations}$: it does not depend on how many iterations a dataset needs to converge, so datasets and versions can be compared. The compute time of every rank is also logged, to measure the load imbalance.
@@ -565,7 +566,7 @@ The same procedure is used for every version, so that the times of sequential, b
 \item \emph{Stability.} On the exclusive placements the spread of the 3 repetitions (max$-$min over median) is a few percent; on shared nodes it is larger, because other jobs use the memory bandwidth and the caches \textcolor{red}{(TODO: check the final values per placement and report them)}.
 \item \emph{Not controlled.} The CPU frequency (turbo) is not fixed by the jobs; the network between nodes is shared with the other users of the cluster.
 \item \emph{Raw data.} Every run appends one entry to a text log (version, dataset, layout, node, CPU, iterations, $\mathcal{L}$, all the times); all the tables and plots are generated from these logs.
-\item \emph{Execution on the cluster.} \textcolor{red}{TODO: insert the link to the execution on the cluster (scripts and instructions to compile and launch the PBS jobs).}
+\item \emph{Execution on the cluster.} The scripts that compile the programs and submit the PBS jobs are in \texttt{src/script/}; the step-by-step instructions (compilation, submission of every experiment, check of the finished jobs, download of the logs and generation of the plots) are in \srclink{https://github.com/HPC-2627/ParallelExpectationMaximizationClustering/blob/main/doc/exec-cluster.md}{\texttt{doc/exec-cluster.md}}.
 \end{itemize}
 
 \subsection{Dataset}
@@ -583,7 +584,7 @@ The same procedure is used for every version, so that the times of sequential, b
 \item Preprocessing, equal for all: only numeric columns (identifiers removed), constant columns dropped, z-score standardization (hence the initialization $\sigma^2_{kd}=1$).
 \item Missing values are not imputed: a dataset with incomplete rows would be discarded.
 \item \texttt{parkinson} has continuous targets: no labels, $K$ chosen arbitrarily.
-\item \textcolor{red}{\texttt{gene\_rnaseq} is run only with the diagonal model, not with the full one. With $D=20\,264$ a single full covariance matrix $\Sigma_k$ has $D^2\approx4\cdot10^8$ values, about 3.3~GB; with $K=5$ clusters this is about 16~GB, and the code keeps at least three such arrays ($\Sigma_k$, its Cholesky factor $L_k$ and the sums $\sum_i r_{ik}x_ix_i^\top$), so about 50~GB for every MPI process (the parameters are copied on every process); in the MPI+OpenMP versions the reduction of the sums adds one more private copy of about 16~GB per thread, far more than the 8~GB requested per chunk, and with several processes per node it would not fit in the memory of the node either. Even with enough memory it would not make sense: the dataset has only $N=801$ points, much fewer than $D$, so each $\Sigma_k$ cannot be estimated (it is singular) and the Cholesky factorization fails.}
+\item \texttt{gene\_rnaseq} is run only with the diagonal model, not with the full one. With $D=20\,264$ a single full covariance matrix $\Sigma_k$ has $D^2\approx4\cdot10^8$ values, about 3.3~GB; with $K=5$ clusters this is about 16~GB, and the code keeps three such arrays ($\Sigma_k$, its Cholesky factor $L_k$ and the sums $\sum_i r_{ik}x_ix_i^\top$), so about 50~GB for every MPI process (the parameters are copied on every process). In the MPI+OpenMP versions the array reduction of the sums adds a private copy of about 16~GB per thread: with 8 cores per node this is 180 to 520~GB per node depending on the layout, far more than the 8~GB requested per chunk and more than the 256~GB of the smallest nodes. Even with enough memory it would not make sense: the dataset has only $N=801$ points, much fewer than $D$, so each $\Sigma_k$ has rank at most $N_k-1<D$; it is singular and becomes invertible only because of the $10^{-6}$ added to its diagonal, and the model would have $K\,D(D+1)/2\approx10^9$ covariance parameters estimated from 801 points.
 \end{itemize}
 
 \begin{table}[H]
@@ -769,6 +770,42 @@ $D$ ($K=4$)  & \texttt{synth\_sweep\_d005} & $D=5$  & 10 MB  & $5.0\cdot10^6$ & 
 \bottomrule
 \end{tabular}
 \end{table}
+
+\subsection{Validation of the clustering}\label{sec:validation}
+The performance study is meaningful only if the fast code also gives a correct clustering. Figures~\ref{fig:c1}, \ref{fig:c2} and~\ref{fig:c6} check this on two real and two synthetic datasets, with $K$ equal to the number of true classes; all the plots are generated from the logs by \texttt{src/plots-generate/plots-cluster.py}. The limits that they show are discussed in Section~\ref{sec:discussion}.
+
+Only the plots linked to the performance are kept here: the convergence (which fixes the metric $t_{\mathrm{it}}$), the choice of $K$ (used in all the measurements) and the cost/benefit of the full model. The plots that describe the clusters found are not needed to read the performance results: they are only summarized below, with a link to the plot in the repository.
+
+\paragraph{Convergence} (Figure~\ref{fig:c1}). $\mathcal{L}$ grows at every iteration and then flattens, for both models. The number of iterations changes a lot with the dataset and the model (on \texttt{synth\_clean\_p01} 20 iterations with the diagonal model and 56 with the full one; \texttt{brainweb} stops at $T_{\max}=200$): this is why the performance is measured as time per iteration $t_{\mathrm{it}}$.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.85\textwidth]{../../results/plots/cluster/C1-convergence.pdf}
+\caption{Convergence of EM: log-likelihood per point at every iteration, diagonal vs full covariance, $K$ = number of true classes.}\label{fig:c1}
+\end{figure}
+
+\paragraph{Choice of $K$} (Figure~\ref{fig:c2}). On the control \texttt{synth\_clean\_p01} (pure Gaussian clusters) the minimum of the BIC is at the true $K=4$ for both models, so the code recovers the right number of clusters when the data follow the model. On the real data the minimum is often at the largest $K$ tried.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.85\textwidth]{../../results/plots/cluster/C2-choose-k.pdf}
+\caption{BIC and AIC for $K=2,\dots,10$ (difference from the best value of each curve, lower is better). The star is the best $K$ of each curve, the dotted line the true number of classes; \texttt{synth\_clean\_p01} is the control.}\label{fig:c2}
+\end{figure}
+
+\paragraph{Clusters found} (plots in the repository).
+\begin{itemize}
+\item \srclink{https://github.com/HPC-2627/ParallelExpectationMaximizationClustering/blob/main/results/plots/cluster/C3-pca.pdf}{\texttt{C3-pca.pdf}}: 2D PCA projection, true classes vs clusters found. On the synthetic data the clusters match the classes (ARI $=0.91$ on \texttt{synth\_clean\_p01} with both models; $0.85$ full vs $0.07$ diagonal on the correlated \texttt{synth\_overlap\_p01}); on the real data the ARI is at most $0.14$, since the labels are a clinical outcome, not Gaussian groups.
+\item \srclink{https://github.com/HPC-2627/ParallelExpectationMaximizationClustering/blob/main/results/plots/cluster/C4-centroids-diagonal.pdf}{\texttt{C4-centroids-diagonal.pdf}} and \srclink{https://github.com/HPC-2627/ParallelExpectationMaximizationClustering/blob/main/results/plots/cluster/C4-centroids-full.pdf}{\texttt{C4-centroids-full.pdf}}: standardized mean of every variable in every cluster. Each cluster differs from the others on a few variables.
+\item \srclink{https://github.com/HPC-2627/ParallelExpectationMaximizationClustering/blob/main/results/plots/cluster/C5-sizes.pdf}{\texttt{C5-sizes.pdf}}: share of the points per cluster vs true class. The sizes follow the ARI: equal to the classes on \texttt{synth\_clean\_p01}, right only with the full model on \texttt{synth\_overlap\_p01}.
+\end{itemize}
+
+\paragraph{Diagonal or full} (Figure~\ref{fig:c6}). The full model costs $O(KD^2)$ per point instead of $O(KD)$. On four real datasets (\texttt{eeg\_eye\_state}, \texttt{diabetes130}, \texttt{parkinson}, \texttt{cardiotocography}) it gives a clearly lower BIC, so the extra cost buys a better model; on the two small clinical datasets the diagonal model is enough. On \texttt{brainweb} ($D=1$) the two models are the same, and on \texttt{cardiovascular} and \texttt{cdc\_diabetes} the full run stops in a worse local optimum, so the comparison is not meaningful there.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.85\textwidth]{../../results/plots/cluster/C6-bic-full-vs-diagonal.pdf}
+\caption{BIC(full) $-$ BIC(diagonal) at the true $K$ for every real dataset: below zero the full model fits better. $\dagger$: the log-likelihood of the full model is lower than the diagonal one (worse local optimum of EM); $\ddagger$: $D=1$, the two models are the same.}\label{fig:c6}
+\end{figure}
 \clearpage
 
 \section{Performance Evaluation}\label{sec:perf}
@@ -777,7 +814,7 @@ $D$ ($K=4$)  & \texttt{synth\_sweep\_d005} & $D=5$  & 10 MB  & $5.0\cdot10^6$ & 
 \subsection{Weak Scaling}
 \subsection{Communication vs Computation Breakdown}
 
-\section{Discussion}
+\section{Discussion}\label{sec:discussion}
 
 \section{Conclusion}
 

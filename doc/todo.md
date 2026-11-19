@@ -62,6 +62,7 @@ Run all the versions (`src/diagonal/PEMC-baseline-sequential-diagonal.c`, `src/d
   - removal: how each one is handled (`reduction(+:ll)`, array reduction `reduction(+:acc[:len])` + `MPI_Allreduce`, per-thread slice of `logp`/`z` = privatization, `reduction(max:bad)`, `simd reduction` of the full opt versions)
   - non-removable dependences: the outer EM loop (iteration t+1 needs the parameters of t: recurrence, so the parallelism is inside one iteration) and the forward substitution of the full model (`z_a` needs `z_0..z_{a-1}`; opt1 goes around it with 8 independent rows in SIMD, as slide 34)
   - re-check opt1 and opt2 line by line; change the code only if a dependence turns out to be unhandled (data race)
+  - "Data Dependence Analysis" is already in the index terms of the report (IEEEkeywords): if this subsection is not written, remove it from there
 - [X] Experimental setup section: hardware infrastructure (cluster, nodes, PBS placements); hardware of the 40 nodes collected with `src/script/pemc-hwinfo.sh`, summary in `results/tables/hardware.md`, same table in the README
 - [ ] Check whether the times of the memory-bound runs depend on the node type (2, 4 or 6 memory channels populated; TODO in the report, Hardware Infrastructure)
 - [ ] Implementation and performance evaluation sections of the report (`doc/latex/Group6-Report.tex`)
@@ -70,7 +71,8 @@ Run all the versions (`src/diagonal/PEMC-baseline-sequential-diagonal.c`, `src/d
 - [ ] Discussion and conclusions
 - [X] AI statement (mandatory): written at the top of the report (code help, search of sources, mathematical and grammatical correction); check that it is accurate before delivery
 - [ ] Repo link (SET TO PUBLIC) and data sources cited
-- [ ] Report: insert the link to the execution on the cluster (TODO in Measurement Methodology, item "Execution on the cluster")
+- [X] Report: insert the link to the execution on the cluster (TODO in Measurement Methodology, item "Execution on the cluster")
+- [ ] Report: before delivery, check that every index term (IEEEkeywords) has its own part in the report; remove the ones that do not
 - [X] Report: insert the link to the visualization of the algorithm (TODO at the end of the subsection "The EM algorithm for Gaussian mixtures", paragraph "Visualization of the algorithm")
 - [ ] (IMPORTANT) --> compared performance for own algorithm with different paper with the same technique or differrentc ECC..
 - [X] Report at least 10 pages
@@ -89,3 +91,11 @@ Run all the versions (`src/diagonal/PEMC-baseline-sequential-diagonal.c`, `src/d
 ## Nice to have
 - [ ] Segmentation map visualization on a medical image dataset
 - [ ] Interactive visualization for the presentation
+- [X] Report: subsection "Validation of the clustering" (end of Experimental Setup & Dataset, `\label{sec:validation}`, TODOs in red): insert ALL the plots C1-C6 of `results/plots/cluster/`, one or two sentences each, at most about one page; do not spend much time on it (HPC project: it only shows that the fast code gives a correct clustering)
+  - C1 convergence: iterations change with dataset and model, so the metric is t_it
+  - C2 choose K: the control synth_clean_p01 finds the true K = 4
+  - C3 PCA: clusters match the visible groups
+  - C4 centroids (diagonal and full): clusters differ on a few variables
+  - C5 sizes: close to the true classes on the synthetic data
+  - C6 full vs diagonal: where the extra cost of full gives a better model († local optimum, ‡ D = 1)
+  - limits (degenerate clusters, BIC minimum at K = 10, † and ‡) go in the Discussion

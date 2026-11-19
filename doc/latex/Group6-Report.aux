@@ -58,33 +58,46 @@
 \newlabel{sec:method}{{\mbox  {III-B}}{15}{Measurement Methodology}{subsection.3.2}{}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {III-C}}Dataset}{16}{subsection.3.3}\protected@file@percent }
 \@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {III-C}0a}Common format.}{16}{paragraph.3.3.0.1}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {III-C}0b}Real datasets}{16}{paragraph.3.3.0.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {III-C}0b}Real datasets}{17}{paragraph.3.3.0.2}\protected@file@percent }
 \@writefile{lot}{\contentsline {table}{\numberline {III}{\ignorespaces Real datasets. $N$ and $D$ are the values actually used by the EM after preprocessing; $K$ is the number of ground-truth classes (used only for evaluation).}}{17}{table.caption.6}\protected@file@percent }
 \newlabel{tab:real}{{III}{17}{Real datasets. $N$ and $D$ are the values actually used by the EM after preprocessing; $K$ is the number of ground-truth classes (used only for evaluation)}{table.caption.6}{}}
 \@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {III-C}0c}Synthetic profiles}{17}{paragraph.3.3.0.3}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {IV}{\ignorespaces Synthetic profiles. $\delta $ is the distance between cluster means in units of the within-cluster standard deviation.}}{17}{table.caption.7}\protected@file@percent }
-\newlabel{tab:synth-profiles}{{IV}{17}{Synthetic profiles. $\delta $ is the distance between cluster means in units of the within-cluster standard deviation}{table.caption.7}{}}
-\@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {III-C}0d}Variables of the synthetic data}{17}{paragraph.3.3.0.4}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {IV}{\ignorespaces Synthetic profiles. $\delta $ is the distance between cluster means in units of the within-cluster standard deviation.}}{18}{table.caption.7}\protected@file@percent }
+\newlabel{tab:synth-profiles}{{IV}{18}{Synthetic profiles. $\delta $ is the distance between cluster means in units of the within-cluster standard deviation}{table.caption.7}{}}
+\@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {III-C}0d}Variables of the synthetic data}{18}{paragraph.3.3.0.4}\protected@file@percent }
 \@writefile{lot}{\contentsline {table}{\numberline {V}{\ignorespaces Clinical variables used to build the synthetic data (typical mean $\pm $ std and physiological limits).}}{18}{table.caption.8}\protected@file@percent }
 \newlabel{tab:synth-vars}{{V}{18}{Clinical variables used to build the synthetic data (typical mean $\pm $ std and physiological limits)}{table.caption.8}{}}
 \@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {III-C}0e}Weak scaling files}{18}{paragraph.3.3.0.5}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {VI}{\ignorespaces Weak scaling: rows and data file size for each profile ($N_0 = 250\,000$ rows per process; labels file of $4N$ bytes for every profile). MB $= 10^6$ bytes.}}{18}{table.caption.9}\protected@file@percent }
-\newlabel{tab:weak}{{VI}{18}{Weak scaling: rows and data file size for each profile ($N_0 = 250\,000$ rows per process; labels file of $4N$ bytes for every profile). MB $= 10^6$ bytes}{table.caption.9}{}}
-\@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {III-C}0f}Strong scaling}{18}{paragraph.3.3.0.6}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {VI}{\ignorespaces Weak scaling: rows and data file size for each profile ($N_0 = 250\,000$ rows per process; labels file of $4N$ bytes for every profile). MB $= 10^6$ bytes.}}{19}{table.caption.9}\protected@file@percent }
+\newlabel{tab:weak}{{VI}{19}{Weak scaling: rows and data file size for each profile ($N_0 = 250\,000$ rows per process; labels file of $4N$ bytes for every profile). MB $= 10^6$ bytes}{table.caption.9}{}}
+\@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {III-C}0f}Strong scaling}{19}{paragraph.3.3.0.6}\protected@file@percent }
 \@writefile{lot}{\contentsline {table}{\numberline {VII}{\ignorespaces Strong scaling (fixed $N = 4\,000\,000$): data per rank and work per rank $N \cdot K \cdot D / p$. The work is an operation count proportional to the cost of an iteration, not a measured time.}}{19}{table.caption.10}\protected@file@percent }
 \newlabel{tab:strong}{{VII}{19}{Strong scaling (fixed $N = 4\,000\,000$): data per rank and work per rank $N \cdot K \cdot D / p$. The work is an operation count proportional to the cost of an iteration, not a measured time}{table.caption.10}{}}
 \newlabel{sec:sweeps}{{\mbox  {III-C}0g}{19}{Sweeps over $K$ and $D$}{paragraph.3.3.0.7}{}}
 \@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {III-C}0g}Sweeps over $K$ and $D$}{19}{paragraph.3.3.0.7}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {VIII}{\ignorespaces Sweeps over $K$ and $D$ ($N=250\,000$, 1 node). The work is an operation count proportional to the cost of an iteration, not a measured time. Data file sizes: $8+8ND$ bytes, plus a labels file of 1 MB per file.}}{19}{table.caption.11}\protected@file@percent }
-\newlabel{tab:sweeps}{{VIII}{19}{Sweeps over $K$ and $D$ ($N=250\,000$, 1 node). The work is an operation count proportional to the cost of an iteration, not a measured time. Data file sizes: $8+8ND$ bytes, plus a labels file of 1 MB per file}{table.caption.11}{}}
-\@writefile{toc}{\contentsline {section}{\numberline {IV}Performance Evaluation}{20}{section.4}\protected@file@percent }
-\newlabel{sec:perf}{{IV}{20}{Performance Evaluation}{section.4}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-A}}Execution Time and Throughput}{20}{subsection.4.1}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-B}}Strong Scaling}{20}{subsection.4.2}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-C}}Weak Scaling}{20}{subsection.4.3}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-D}}Communication vs Computation Breakdown}{20}{subsection.4.4}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {V}Discussion}{21}{section.5}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {VI}Conclusion}{22}{section.6}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {VIII}{\ignorespaces Sweeps over $K$ and $D$ ($N=250\,000$, 1 node). The work is an operation count proportional to the cost of an iteration, not a measured time. Data file sizes: $8+8ND$ bytes, plus a labels file of 1 MB per file.}}{20}{table.caption.11}\protected@file@percent }
+\newlabel{tab:sweeps}{{VIII}{20}{Sweeps over $K$ and $D$ ($N=250\,000$, 1 node). The work is an operation count proportional to the cost of an iteration, not a measured time. Data file sizes: $8+8ND$ bytes, plus a labels file of 1 MB per file}{table.caption.11}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {III-D}}Validation of the clustering}{20}{subsection.3.4}\protected@file@percent }
+\newlabel{sec:validation}{{\mbox  {III-D}}{20}{Validation of the clustering}{subsection.3.4}{}}
+\@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {III-D}0a}Convergence}{20}{paragraph.3.4.0.1}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces Convergence of EM: log-likelihood per point at every iteration, diagonal vs full covariance, $K$ = number of true classes.}}{21}{figure.caption.12}\protected@file@percent }
+\newlabel{fig:c1}{{2}{21}{Convergence of EM: log-likelihood per point at every iteration, diagonal vs full covariance, $K$ = number of true classes}{figure.caption.12}{}}
+\@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {III-D}0b}Choice of $K$}{21}{paragraph.3.4.0.2}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces BIC and AIC for $K=2,\dots  ,10$ (difference from the best value of each curve, lower is better). The star is the best $K$ of each curve, the dotted line the true number of classes; \texttt  {synth\_clean\_p01} is the control.}}{22}{figure.caption.13}\protected@file@percent }
+\newlabel{fig:c2}{{3}{22}{BIC and AIC for $K=2,\dots ,10$ (difference from the best value of each curve, lower is better). The star is the best $K$ of each curve, the dotted line the true number of classes; \texttt {synth\_clean\_p01} is the control}{figure.caption.13}{}}
+\@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {III-D}0c}Clusters found}{22}{paragraph.3.4.0.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {III-D}0d}Diagonal or full}{22}{paragraph.3.4.0.4}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {4}{\ignorespaces BIC(full) $-$ BIC(diagonal) at the true $K$ for every real dataset: below zero the full model fits better. $\dagger $: the log-likelihood of the full model is lower than the diagonal one (worse local optimum of EM); $\ddagger $: $D=1$, the two models are the same.}}{23}{figure.caption.14}\protected@file@percent }
+\newlabel{fig:c6}{{4}{23}{BIC(full) $-$ BIC(diagonal) at the true $K$ for every real dataset: below zero the full model fits better. $\dagger $: the log-likelihood of the full model is lower than the diagonal one (worse local optimum of EM); $\ddagger $: $D=1$, the two models are the same}{figure.caption.14}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {IV}Performance Evaluation}{24}{section.4}\protected@file@percent }
+\newlabel{sec:perf}{{IV}{24}{Performance Evaluation}{section.4}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-A}}Execution Time and Throughput}{24}{subsection.4.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-B}}Strong Scaling}{24}{subsection.4.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-C}}Weak Scaling}{24}{subsection.4.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-D}}Communication vs Computation Breakdown}{24}{subsection.4.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {V}Discussion}{25}{section.5}\protected@file@percent }
+\newlabel{sec:discussion}{{V}{25}{Discussion}{section.5}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {VI}Conclusion}{26}{section.6}\protected@file@percent }
 \bibcite{bishop}{1}
-\@writefile{toc}{\contentsline {section}{References}{23}{section*.12}\protected@file@percent }
-\gdef \@abspage@last{23}
+\@writefile{toc}{\contentsline {section}{References}{27}{section*.15}\protected@file@percent }
+\gdef \@abspage@last{27}
