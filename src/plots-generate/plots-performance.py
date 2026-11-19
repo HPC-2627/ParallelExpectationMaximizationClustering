@@ -3,7 +3,7 @@
 plots-performance.py
 
 Performance plots of the report (catalog P1-P11 of doc/plots.md, colors of doc/color.md).
-Reads all the logs in results/logs/<model>/<stage>/*.log and writes PDF files in results/plots/.
+Reads all the logs in results/logs/<model>/<stage>/*.log and writes PDF files in results/plots/performance/.
 
 Usage (from the root of the repository):
     python3 src/plots-generate/plots-performance.py                 # all the plots
@@ -62,7 +62,7 @@ VERSION_COLOR = {"sequential": "#6B7280", "baseline": "#2579ff", "opt1": "#ff2e2
 VERSION_MARKER = {"sequential": "s", "baseline": "o", "opt1": "^", "opt2": "D"}
 VERSION_ORDER = ["sequential", "baseline", "opt1", "opt2"]
 
-PLACE_COLOR = {"pack": "#627fff", "pack:excl": "#0600be", "scatter": "#ffab76", "scatter:excl": "#af3200"}
+PLACE_COLOR = {"pack": "#a9bcff", "pack:excl": "#1a237e", "scatter": "#ffcba4", "scatter:excl": "#9a3412"}
 PLACE_ORDER = ["pack", "pack:excl", "scatter", "scatter:excl"]
 
 STEP_COLOR = {"E-step": "#6fff2c", "M-step": "#3415ff", "t_comm": "#ff0000", "I/O": "#efc000"}
@@ -573,7 +573,7 @@ def main():
     # ---- command line ----
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--logs", type=Path, default=ROOT / "results/logs")
-    ap.add_argument("--out", type=Path, default=ROOT / "results/plots")
+    ap.add_argument("--out", type=Path, default=ROOT / "results/plots/performance")
     ap.add_argument("--plots", nargs="+", default=["P1", "P2", "P4", "P5", "P6", "P7", "P8", "P9", "P10", "P11"],
                     help="IDs to draw (P3 is the second row of P2)")
     ap.add_argument("--models", nargs="+", default=MODELS, choices=MODELS)
