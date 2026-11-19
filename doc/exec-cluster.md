@@ -312,8 +312,8 @@ scp -r username@hpc3-login1.unitn.it:ParallelExpectationMaximizationClustering/r
 Then, from the root of the repository:
 
 ```bash
-python3 src/plots-generate/plots-performance.py     # P1-P11 -> results/plots/
-python3 src/plots-generate/plots-cluster.py         # C1-C6 (+ results/tables/clustering-summary.csv)
+python3 src/plots-generate/plots-performance.py     # P1-P11 -> results/plots/performance/
+python3 src/plots-generate/plots-cluster.py         # C1-C6 -> results/plots/cluster/ (+ results/tables/clustering-summary.csv)
 python3 src/tables/clustering-summary.py            # only the table results/tables/clustering-summary.csv
 ```
 

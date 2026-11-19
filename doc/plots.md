@@ -1,6 +1,6 @@
 # Plots: guidelines
 
-Rules to decide which plots go in the report and how to keep them readable. Scripts: `src/plots-generate/plots-performance.py` and `src/plots-generate/plots-cluster.py`, output in `results/plots/`.
+Rules to decide which plots go in the report and how to keep them readable. Scripts: `src/plots-generate/plots-performance.py` and `src/plots-generate/plots-cluster.py`, output in `results/plots/performance/` and `results/plots/cluster/`.
 
 ## 0. Golden rules
 
@@ -76,14 +76,16 @@ Priority: P2(+P3), P4, P5, P6, P7, P8, P9 are essential. P1, P10, P11 only if th
 
 The clustering result is the same in every version (we check the final log-likelihood), so these plots use **one version only**, the baseline.
 
-| ID | Question | Type | Datasets |
-|---|---|---|---|
-| C1 | Does EM converge? | log-likelihood vs iteration, one line per dataset | 3-4 real |
-| C2 | Which K is right? | BIC and AIC vs K, minimum marked | 2-3 real |
-| C3 | Do the clusters look right? | PCA 2D, colored by cluster, grid of panels | 3-4 real + 1 synthetic (known truth) |
-| C4 | What does each cluster look like? | heatmap of the centroids | 1-2 real with small/medium D |
-| C5 | Are the clusters balanced? | bars of cluster sizes | same as C3. Can be merged with C4 |
-| C6 | Diagonal or full, which fits better? | bars of the BIC difference (full - diagonal) | all real |
+| ID | Question | Type | Datasets | File |
+|---|---|---|---|---|
+| C1 | Does EM converge? Which model fits better? | log-likelihood per point vs iteration, one panel per dataset, diagonal and full in the same panel; `X` = stopped at the iteration limit | 4 (default: synth_overlap_p01, cardiotocography, heart_failure, synth_clean_p01) | `C1-convergence` |
+| C2 | Which K is right? | BIC (thick) and AIC (dotted) vs K, both models, distance from the best value; star = best K of each curve, dotted line = true K. `synth_clean_p01` (pure Gaussian) is always added as the control case | 3 + control | `C2-choose-k` |
+| C3 | Do the clusters look right? | PCA 2D, rows = true classes / found by diagonal / found by full, found clusters recolored after their true class (optimal one-to-one assignment), ARI and variance kept by the PCA in every column | 4 | `C3-pca` |
+| C4 | What does each cluster look like? | heatmap of the centroids (variables x clusters), one shared color scale; clusters named after their true class, as in C3 and C5 | 2 with D <= 30 | `C4-centroids-<model>` |
+| C5 | Are the clusters balanced? | bars of the share of points per class: truth, diagonal, full | same as C3 | `C5-sizes` |
+| C6 | Diagonal or full, which fits better? | bars of BIC(full) - BIC(diagonal), colored by the model that wins. Hatched (†): log-likelihood of full < diagonal, i.e. a worse local optimum, not a model comparison. Gray (‡): D = 1, the two models are the same | all real | `C6-bic-full-vs-diagonal` |
+
+Every figure has a bold title in plain words, ONE legend above the panels (never on the data), and the dataset name on every panel. The found clusters are paired one-to-one with the true classes (Hungarian algorithm on the overlap table), so a cluster has the same name and color in C3, C4 and C5. Datasets of C1-C5: `--datasets`, in order of preference. Colors: [color.md](color.md#models-in-the-clustering-plots-diagonal-vs-full).
 
 Table instead of plot: the 10 real datasets with N, D, K, log-likelihood, BIC, iterations, for both models. It is written in `results/tables/clustering-summary.csv` by `src/tables/clustering-summary.py` (also by `plots-cluster.py`, same content).
 
