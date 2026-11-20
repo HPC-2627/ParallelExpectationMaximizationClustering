@@ -18,7 +18,7 @@ Rules to decide which plots go in the report and how to keep them readable. Scri
 | Model | diagonal, full | Two panels (a)/(b) of the same figure |
 | Version | sequential, baseline, opt1, opt2 | Lines (or bars) inside a plot. Sequential is only the reference (1 core) |
 | Dataset | 10 real, 3 synthetic | Real: clustering quality and time to convergence. Synthetic: scaling, K, D (we control them). Per plot pick 1 small, 1 medium, 1 large, never all |
-| Placement | pack, scatter, pack:excl, scatter:excl | **Experimental parameter, not a plot dimension by default.** One dedicated plot (P6), then fixed to the best value everywhere else. Only if P6 shows a visible effect, the key plots (P2, P4) are also drawn as a 2x2 grid, one panel per placement (see 1.1) |
+| Placement | pack, scatter, pack:excl, scatter:excl | **Experimental parameter, not a plot dimension by default.** One dedicated plot (P6). The scaling plots use `pack` on 1 node and `scatter:excl` on 2-4 nodes (`--placement`, `--multi-placement`): PBS puts every `pack` request on ONE 96-core node (checked in `results/logs/pbs/*.out`), so only `scatter` gives real multi-node runs. Only if P6 shows a visible effect, the key plots (P2, P4) are also drawn as a 2x2 grid, one panel per placement (see 1.1) |
 | Ranks x threads | e.g. 1x16 ... 16x1 | One dedicated heatmap (P7), then fixed to the best split |
 | Cores / nodes | 1 ... max | The x axis of the scaling plots |
 
@@ -59,7 +59,7 @@ What we do instead (compromise):
 | ID | Question | Type | x | y | Lines / groups | Fixed |
 |---|---|---|---|---|---|---|
 | P1 | How does time per iteration scale with K and D? | log-log lines, two panels (a) K (b) D, reference slope dashed | K, D | time / iteration | versions | one layout (1 node, 1 rank x 8 threads). K sweep: `synth_clean_p01` with K = 2..64; D sweep: `synth_sweep_dDDD`, K = 4. Data in `results/logs/sweep/` |
-| P2 | How much faster than sequential? (speedup) | lines + ideal | cores | speedup | versions | grid 3 x 2: real datasets left (`cardiotocography`, `cdc_diabetes`, `brainweb`), synthetic right (`synth_overlap_p01`, `p04`, `p16`), small / medium / large from top to bottom (`--real`, `--synth`), placement |
+| P2 | How much faster than sequential? (speedup) | lines + ideal | cores | speedup | versions | grid 3 x 2: real datasets left (`cardiotocography`, `cdc_diabetes`, `brainweb`), synthetic right (the same sizes p02 / p08 / p16 of the family with the most work: `synth_overlap` for diagonal, `synth_rare` for full), small / medium / large from top to bottom (`--real`, `--synth`), placement |
 | P3 | How efficient? | lines | cores | efficiency | versions | same grid as P2, own file `P3-efficiency-<model>` |
 | P4 | Strong scaling | lines + ideal | cores | time (or speedup) | versions | N fixed; same grid as P2 |
 | P5 | Weak scaling | lines | cores | efficiency = time of the SAME version on 1 core / time on p cores | versions | N / core fixed (generated synthetic); reference = each version on 1 core, not the sequential |

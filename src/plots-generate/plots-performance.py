@@ -22,7 +22,10 @@ Rules (doc/plots.md)
     - Time = t_iteration (time per iteration), median over the repetitions, error bar = min-max.
     - Speedup is always against the SEQUENTIAL version of the same model and dataset.
     - For every number of cores the best ranks x threads split is used (P7 shows the splits).
-    - One placement fixed for all the plots except P6 (--placement, default pack).
+    - Placement: runs on 1 node with --placement (default pack), runs on 2-4 nodes with
+      --multi-placement (default scatter:excl). PBS puts every pack request on ONE node (the
+      nodes have 96 cores), so only scatter gives real multi-node runs (see best_split). P6
+      compares the four placements.
     - Diagonal and full are never on the same plot: one file per model.
     - File names: <ID>-<what>-<model>.pdf
     - Clarity (same rules as plots-cluster.py): bold title in plain words + one line with model,
@@ -188,9 +191,16 @@ def aggregate(df):
     return a.reset_index()
 
 
-def best_split(agg, placement):
-    """Placement fixed (sequential always kept); for every core count the best ranks x threads."""
-    a = agg[(agg.placement == placement) | (agg.label == "sequential")]
+def best_split(agg, placement, multi="scatter:excl"):
+    """For every core count the best ranks x threads split (the sequential runs always kept).
+    Runs on ONE node use `placement` (default pack); runs on several nodes use `multi` (default
+    scatter:excl). The reason: PBS puts all the chunks of a pack (or pack:excl) request on ONE
+    node when it has enough cores (the nodes have 96), so the "2 / 4 node" pack runs are really
+    16 / 32 cores of one node (checked in results/logs/pbs/*.out, "nodes assigned by PBS"). Only
+    scatter places the chunks on different nodes, so it is the only real multi-node measure; the
+    exclusive variant is used because on shared nodes the spread of the repetitions is ~25%."""
+    a = agg[((agg.nodes == 1) & (agg.placement == placement))
+            | ((agg.nodes > 1) & (agg.placement == multi)) | (agg.label == "sequential")]
     # one row per (version, model, dataset, K, cores): the one with the smallest time among the
     # ranks x threads splits that give those cores
     key = ["label", "model", "dataset", "K", "cores"]
@@ -206,10 +216,29 @@ def versions_in(d):
 
 
 # Datasets of the grid figures (P2, P3, P4, P8, P10): 3 sizes x (real, synthetic), --real and
-# --synth. Real: small / medium / large real datasets (by rows). Synthetic: the SAME family at 3
-# sizes (synth_overlap, K = 5 overlapping clusters, 250k / 1M / 4M rows), so only N changes.
+# --synth. In every size class the dataset with the MOST work (the longest runs), so that the
+# measures are as long as possible:
+#   real (by rows: small < 10k, medium 10k-1M, large > 1M), the same for both models:
+#       small  cardiotocography  2,126 rows, K = 10, D = 21 (the slowest small one present in both
+#              models; gene_rnaseq, 801 rows x 20,264 variables, has no full-covariance run)
+#       medium cdc_diabetes      253,680 rows (the largest medium one)
+#       large  brainweb          11.9 M rows (the only large one)
+#   synthetic: the largest file of each class, small = p02 (500k rows), medium = p08 (2M),
+#       large = p16 (4M), of the family with the most work for the model: synth_overlap (K = 5,
+#       D = 20) for diagonal, synth_rare (K = 6, D = 50) for full. One family per model, so
+#       inside a figure only N changes.
 REAL_DEFAULT = ["cardiotocography", "cdc_diabetes", "brainweb"]
-SYNTH_DEFAULT = ["synth_overlap_p01", "synth_overlap_p04", "synth_overlap_p16"]
+SYNTH_DEFAULT = {"diagonal": ["synth_overlap_p02", "synth_overlap_p08", "synth_overlap_p16"],
+                 "full": ["synth_rare_p02", "synth_rare_p08", "synth_rare_p16"]}
+# dataset of the one-dataset plots P6, P7, P11: the large synthetic one of the grid
+LARGE_DEFAULT = {"diagonal": "synth_overlap_p16", "full": "synth_rare_p16"}
+
+
+def large_of(ctx, model):
+    """Dataset of the one-dataset plots (P6, P7, P11): --large, or the default of the model."""
+    return ctx.args.large or LARGE_DEFAULT[model]
+
+
 SIZE_NAMES = ["small", "medium", "large"]
 BREAKDOWN_CORES = [1, 8, 32]  # core counts of the bars of P8
 VERSION_SHORT = {"sequential": "seq", "baseline": "base", "opt1": "opt1", "opt2": "opt2"}
@@ -225,7 +254,7 @@ def dataset_grid(ctx, model, row_h):
     data = ctx.best[ctx.best.model == model]
     cells = []
     for c, (sf, kind, names) in enumerate(zip(cols, ("Real datasets", "Synthetic datasets"),
-                                              (ctx.args.real, ctx.args.synth))):
+                                              (ctx.args.real, ctx.args.synth or SYNTH_DEFAULT[model]))):
         sf.suptitle(kind, fontsize=9, fontweight="bold", color=TEXT)
         axs = sf.subplots(3, 1)
         for r, (ax, size, ds) in enumerate(zip(axs, SIZE_NAMES, names)):
@@ -248,7 +277,9 @@ def grid_axes(cell, cores, ylabel):
 
 
 def fmt_s(t):
-    """Seconds in a short readable form: 135 s, 1.08 s, 38.2 ms, 950 µs."""
+    """Seconds in a short readable form: 1009 s, 135 s, 1.08 s, 38.2 ms, 950 µs."""
+    if t >= 1000:
+        return f"{t:.0f} s"
     if t >= 1:
         return f"{t:.3g} s"
     if t >= 1e-3:
@@ -298,6 +329,12 @@ FIG_W, HALF_W = 7.0, 4.4
 def place_txt(p):
     """'placement pack, shared node' for the subtitles."""
     return f"placement {PLACE_LABEL.get(p, p)}"
+
+
+def scale_txt(args):
+    """Placements of the scaling curves, for the subtitles (see best_split)."""
+    return (f"1 node: {PLACE_LABEL.get(args.placement, args.placement)}; "
+            f"2-4 nodes: {PLACE_LABEL.get(args.multi_placement, args.multi_placement)}")
 
 
 def title(fig, text, sub=None):
@@ -459,7 +496,7 @@ def p2_speedup(ctx, model):
         grid_axes(c, allc, "speedup over sequential\n(log scale)")
     legend_from(fig, [c.ax for c in cells], ncol=3)
     title(fig, "Speedup against the sequential version",
-          f"{MODEL_TXT[model]}, {place_txt(ctx.args.placement)}; for every core count the fastest "
+          f"{MODEL_TXT[model]}, {scale_txt(ctx.args)}; for every core count the fastest "
           f"ranks × threads split; {GRID_TXT}")
     save(fig, ctx.out, f"P2-speedup-{model}", ctx.fmts)
 
@@ -487,7 +524,7 @@ def p3_efficiency(ctx, model):
         grid_axes(c, allc, "parallel efficiency\n(speedup / cores)")
     legend_from(fig, [c.ax for c in cells], ncol=3)
     title(fig, "Parallel efficiency against the sequential version",
-          f"{MODEL_TXT[model]}, {place_txt(ctx.args.placement)}; efficiency = speedup / cores "
+          f"{MODEL_TXT[model]}, {scale_txt(ctx.args)}; efficiency = speedup / cores "
           f"(above 1: the optimization also makes the computation faster); {GRID_TXT}")
     save(fig, ctx.out, f"P3-efficiency-{model}", ctx.fmts)
 
@@ -510,7 +547,7 @@ def p4_strong(ctx, model):
         grid_axes(c, allc, "time per iteration (s)\n(log scale)")
     legend_from(fig, [c.ax for c in cells], ncol=3)
     title(fig, "Strong scaling: time per iteration with the size of the dataset fixed",
-          f"{MODEL_TXT[model]}, {place_txt(ctx.args.placement)}; {GRID_TXT}")
+          f"{MODEL_TXT[model]}, {scale_txt(ctx.args)}; {GRID_TXT}")
     save(fig, ctx.out, f"P4-strong-{model}", ctx.fmts)
 
 
@@ -548,7 +585,7 @@ def p5_weak(ctx, model):
     ax.set_ylim(0, eff_max * 1.1 + 0.05)
     legend_from(fig, [ax], ncol=2)
     title(fig, "Weak scaling: the data per core is kept constant",
-          f"{MODEL_TXT[model]}, {fam}_pNN on NN cores, {place_txt(ctx.args.placement)}")
+          f"{MODEL_TXT[model]}, {fam}_pNN on NN cores, {scale_txt(ctx.args)}")
     save(fig, ctx.out, f"P5-weak-{model}", ctx.fmts)
 
 
@@ -557,7 +594,7 @@ def p6_placement(ctx, model):
     a = ctx.agg
     v = ctx.args.version or best_version(a)
     need(v, "no parallel version")
-    ds = pick_datasets(ctx.best, model, ctx.args.large, ctx.args.small)
+    ds = pick_datasets(ctx.best, model, large_of(ctx, model), ctx.args.small)
     need(ds, "no parallel data")
     d = a[(a.label == v) & (a.model == model) & (a.dataset == ds[0]) & (a.placement != "seq")]
     need(not d.empty, f"no data for {v}/{model}/{ds[0]}")
@@ -575,7 +612,9 @@ def p6_placement(ctx, model):
         ax.bar(x, s.t, w, yerr=err, color=PLACE_COLOR[pl], edgecolor=TEXT, linewidth=0.6, capsize=2,
                hatch="//" if "excl" in pl else None, label=PLACE_LABEL[pl])
     ax.set_xticks(range(len(nodes)), [f"{n} node" + ("s" if n > 1 else "") for n in nodes])
-    ax.set_xlabel("number of nodes (on 1 node, scatter = pack)")
+    # the nodes REQUESTED: pack puts all the chunks on ONE 96-core node, only scatter really uses
+    # 2 or 4 nodes (see best_split)
+    ax.set_xlabel("nodes requested (pack: always ONE node; scatter: 2 or 4 nodes)")
     ax.set_ylabel("time per iteration (s)")
     legend_from(fig, [ax], ncol=2)
     title(fig, "Effect of the PBS placement on the time per iteration",
@@ -590,7 +629,7 @@ def p7_heatmap(ctx, model):
     a = ctx.agg
     v = ctx.args.version or best_version(a)
     need(v, "no parallel version")
-    ds = pick_datasets(ctx.best, model, ctx.args.large, ctx.args.small)
+    ds = pick_datasets(ctx.best, model, large_of(ctx, model), ctx.args.small)
     need(ds, "no parallel data")
     d = a[(a.label == v) & (a.model == model) & (a.dataset == ds[0]) & (a.nodes == 1)
           & (a.placement.isin([ctx.args.placement, ctx.args.placement.split(":")[0]]))]
@@ -662,7 +701,7 @@ def p8_breakdown(ctx, model):
         ax.set_ylabel("share of the run (%)" if c.col == 0 else "")
     legend_from(fig, [c.ax for c in cells], ncol=2)
     title(fig, "Where the time goes: the whole run split by phase",
-          f"{MODEL_TXT[model]}, {place_txt(ctx.args.placement)}; every bar = 100% of one run, "
+          f"{MODEL_TXT[model]}, {scale_txt(ctx.args)}; every bar = 100% of one run, "
           f"the number above it = its total time; seq = sequential, base = baseline; {GRID_TXT}")
     save(fig, ctx.out, f"P8-breakdown-{model}", ctx.fmts)
 
@@ -705,7 +744,7 @@ def p9_opt_gain(ctx, model):
         block_header(sf, head)
     legend_from(fig, axs)
     title(fig, "Gain of the optimizations over the parallel baseline, per dataset",
-          f"{MODEL_TXT[model]}, {cores} cores, {place_txt(ctx.args.placement)}")
+          f"{MODEL_TXT[model]}, {cores} cores, {scale_txt(ctx.args)}")
     save(fig, ctx.out, f"P9-opt-gain-{model}", ctx.fmts)
 
 
@@ -856,7 +895,7 @@ def p12_size(ctx, model):
         plt.Line2D([], [], ls="", marker="o", mfc="none", mec=TEXT, mew=1.2, ms=5)]
     top_legend(fig, hs, list(seen) + ["real dataset", "synthetic dataset"], ncol=3)
     title(fig, "Speedup against the size of the dataset (all the datasets)",
-          f"{MODEL_TXT[model]}, {place_txt(ctx.args.placement)}; one point per dataset and version; "
+          f"{MODEL_TXT[model]}, {scale_txt(ctx.args)}; one point per dataset and version; "
           "filled = real, empty = synthetic")
     save(fig, ctx.out, f"P12-size-{model}", ctx.fmts)
 
@@ -868,10 +907,11 @@ def p11_imbalance(ctx, model):
     df = ctx.df
     v = ctx.args.version or best_version(ctx.agg)
     need(v, "no parallel version")
-    ds = pick_datasets(ctx.best, model, ctx.args.large, ctx.args.small)
+    ds = pick_datasets(ctx.best, model, large_of(ctx, model), ctx.args.small)
     need(ds, "no parallel data")
     d = df[(df.label == v) & (df.model == model) & (df.dataset == ds[0]) & (df.ranks > 1)
-           & (df.placement == ctx.args.placement) & df.rc.notna()]
+           & (((df.nodes == 1) & (df.placement == ctx.args.placement))
+              | ((df.nodes > 1) & (df.placement == ctx.args.multi_placement))) & df.rc.notna()]
     need(not d.empty, "no multi-rank run with rank_compute (re-run with the new binaries)")
     d = d.assign(lo=d.rc.map(np.min), mean=d.rc.map(np.mean), hi=d.rc.map(np.max))
     g = d.groupby(["nodes", "ranks", "threads"])[["lo", "mean", "hi"]].median().reset_index()
@@ -894,7 +934,7 @@ def p11_imbalance(ctx, model):
     top_legend(fig, h, ["mean over the ranks", "fastest to slowest rank",
                         "+% = extra time of the slowest rank (the others wait)"], ncol=3)
     title(fig, "Load imbalance between MPI ranks",
-          f"{VERSION_LABEL[v]}, {MODEL_TXT[model]}, {ds[0]}, {place_txt(ctx.args.placement)}")
+          f"{VERSION_LABEL[v]}, {MODEL_TXT[model]}, {ds[0]}, {scale_txt(ctx.args)}")
     save(fig, ctx.out, f"P11-imbalance-{model}", ctx.fmts)
 
 
@@ -913,18 +953,22 @@ def main():
                     help="IDs to draw")
     ap.add_argument("--models", nargs="+", default=MODELS, choices=MODELS)
     ap.add_argument("--placement", default="pack", choices=PLACE_ORDER,
-                    help="placement fixed for every plot except P6 (the best one found with P6)")
+                    help="placement of the runs on ONE node (every plot except P6) [pack]")
+    ap.add_argument("--multi-placement", default="scatter:excl", choices=PLACE_ORDER,
+                    help="placement of the runs on 2-4 nodes (pack would put them on ONE node) "
+                         "[scatter:excl]")
     ap.add_argument("--version", help="version for P6/P7 (default: the most optimized one present)")
     # Datasets. The grid figures (P2, P3, P4, P8, P10) show 3 real and 3 synthetic datasets
     # (small, medium, large); the one-dataset plots (P6, P7, P11) the large synthetic one.
-    # synth_overlap_p16 instead of synth_clean_p16: it needs more iterations, so even the optimized
-    # versions on 32 cores run for several seconds (synth_clean_p16: 0.4 s, mostly overhead)
+    # (defaults and the reason of the choice: REAL_DEFAULT, SYNTH_DEFAULT, LARGE_DEFAULT)
     ap.add_argument("--real", nargs=3, default=REAL_DEFAULT, metavar=("SMALL", "MEDIUM", "LARGE"),
                     help="real datasets of the grid figures")
-    ap.add_argument("--synth", nargs=3, default=SYNTH_DEFAULT, metavar=("SMALL", "MEDIUM", "LARGE"),
-                    help="synthetic datasets of the grid figures")
-    ap.add_argument("--large", default="synth_overlap_p16",
-                    help="dataset of the one-dataset plots P6, P7, P11 (auto: max N if missing)")
+    ap.add_argument("--synth", nargs=3, default=None, metavar=("SMALL", "MEDIUM", "LARGE"),
+                    help="synthetic datasets of the grid figures, both models (default: "
+                         "synth_overlap_p02/p08/p16 for diagonal, synth_rare_p02/p08/p16 for full)")
+    ap.add_argument("--large", default=None,
+                    help="dataset of the one-dataset plots P6, P7, P11 (default: the large synthetic "
+                         "one of the grid, synth_overlap_p16 diagonal / synth_rare_p16 full)")
     ap.add_argument("--small", default="cardiotocography", help="fallback small dataset")
     ap.add_argument("--family", default="synth_clean", help="synthetic family for the weak scaling P5")
     # Default roofs of P10, for the 8 cores of the 1-node runs on a Xeon Gold 6252N
@@ -947,13 +991,14 @@ def main():
     args.out.mkdir(parents=True, exist_ok=True)
     df = load_logs(args.logs)
     agg = aggregate(df)
-    best = best_split(agg, args.placement)
+    best = best_split(agg, args.placement, args.multi_placement)
     sweep_df = load_logs(args.logs / "sweep", required=False, pattern="*.log")  # P1 only
     sweep = aggregate(sweep_df) if sweep_df is not None else None
     # everything the plot functions need, in one object (they are called as plot(ctx, model))
     ctx = argparse.Namespace(args=args, df=df, agg=agg, best=best, sweep=sweep, out=args.out,
                              fmts=args.fmt)
-    print(f"{len(df)} runs, versions: {sorted(set(df.label))}, placement: {args.placement}")
+    print(f"{len(df)} runs, versions: {sorted(set(df.label))}, placement: {args.placement} on 1 node, "
+          f"{args.multi_placement} on 2-4 nodes")
 
     # ---- draw: every requested plot, for every model. P2 and P3 are the same function (one
     # figure with two rows), so "done" avoids drawing it twice if both IDs are requested ----
