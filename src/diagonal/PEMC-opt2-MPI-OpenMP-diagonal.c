@@ -23,9 +23,13 @@
  *   The local log-likelihood travels in the last slot of the same buffer as the M-step sums.
  *
  * Why it is faster:
- *   (1) LATENCY. The diagonal messages are small (K + 2*K*D doubles: from a few hundred bytes to a
- *       few KB), so the cost of an Allreduce is mostly its latency (log2(P) steps over the network
- *       between nodes), not the bandwidth. One collective instead of two halves that cost.
+ *   (1) LATENCY. The collective that disappears is the one of the log-likelihood (1 double): its
+ *       cost is only latency (log2(P) steps over the network between nodes), and appending that
+ *       double to the sums adds almost nothing. On most datasets the sums are small too
+ *       (K + 2*K*D doubles: from a few hundred bytes to a few KB), so both collectives are
+ *       latency-bound and one instead of two halves the cost. Exception: gene_rnaseq (K = 5,
+ *       D = 20 264: ~1.6 MB), where the bandwidth dominates and the relative saving is small.
+ *       Cost model: Thakur et al. 2005 (doc/papers_and_references.md #T).
  *   (2) WAITING. Every Allreduce is a synchronization point: a rank that finishes early waits for
  *       the slowest one. The baseline waits twice per iteration (after the E-step and after the
  *       M-step), opt2 once, after both: the waits of the two phases are not added any more.

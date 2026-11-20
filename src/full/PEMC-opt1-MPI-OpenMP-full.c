@@ -62,7 +62,9 @@
  *                              loop over the rows is a contiguous SIMD reduction         -> (c)
  *     It is the step from matrix-vector operations (BLAS level 2: TRSV, SYR) to matrix-matrix ones
  *     (BLAS level 3: TRSM, SYRK), inspired by the matrix formulation with cache blocking of
- *     W. Kwedlo, FedCSIS 2023 (doc/papers.md #4.2), written here by hand (no BLAS library).
+ *     W. Kwedlo, FedCSIS 2023 (doc/papers_and_references.md #4.2), written here by hand (no BLAS
+ *     library). Unlike Kwedlo (Cholesky of the inverse, TRMM, blocks sized for the L3 cache) we
+ *     factorize Sigma itself, solve by forward substitution and size the blocks for L1/L2.
  *     The OpenMP loop runs over the blocks (schedule static).
  *
  *     Effect of (4) alone, measured on the cluster in a previous campaign (fused pass (1)-(3)

@@ -3,7 +3,8 @@
  *
  * OPTIMIZATION 2 of the hybrid MPI + OpenMP EM, FULL covariance: COMMUNICATION.
  * It starts from PEMC-opt1-MPI-OpenMP-full.c (all the optimizations of the computation: fused E+M
- * pass, one parallel region per iteration, no false sharing, blocks of B rows; read its header)
+ * pass, one parallel region per iteration, no false sharing, blocks of B rows inspired by Kwedlo,
+ * doc/papers_and_references.md #4.2; read its header)
  * and changes ONLY how the MPI ranks communicate. The computation (fused_pass and its block
  * kernels, m_step_update, the initialization) is the one of opt1, line by line. So "opt2 vs opt1"
  * measures the effect of the communication alone.
@@ -34,9 +35,10 @@
  *       (log2(P) steps, each crossing the network between nodes) is paid once.
  *   (2) WAITING. Every Allreduce is a synchronization point: a rank that finishes early waits for
  *       the slowest one. Opt1 waits twice per iteration, opt2 once.
- *   (3) BYTES. Unlike the diagonal model (messages of a few KB, latency only), here the message
- *       grows as K*D^2: with K = 6, D = 50 the whole sxx is 15 000 doubles (120 KB), the triangle
- *       7 650 (61 KB). For such sizes the bandwidth term counts, and the packing halves it.
+ *   (3) BYTES. Unlike the diagonal model (messages of a few KB on most datasets, latency only),
+ *       here the message grows as K*D^2: with K = 6, D = 50 the whole sxx is 15 000 doubles
+ *       (120 KB), the triangle 7 650 (61 KB). For such sizes the bandwidth term counts, and the
+ *       packing halves it (cost model: Thakur et al. 2005, doc/papers_and_references.md #T).
  *   The gain is expected where the communication matters: several nodes, small datasets (short
  *   iterations; in the opt1 logs on 4 exclusive nodes the communication is 30-48% of the time on
  *   cardiotocography, heart_failure, parkinson). On large datasets (1-2% of communication) and with

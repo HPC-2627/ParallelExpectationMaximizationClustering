@@ -3,11 +3,23 @@
 \providecommand\HyField@AuxAddToFields[1]{}
 \providecommand\HyField@AuxAddToCoFields[2]{}
 \providecommand \oddpage@label [2]{}
+\citation{bishop}
+\citation{sanderson}
+\citation{kwedlo}
+\citation{lee2016}
+\citation{lee2020}
+\citation{machlica}
+\citation{yin}
+\citation{srivastava}
+\citation{thakur}
 \@writefile{toc}{\contentsline {section}{\numberline {I}Introduction}{3}{section.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {I-}0a}Related work.}{3}{paragraph.1.0.0.1}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {I-A}}The EM algorithm for Gaussian mixtures}{3}{subsection.1.1}\protected@file@percent }
 \@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {I-A}0a}Model.}{3}{paragraph.1.1.0.1}\protected@file@percent }
+\citation{sanderson}
+\citation{sanderson}
 \citation{bishop}
-\citation{bishop}
+\citation{sanderson}
 \@writefile{lot}{\contentsline {table}{\numberline {I}{\ignorespaces Differences between the two models.}}{4}{table.caption.3}\protected@file@percent }
 \providecommand*\caption@xref[2]{\@setref\relax\@undefined{#1}}
 \newlabel{tab:models}{{I}{4}{Differences between the two models}{table.caption.3}{}}
@@ -15,90 +27,120 @@
 \@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {I-A}0c}M-step.}{4}{paragraph.1.1.0.3}\protected@file@percent }
 \@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {I-A}0d}Initialization and stopping.}{4}{paragraph.1.1.0.4}\protected@file@percent }
 \@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {I-A}0e}Numerical safeguards.}{4}{paragraph.1.1.0.5}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {I-A}0f}Visualization of the algorithm.}{4}{paragraph.1.1.0.6}\protected@file@percent }
+\citation{bishop}
+\citation{sanderson}
 \@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces EM with diagonal covariance on \texttt  {synth\_clean} (first 300 rows, $D=10$, $K=4$, seed 12). Points are coloured by their responsibilities $r_{ik}$ (gray before the first E-step), crosses are the means $\mu _k$ with the path followed so far, ellipses are the $2\sigma $ contours. EM works in all 10 dimensions; the picture is the 2D projection where the two closest clusters found at convergence are furthest apart.}}{5}{figure.caption.4}\protected@file@percent }
 \newlabel{fig:em-steps}{{1}{5}{EM with diagonal covariance on \texttt {synth\_clean} (first 300 rows, $D=10$, $K=4$, seed 12). Points are coloured by their responsibilities $r_{ik}$ (gray before the first E-step), crosses are the means $\mu _k$ with the path followed so far, ellipses are the $2\sigma $ contours. EM works in all 10 dimensions; the picture is the 2D projection where the two closest clusters found at convergence are furthest apart}{figure.caption.4}{}}
+\@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {I-A}0f}Visualization of the algorithm.}{5}{paragraph.1.1.0.6}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {I-B}}Implemented versions and cost}{5}{subsection.1.2}\protected@file@percent }
 \newlabel{sec:versions}{{\mbox  {I-B}}{5}{Implemented versions and cost}{subsection.1.2}{}}
-\@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {I-B}0a}Full model: Cholesky factorization.}{5}{paragraph.1.2.0.1}\protected@file@percent }
+\citation{kwedlo}
+\citation{sklearn}
+\@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {I-B}0a}Full model: Cholesky factorization.}{6}{paragraph.1.2.0.1}\protected@file@percent }
 \@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {I-B}0b}Cost of one iteration.}{6}{paragraph.1.2.0.2}\protected@file@percent }
 \@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {I-B}0c}Sequential versions.}{6}{paragraph.1.2.0.3}\protected@file@percent }
-\@writefile{loa}{\contentsline {algocf}{\numberline {1}{\ignorespaces Sequential EM, diagonal model}}{6}{algocf.1}\protected@file@percent }
-\newlabel{alg:seq-diag}{{1}{6}{Sequential versions}{algocf.1}{}}
-\@writefile{loa}{\contentsline {algocf}{\numberline {2}{\ignorespaces Sequential EM, full model}}{7}{algocf.2}\protected@file@percent }
-\newlabel{alg:seq-full}{{2}{7}{Sequential versions}{algocf.2}{}}
-\@writefile{toc}{\contentsline {section}{\numberline {II}Parallel Design Methodology}{8}{section.2}\protected@file@percent }
-\newlabel{sec:design}{{II}{8}{Parallel Design Methodology}{section.2}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {II-A}}Foster's Design Strategy}{8}{subsection.2.1}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {II-B}}Communication}{8}{subsection.2.2}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {II-C}}Baseline algorithms}{8}{subsection.2.3}\protected@file@percent }
-\@writefile{loa}{\contentsline {algocf}{\numberline {3}{\ignorespaces Baseline MPI+OpenMP, diagonal model (rank $p$)}}{9}{algocf.3}\protected@file@percent }
-\newlabel{alg:base-diag}{{3}{9}{Baseline algorithms}{algocf.3}{}}
-\@writefile{loa}{\contentsline {algocf}{\numberline {4}{\ignorespaces Baseline MPI+OpenMP, full model (rank $p$)}}{9}{algocf.4}\protected@file@percent }
-\newlabel{alg:base-full}{{4}{9}{Baseline algorithms}{algocf.4}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {II-D}}Optimization 1, diagonal model: computation}{10}{subsection.2.4}\protected@file@percent }
-\@writefile{loa}{\contentsline {algocf}{\numberline {5}{\ignorespaces Optimization 1 MPI+OpenMP, diagonal model (rank $p$)}}{10}{algocf.5}\protected@file@percent }
-\newlabel{alg:opt1-diag}{{5}{10}{Optimization 1, diagonal model: computation}{algocf.5}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {II-E}}Optimization 2, diagonal model: communication}{11}{subsection.2.5}\protected@file@percent }
-\@writefile{loa}{\contentsline {algocf}{\numberline {6}{\ignorespaces Optimization 2 MPI+OpenMP, diagonal model (rank $p$)}}{11}{algocf.6}\protected@file@percent }
-\newlabel{alg:opt2-diag}{{6}{11}{Optimization 2, diagonal model: communication}{algocf.6}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {II-F}}Optimization 1, full model: computation}{12}{subsection.2.6}\protected@file@percent }
-\@writefile{loa}{\contentsline {algocf}{\numberline {7}{\ignorespaces Optimization 1 MPI+OpenMP, full model (rank $p$)}}{13}{algocf.7}\protected@file@percent }
-\newlabel{alg:opt1-full}{{7}{13}{Optimization 1, full model: computation}{algocf.7}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {II-G}}Optimization 2, full model: communication}{13}{subsection.2.7}\protected@file@percent }
-\@writefile{loa}{\contentsline {algocf}{\numberline {8}{\ignorespaces Optimization 2 MPI+OpenMP, full model (rank $p$)}}{14}{algocf.8}\protected@file@percent }
-\newlabel{alg:opt2-full}{{8}{14}{Optimization 2, full model: communication}{algocf.8}{}}
-\@writefile{toc}{\contentsline {section}{\numberline {III}Experimental Setup \& Dataset}{15}{section.3}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {III-A}}Hardware Infrastructure}{15}{subsection.3.1}\protected@file@percent }
-\newlabel{sec:hw}{{\mbox  {III-A}}{15}{Hardware Infrastructure}{subsection.3.1}{}}
-\@writefile{lot}{\contentsline {table}{\numberline {II}{\ignorespaces Compute nodes used for all the measurements (turbo frequency from the Intel catalog).}}{15}{table.caption.5}\protected@file@percent }
-\newlabel{tab:hw}{{II}{15}{Compute nodes used for all the measurements (turbo frequency from the Intel catalog)}{table.caption.5}{}}
-\@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {III-A}0a}Process and thread placement.}{15}{paragraph.3.1.0.1}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {III-B}}Measurement Methodology}{15}{subsection.3.2}\protected@file@percent }
-\newlabel{sec:method}{{\mbox  {III-B}}{15}{Measurement Methodology}{subsection.3.2}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {III-C}}Dataset}{17}{subsection.3.3}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {III-C}0a}Common format.}{17}{paragraph.3.3.0.1}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {III-C}0b}Real datasets}{17}{paragraph.3.3.0.2}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {III}{\ignorespaces Real datasets. $N$ and $D$ are the values actually used by the EM after preprocessing; $K$ is the number of ground-truth classes (used only for evaluation).}}{17}{table.caption.6}\protected@file@percent }
-\newlabel{tab:real}{{III}{17}{Real datasets. $N$ and $D$ are the values actually used by the EM after preprocessing; $K$ is the number of ground-truth classes (used only for evaluation)}{table.caption.6}{}}
-\@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {III-C}0c}Synthetic profiles}{17}{paragraph.3.3.0.3}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {IV}{\ignorespaces Synthetic profiles. $\delta $ is the distance between cluster means in units of the within-cluster standard deviation.}}{18}{table.caption.7}\protected@file@percent }
-\newlabel{tab:synth-profiles}{{IV}{18}{Synthetic profiles. $\delta $ is the distance between cluster means in units of the within-cluster standard deviation}{table.caption.7}{}}
-\@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {III-C}0d}Variables of the synthetic data}{18}{paragraph.3.3.0.4}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {V}{\ignorespaces Clinical variables used to build the synthetic data (typical mean $\pm $ std and physiological limits).}}{18}{table.caption.8}\protected@file@percent }
-\newlabel{tab:synth-vars}{{V}{18}{Clinical variables used to build the synthetic data (typical mean $\pm $ std and physiological limits)}{table.caption.8}{}}
-\@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {III-C}0e}Weak scaling files}{18}{paragraph.3.3.0.5}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {VI}{\ignorespaces Weak scaling: rows and data file size for each profile ($N_0 = 250\,000$ rows per process; labels file of $4N$ bytes for every profile). MB $= 10^6$ bytes.}}{19}{table.caption.9}\protected@file@percent }
-\newlabel{tab:weak}{{VI}{19}{Weak scaling: rows and data file size for each profile ($N_0 = 250\,000$ rows per process; labels file of $4N$ bytes for every profile). MB $= 10^6$ bytes}{table.caption.9}{}}
-\@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {III-C}0f}Strong scaling}{19}{paragraph.3.3.0.6}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {VII}{\ignorespaces Strong scaling (fixed $N = 4\,000\,000$): data per rank and work per rank $N \cdot K \cdot D / p$. The work is an operation count proportional to the cost of an iteration, not a measured time.}}{19}{table.caption.10}\protected@file@percent }
-\newlabel{tab:strong}{{VII}{19}{Strong scaling (fixed $N = 4\,000\,000$): data per rank and work per rank $N \cdot K \cdot D / p$. The work is an operation count proportional to the cost of an iteration, not a measured time}{table.caption.10}{}}
-\newlabel{sec:sweeps}{{\mbox  {III-C}0g}{19}{Sweeps over $K$ and $D$}{paragraph.3.3.0.7}{}}
-\@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {III-C}0g}Sweeps over $K$ and $D$}{19}{paragraph.3.3.0.7}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {VIII}{\ignorespaces Sweeps over $K$ and $D$ ($N=250\,000$, 1 node). The work is an operation count proportional to the cost of an iteration, not a measured time. Data file sizes: $8+8ND$ bytes, plus a labels file of 1 MB per file.}}{20}{table.caption.11}\protected@file@percent }
-\newlabel{tab:sweeps}{{VIII}{20}{Sweeps over $K$ and $D$ ($N=250\,000$, 1 node). The work is an operation count proportional to the cost of an iteration, not a measured time. Data file sizes: $8+8ND$ bytes, plus a labels file of 1 MB per file}{table.caption.11}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {III-D}}Validation of the clustering}{20}{subsection.3.4}\protected@file@percent }
-\newlabel{sec:validation}{{\mbox  {III-D}}{20}{Validation of the clustering}{subsection.3.4}{}}
-\@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {III-D}0a}Convergence}{20}{paragraph.3.4.0.1}\protected@file@percent }
-\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces Convergence of EM: log-likelihood per point at every iteration, diagonal vs full covariance, $K$ = number of true classes.}}{21}{figure.caption.12}\protected@file@percent }
-\newlabel{fig:c1}{{2}{21}{Convergence of EM: log-likelihood per point at every iteration, diagonal vs full covariance, $K$ = number of true classes}{figure.caption.12}{}}
-\@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {III-D}0b}Choice of $K$}{21}{paragraph.3.4.0.2}\protected@file@percent }
-\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces BIC and AIC for $K=2,\dots  ,10$ (difference from the best value of each curve, lower is better). The star is the best $K$ of each curve, the dotted line the true number of classes; \texttt  {synth\_clean\_p01} is the control.}}{22}{figure.caption.13}\protected@file@percent }
-\newlabel{fig:c2}{{3}{22}{BIC and AIC for $K=2,\dots ,10$ (difference from the best value of each curve, lower is better). The star is the best $K$ of each curve, the dotted line the true number of classes; \texttt {synth\_clean\_p01} is the control}{figure.caption.13}{}}
-\@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {III-D}0c}Clusters found}{22}{paragraph.3.4.0.3}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {III-D}0d}Diagonal or full}{22}{paragraph.3.4.0.4}\protected@file@percent }
-\@writefile{lof}{\contentsline {figure}{\numberline {4}{\ignorespaces BIC(full) $-$ BIC(diagonal) at the true $K$ for every real dataset: below zero the full model fits better. $\dagger $: the log-likelihood of the full model is lower than the diagonal one (worse local optimum of EM); $\ddagger $: $D=1$, the two models are the same.}}{23}{figure.caption.14}\protected@file@percent }
-\newlabel{fig:c6}{{4}{23}{BIC(full) $-$ BIC(diagonal) at the true $K$ for every real dataset: below zero the full model fits better. $\dagger $: the log-likelihood of the full model is lower than the diagonal one (worse local optimum of EM); $\ddagger $: $D=1$, the two models are the same}{figure.caption.14}{}}
-\@writefile{toc}{\contentsline {section}{\numberline {IV}Performance Evaluation}{24}{section.4}\protected@file@percent }
-\newlabel{sec:perf}{{IV}{24}{Performance Evaluation}{section.4}{}}
-\@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {IV-}0a}Why real and synthetic datasets.}{24}{paragraph.4.0.0.1}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-A}}Execution Time and Throughput}{24}{subsection.4.1}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-B}}Strong Scaling}{24}{subsection.4.2}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-C}}Weak Scaling}{24}{subsection.4.3}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-D}}Communication vs Computation Breakdown}{24}{subsection.4.4}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {V}Discussion}{25}{section.5}\protected@file@percent }
-\newlabel{sec:discussion}{{V}{25}{Discussion}{section.5}{}}
-\@writefile{toc}{\contentsline {section}{\numberline {VI}Conclusion}{26}{section.6}\protected@file@percent }
+\@writefile{loa}{\contentsline {algocf}{\numberline {1}{\ignorespaces Sequential EM, diagonal model}}{7}{algocf.1}\protected@file@percent }
+\newlabel{alg:seq-diag}{{1}{7}{Sequential versions}{algocf.1}{}}
+\@writefile{loa}{\contentsline {algocf}{\numberline {2}{\ignorespaces Sequential EM, full model}}{8}{algocf.2}\protected@file@percent }
+\newlabel{alg:seq-full}{{2}{8}{Sequential versions}{algocf.2}{}}
+\citation{sanderson,lee2020,kwedlo}
+\citation{sanderson}
+\citation{byu}
+\@writefile{toc}{\contentsline {section}{\numberline {II}Parallel Design Methodology}{9}{section.2}\protected@file@percent }
+\newlabel{sec:design}{{II}{9}{Parallel Design Methodology}{section.2}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {II-A}}Foster's Design Strategy}{9}{subsection.2.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {II-B}}Communication}{9}{subsection.2.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {II-C}}Baseline algorithms}{9}{subsection.2.3}\protected@file@percent }
+\@writefile{loa}{\contentsline {algocf}{\numberline {3}{\ignorespaces Baseline MPI+OpenMP, diagonal model (rank $p$)}}{10}{algocf.3}\protected@file@percent }
+\newlabel{alg:base-diag}{{3}{10}{Baseline algorithms}{algocf.3}{}}
+\@writefile{loa}{\contentsline {algocf}{\numberline {4}{\ignorespaces Baseline MPI+OpenMP, full model (rank $p$)}}{10}{algocf.4}\protected@file@percent }
+\newlabel{alg:base-full}{{4}{10}{Baseline algorithms}{algocf.4}{}}
+\citation{lee2016}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {II-D}}Optimization 1, diagonal model: computation}{11}{subsection.2.4}\protected@file@percent }
+\@writefile{loa}{\contentsline {algocf}{\numberline {5}{\ignorespaces Optimization 1 MPI+OpenMP, diagonal model (rank $p$)}}{11}{algocf.5}\protected@file@percent }
+\newlabel{alg:opt1-diag}{{5}{11}{Optimization 1, diagonal model: computation}{algocf.5}{}}
+\citation{thakur}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {II-E}}Optimization 2, diagonal model: communication}{12}{subsection.2.5}\protected@file@percent }
+\citation{kwedlo}
+\citation{kwedlo}
+\citation{machlica}
+\@writefile{loa}{\contentsline {algocf}{\numberline {6}{\ignorespaces Optimization 2 MPI+OpenMP, diagonal model (rank $p$)}}{13}{algocf.6}\protected@file@percent }
+\newlabel{alg:opt2-diag}{{6}{13}{Optimization 2, diagonal model: communication}{algocf.6}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {II-F}}Optimization 1, full model: computation}{13}{subsection.2.6}\protected@file@percent }
+\citation{thakur}
+\@writefile{loa}{\contentsline {algocf}{\numberline {7}{\ignorespaces Optimization 1 MPI+OpenMP, full model (rank $p$)}}{15}{algocf.7}\protected@file@percent }
+\newlabel{alg:opt1-full}{{7}{15}{Optimization 1, full model: computation}{algocf.7}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {II-G}}Optimization 2, full model: communication}{15}{subsection.2.7}\protected@file@percent }
+\citation{thakur}
+\@writefile{loa}{\contentsline {algocf}{\numberline {8}{\ignorespaces Optimization 2 MPI+OpenMP, full model (rank $p$)}}{16}{algocf.8}\protected@file@percent }
+\newlabel{alg:opt2-full}{{8}{16}{Optimization 2, full model: communication}{algocf.8}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {III}Experimental Setup \& Dataset}{17}{section.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {III-A}}Hardware Infrastructure}{17}{subsection.3.1}\protected@file@percent }
+\newlabel{sec:hw}{{\mbox  {III-A}}{17}{Hardware Infrastructure}{subsection.3.1}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {II}{\ignorespaces Compute nodes used for all the measurements (turbo frequency from the Intel catalog).}}{17}{table.caption.5}\protected@file@percent }
+\newlabel{tab:hw}{{II}{17}{Compute nodes used for all the measurements (turbo frequency from the Intel catalog)}{table.caption.5}{}}
+\@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {III-A}0a}Process and thread placement.}{17}{paragraph.3.1.0.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {III-B}}Measurement Methodology}{17}{subsection.3.2}\protected@file@percent }
+\newlabel{sec:method}{{\mbox  {III-B}}{17}{Measurement Methodology}{subsection.3.2}{}}
+\citation{hubert}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {III-C}}Dataset}{19}{subsection.3.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {III-C}0a}Common format.}{19}{paragraph.3.3.0.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {III-C}0b}Real datasets}{19}{paragraph.3.3.0.2}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {III}{\ignorespaces Real datasets. $N$ and $D$ are the values actually used by the EM after preprocessing; $K$ is the number of ground-truth classes (used only for evaluation).}}{19}{table.caption.6}\protected@file@percent }
+\newlabel{tab:real}{{III}{19}{Real datasets. $N$ and $D$ are the values actually used by the EM after preprocessing; $K$ is the number of ground-truth classes (used only for evaluation)}{table.caption.6}{}}
+\@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {III-C}0c}Synthetic profiles}{19}{paragraph.3.3.0.3}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {IV}{\ignorespaces Synthetic profiles. $\delta $ is the distance between cluster means in units of the within-cluster standard deviation.}}{20}{table.caption.7}\protected@file@percent }
+\newlabel{tab:synth-profiles}{{IV}{20}{Synthetic profiles. $\delta $ is the distance between cluster means in units of the within-cluster standard deviation}{table.caption.7}{}}
+\@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {III-C}0d}Variables of the synthetic data}{20}{paragraph.3.3.0.4}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {V}{\ignorespaces Clinical variables used to build the synthetic data (typical mean $\pm $ std and physiological limits).}}{20}{table.caption.8}\protected@file@percent }
+\newlabel{tab:synth-vars}{{V}{20}{Clinical variables used to build the synthetic data (typical mean $\pm $ std and physiological limits)}{table.caption.8}{}}
+\@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {III-C}0e}Weak scaling files}{20}{paragraph.3.3.0.5}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {VI}{\ignorespaces Weak scaling: rows and data file size for each profile ($N_0 = 250\,000$ rows per process; labels file of $4N$ bytes for every profile). MB $= 10^6$ bytes.}}{21}{table.caption.9}\protected@file@percent }
+\newlabel{tab:weak}{{VI}{21}{Weak scaling: rows and data file size for each profile ($N_0 = 250\,000$ rows per process; labels file of $4N$ bytes for every profile). MB $= 10^6$ bytes}{table.caption.9}{}}
+\@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {III-C}0f}Strong scaling}{21}{paragraph.3.3.0.6}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {VII}{\ignorespaces Strong scaling (fixed $N = 4\,000\,000$): data per rank and work per rank $N \cdot K \cdot D / p$. The work is an operation count proportional to the cost of an iteration, not a measured time.}}{21}{table.caption.10}\protected@file@percent }
+\newlabel{tab:strong}{{VII}{21}{Strong scaling (fixed $N = 4\,000\,000$): data per rank and work per rank $N \cdot K \cdot D / p$. The work is an operation count proportional to the cost of an iteration, not a measured time}{table.caption.10}{}}
+\newlabel{sec:sweeps}{{\mbox  {III-C}0g}{21}{Sweeps over $K$ and $D$}{paragraph.3.3.0.7}{}}
+\@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {III-C}0g}Sweeps over $K$ and $D$}{21}{paragraph.3.3.0.7}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {VIII}{\ignorespaces Sweeps over $K$ and $D$ ($N=250\,000$, 1 node). The work is an operation count proportional to the cost of an iteration, not a measured time. Data file sizes: $8+8ND$ bytes, plus a labels file of 1 MB per file.}}{22}{table.caption.11}\protected@file@percent }
+\newlabel{tab:sweeps}{{VIII}{22}{Sweeps over $K$ and $D$ ($N=250\,000$, 1 node). The work is an operation count proportional to the cost of an iteration, not a measured time. Data file sizes: $8+8ND$ bytes, plus a labels file of 1 MB per file}{table.caption.11}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {III-D}}Validation of the clustering}{22}{subsection.3.4}\protected@file@percent }
+\newlabel{sec:validation}{{\mbox  {III-D}}{22}{Validation of the clustering}{subsection.3.4}{}}
+\@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {III-D}0a}Convergence}{22}{paragraph.3.4.0.1}\protected@file@percent }
+\citation{schwarz}
+\citation{akaike}
+\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces Convergence of EM: log-likelihood per point at every iteration, diagonal vs full covariance, $K$ = number of true classes.}}{23}{figure.caption.12}\protected@file@percent }
+\newlabel{fig:c1}{{2}{23}{Convergence of EM: log-likelihood per point at every iteration, diagonal vs full covariance, $K$ = number of true classes}{figure.caption.12}{}}
+\@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {III-D}0b}Choice of $K$}{23}{paragraph.3.4.0.2}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces BIC and AIC for $K=2,\dots  ,10$ (difference from the best value of each curve, lower is better). The star is the best $K$ of each curve, the dotted line the true number of classes; \texttt  {synth\_clean\_p01} is the control.}}{24}{figure.caption.13}\protected@file@percent }
+\newlabel{fig:c2}{{3}{24}{BIC and AIC for $K=2,\dots ,10$ (difference from the best value of each curve, lower is better). The star is the best $K$ of each curve, the dotted line the true number of classes; \texttt {synth\_clean\_p01} is the control}{figure.caption.13}{}}
+\@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {III-D}0c}Clusters found}{24}{paragraph.3.4.0.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {III-D}0d}Diagonal or full}{24}{paragraph.3.4.0.4}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {4}{\ignorespaces BIC(full) $-$ BIC(diagonal) at the true $K$ for every real dataset: below zero the full model fits better. $\dagger $: the log-likelihood of the full model is lower than the diagonal one (worse local optimum of EM); $\ddagger $: $D=1$, the two models are the same.}}{25}{figure.caption.14}\protected@file@percent }
+\newlabel{fig:c6}{{4}{25}{BIC(full) $-$ BIC(diagonal) at the true $K$ for every real dataset: below zero the full model fits better. $\dagger $: the log-likelihood of the full model is lower than the diagonal one (worse local optimum of EM); $\ddagger $: $D=1$, the two models are the same}{figure.caption.14}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {IV}Performance Evaluation}{26}{section.4}\protected@file@percent }
+\newlabel{sec:perf}{{IV}{26}{Performance Evaluation}{section.4}{}}
+\@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {IV-}0a}Why real and synthetic datasets.}{26}{paragraph.4.0.0.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-A}}Execution Time and Throughput}{26}{subsection.4.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-B}}Strong Scaling}{26}{subsection.4.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-C}}Weak Scaling}{26}{subsection.4.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-D}}Communication vs Computation Breakdown}{26}{subsection.4.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {V}Discussion}{27}{section.5}\protected@file@percent }
+\newlabel{sec:discussion}{{V}{27}{Discussion}{section.5}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {VI}Conclusion}{28}{section.6}\protected@file@percent }
 \bibcite{bishop}{1}
-\@writefile{toc}{\contentsline {section}{References}{27}{section*.15}\protected@file@percent }
-\gdef \@abspage@last{27}
+\bibcite{sanderson}{2}
+\bibcite{kwedlo}{3}
+\bibcite{lee2016}{4}
+\bibcite{lee2020}{5}
+\bibcite{machlica}{6}
+\bibcite{yin}{7}
+\bibcite{srivastava}{8}
+\bibcite{thakur}{9}
+\bibcite{sklearn}{10}
+\bibcite{byu}{11}
+\bibcite{hubert}{12}
+\bibcite{schwarz}{13}
+\bibcite{akaike}{14}
+\@writefile{toc}{\contentsline {section}{References}{29}{section*.15}\protected@file@percent }
+\gdef \@abspage@last{29}
