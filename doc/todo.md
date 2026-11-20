@@ -78,6 +78,7 @@ Run all the versions (`src/diagonal/PEMC-baseline-sequential-diagonal.c`, `src/d
 - [X] Report: insert the link to the visualization of the algorithm (TODO at the end of the subsection "The EM algorithm for Gaussian mixtures", paragraph "Visualization of the algorithm")
 - [ ] (IMPORTANT) --> compared performance for own algorithm with different paper with the same technique or differrentc ECC..
 - [X] Report at least 10 pages
+- [ ] IMPORTANT --> TODO: check if all link, references, papers and content correspondign with implementation and  C code
 
 ## Final checks
 - [ ] Code audit (`src/`, `src/common/`, `include/`, `src/visual-sequential/`), version by version, before delivery:
