@@ -59,15 +59,16 @@ What we do instead (compromise):
 | ID | Question | Type | x | y | Lines / groups | Fixed |
 |---|---|---|---|---|---|---|
 | P1 | How does time per iteration scale with K and D? | log-log lines, two panels (a) K (b) D, reference slope dashed | K, D | time / iteration | versions | one layout (1 node, 1 rank x 8 threads). K sweep: `synth_clean_p01` with K = 2..64; D sweep: `synth_sweep_dDDD`, K = 4. Data in `results/logs/sweep/` |
-| P2 | How much faster than sequential? (speedup) | lines + ideal | cores | speedup | versions | 1 large + 1 small dataset, placement |
-| P3 | How efficient? | lines | cores | efficiency | versions | same as P2. Put it as a second panel of P2 |
-| P4 | Strong scaling | lines + ideal | cores | time (or speedup) | versions | N fixed |
+| P2 | How much faster than sequential? (speedup) | lines + ideal | cores | speedup | versions | grid 3 x 2: real datasets left (`cardiotocography`, `cdc_diabetes`, `brainweb`), synthetic right (`synth_overlap_p01`, `p04`, `p16`), small / medium / large from top to bottom (`--real`, `--synth`), placement |
+| P3 | How efficient? | lines | cores | efficiency | versions | same grid as P2, own file `P3-efficiency-<model>` |
+| P4 | Strong scaling | lines + ideal | cores | time (or speedup) | versions | N fixed; same grid as P2 |
 | P5 | Weak scaling | lines | cores | efficiency = time of the SAME version on 1 core / time on p cores | versions | N / core fixed (generated synthetic); reference = each version on 1 core, not the sequential |
 | P6 | Does PBS placement matter? | grouped bars | nodes (1, 2, 4) | time / iteration | 4 placements | best version, 1 model, 1 large dataset |
 | P7 | Best ranks x threads at fixed cores? | bars (one per split, fastest framed in red) | ranks x threads | time / iteration | none | 1 node, best version (with 8 cores only 4 splits exist: a ranks x threads table would be mostly empty) |
-| P8 | Where does the time go? | stacked bars | ranks | time | E-step, M-step, `t_comm`, I/O | 1 version per panel or bars side by side |
+| P8 | Where does the time go? | stacked bars, each bar = 100% of one run, total time written above it | 1, 8, 32 cores x version | share of the run (%) | E-step, M-step, `t_comm`, I/O | same grid as P2 |
 | P9 | What do opt1 and opt2 gain over the baseline? | bars normalized (**parallel baseline MPI-OpenMP = 1**, not the sequential) | dataset | time / baseline | opt1, opt2 | model per panel, placement |
 | P10 | Is it compute or memory bound? | roofline | FLOP/byte | GFLOP/s | one point per version | model per file, 1 node. FLOP and bytes are an analytic count (`include/perfmodel.h`, keys `flops`, `bytes` of the log); roofs from `--peak-gflops` and `--peak-bw` (measure the node with STREAM) |
+| P12 | Does the speedup depend on the size of the dataset? | scatter, filled = real, empty = synthetic | rows N (log) | speedup over sequential | versions | ALL the datasets, two panels: 8 cores (1 node) and 32 cores (4 nodes) |
 | P11 | Load imbalance between ranks | bars mean + min-max whisker, % = max/mean - 1 | nodes / ranks x threads | compute time per rank | none | best version. Key `rank_compute` of the log (E-step + M-step of every rank). `t_comm` includes the imbalance, here it is separated |
 
 Clarity of every figure (P and C): bold title in plain words plus one line with model / dataset / placement, ONE legend above the panels with names in plain words, axes with their unit, drawn at the final size of the report (7 in wide, `width=\textwidth`; the single-panel P5, P6, P7, P10 are 4.4 in, `width=0.62\textwidth`). Axis limits never cut a point (an efficiency above 1 stays visible). When a figure has both real and synthetic datasets (P2/P3, P4, P9, C1-C5) it is split in two blocks: the **real datasets on top**, the **synthetic ones below**, each with its own header.

@@ -2,13 +2,14 @@
 """
 plots-performance.py
 
-Performance plots of the report (catalog P1-P11 of doc/plots.md).
+Performance plots of the report (catalog P1-P12 of doc/plots.md).
 Reads all the logs in results/logs/<model>/<stage>/*.log and writes PDF files in results/plots/performance/.
 
 Usage (from the root of the repository):
     python3 src/plots-generate/plots-performance.py                 # all the plots
     python3 src/plots-generate/plots-performance.py --plots P2 P6   # only some
     python3 src/plots-generate/plots-performance.py --placement scatter:excl --large synth_clean_p16
+    python3 src/plots-generate/plots-performance.py --real statlog_heart diabetes130 brainweb
 
 Where the data comes from
     One log file per PBS job: results/logs/<model>/<stage>/<VERSION>_<TAG>.log
@@ -30,8 +31,10 @@ Rules (doc/plots.md)
     - Size: drawn at the final size of the report, FIG_W = 7 in (include with width=\textwidth)
       or HALF_W = 4.4 in for the single-panel plots P5, P6, P7, P10 (width=0.62\textwidth),
       so the labels stay 7-8 pt in the PDF.
-    - Real and synthetic datasets in the same figure (P2/P3, P4, P9): two blocks, the REAL
-      datasets on top and the SYNTHETIC ones below, each with its own header.
+    - Datasets: P2, P3, P4, P8, P10 are a 3 x 2 grid, REAL datasets on the left and SYNTHETIC
+      ones on the right, small / medium / large from top to bottom (--real, --synth); P9 and P12
+      show ALL the datasets; P6, P7, P11 one large synthetic dataset (--large): they measure the
+      machine (placement, splits, balance), not the data.
 
 Reference of the optimizations
     opt1 / opt2 are always compared with the PARALLEL BASELINE (baseline-MPI-OpenMP-<model>) on
@@ -200,6 +203,60 @@ def best_split(agg, placement):
 def versions_in(d):
     """Versions present in the table d, in the fixed plotting order (sequential first)."""
     return [v for v in VERSION_ORDER if v in set(d.label)]
+
+
+# Datasets of the grid figures (P2, P3, P4, P8, P10): 3 sizes x (real, synthetic), --real and
+# --synth. Real: small / medium / large real datasets (by rows). Synthetic: the SAME family at 3
+# sizes (synth_overlap, K = 5 overlapping clusters, 250k / 1M / 4M rows), so only N changes.
+REAL_DEFAULT = ["cardiotocography", "cdc_diabetes", "brainweb"]
+SYNTH_DEFAULT = ["synth_overlap_p01", "synth_overlap_p04", "synth_overlap_p16"]
+SIZE_NAMES = ["small", "medium", "large"]
+BREAKDOWN_CORES = [1, 8, 32]  # core counts of the bars of P8
+VERSION_SHORT = {"sequential": "seq", "baseline": "base", "opt1": "opt1", "opt2": "opt2"}
+
+
+def dataset_grid(ctx, model, row_h):
+    """Figure with a 3 x 2 grid of panels: left column the REAL datasets (--real), right column
+    the SYNTHETIC ones (--synth), rows small / medium / large. Returns (fig, cells): one cell per
+    dataset with parallel runs (ax, ds, d = its rows of ctx.best, row, col); the panel of a
+    missing dataset is hidden."""
+    fig = plt.figure(figsize=(FIG_W, row_h * 3 + 0.35), layout="constrained")
+    cols = fig.subfigures(1, 2, wspace=0.04)
+    data = ctx.best[ctx.best.model == model]
+    cells = []
+    for c, (sf, kind, names) in enumerate(zip(cols, ("Real datasets", "Synthetic datasets"),
+                                              (ctx.args.real, ctx.args.synth))):
+        sf.suptitle(kind, fontsize=9, fontweight="bold", color=TEXT)
+        axs = sf.subplots(3, 1)
+        for r, (ax, size, ds) in enumerate(zip(axs, SIZE_NAMES, names)):
+            d = data[data.dataset == ds]
+            if (d.label != "sequential").sum() == 0:  # not measured for this model
+                ax.set_visible(False)
+                continue
+            ax.set_title(f"{size}: {ds}  (N = {int(d.N.max()):,})", fontsize=7.8, fontweight="bold")
+            cells.append(argparse.Namespace(ax=ax, ds=ds, d=d, row=r, col=c))
+    need(cells, f"none of the grid datasets has parallel runs for {model}")
+    return fig, cells
+
+
+def grid_axes(cell, cores, ylabel):
+    """Cores axis of a grid panel; x label only on the bottom row, y label only on the left."""
+    cores_axis(cell.ax, cores, nodes_of(cell.d))
+    if cell.row < 2:
+        cell.ax.set_xlabel("")
+    cell.ax.set_ylabel(ylabel if cell.col == 0 else "")
+
+
+def fmt_s(t):
+    """Seconds in a short readable form: 135 s, 1.08 s, 38.2 ms, 950 µs."""
+    if t >= 1:
+        return f"{t:.3g} s"
+    if t >= 1e-3:
+        return f"{t * 1e3:.3g} ms"
+    return f"{t * 1e6:.3g} µs"
+
+
+GRID_TXT = "real datasets left, synthetic right; small, medium, large from top to bottom"
 
 
 def pick_datasets(best, model, large, small):
@@ -379,86 +436,81 @@ def need(cond, why):
 # Plots. Every figure: bold title in plain words + one line with model / dataset / placement,
 # ONE legend above the panels, axes named with their unit (doc/plots.md, section 5)
 # ---------------------------------------------------------------------------------------------
-def p2_p3_speedup(ctx, model):
-    """P2 speedup (left) + P3 efficiency (right), one block per dataset: the REAL (small) dataset
-    on top, the SYNTHETIC (large) one below."""
-    best = ctx.best
-    dss = sorted(pick_datasets(best, model, ctx.args.large, ctx.args.small), key=is_synth)
-    need(dss, "no parallel data")
-    fig = plt.figure(figsize=(FIG_W, 2.45 * len(dss) + 0.2), layout="constrained")
-    left = []
-    for sf, ds in zip(blocks(fig, len(dss)), dss):
-        ax_s, ax_e = sf.subplots(1, 2)
-        left.append(ax_s)
-        d = best[(best.model == model) & (best.dataset == ds)]
-        seq = d[d.label == "sequential"]
-        need(not seq.empty, f"no sequential run for {model}/{ds}")
+def p2_speedup(ctx, model):
+    """P2 speedup against the sequential version, 3 x 2 grid of datasets (dataset_grid)."""
+    fig, cells = dataset_grid(ctx, model, 2.0)
+    for c in cells:
+        seq = c.d[c.d.label == "sequential"]
+        need(not seq.empty, f"no sequential run for {model}/{c.ds}")
         t_seq = seq.t.iloc[0]  # time per iteration of the sequential run: reference of the speedup
-        allc = []  # every core count drawn in this block (for the ticks and the ideal line)
-        eff_max = 1.0  # highest efficiency drawn (above 1 = superlinear speedup)
-        for v in versions_in(d):
-            s = d[d.label == v].sort_values("cores")
+        allc = []
+        for v in versions_in(c.d):
+            s = c.d[c.d.label == v].sort_values("cores")
             if v == "sequential":
                 s = s.assign(cores=1)
-            c, sp = s.cores.to_numpy(), t_seq / s.t.to_numpy()
+            cc = s.cores.to_numpy()
+            allc += list(cc)
             # a larger time gives a smaller speedup: the error bar limits swap
-            lo, hi = t_seq / s.hi.to_numpy(), t_seq / s.lo.to_numpy()
-            allc += list(c)
-            line(ax_s, c, sp, lo, hi, v)
-            line(ax_e, c, sp / c, lo / c, hi / c, v)  # efficiency = speedup / cores
-            eff_max = max(eff_max, np.nanmax(hi / c))
-        c = np.array(sorted(set(allc)))
-        ideal(ax_s, c, c)                 # ideal speedup = number of cores
-        ideal(ax_e, c, np.ones_like(c))   # ideal efficiency = 1
-        ax_s.set_yscale("log", base=2)
-        ax_s.yaxis.set_major_formatter(ScalarFormatter())
-        # never cut a point: an efficiency above 1 must stay visible (opt1 also changes the
-        # computation, blocks of rows and SIMD, so it can beat the sequential version per core)
-        ax_e.set_ylim(0, eff_max * 1.1 + 0.05)
-        for ax in (ax_s, ax_e):
-            cores_axis(ax, c, nodes_of(d))
-        ax_s.set_ylabel("speedup over sequential\n(log scale)")
-        ax_e.set_ylabel("parallel efficiency\n(speedup / cores)")
-        panel_name(ax_s, "speedup")
-        panel_name(ax_e, "efficiency")
-        block_header(sf, f"{kind_of(ds)}: {ds}  (N = {int(d.N.max()):,} points)")
-    legend_from(fig, left, ncol=3)
-    title(fig, "Speedup and parallel efficiency against the sequential version",
-          f"{MODEL_TXT[model]}, {place_txt(ctx.args.placement)}; "
-          "for every core count the fastest ranks × threads split")
+            line(c.ax, cc, t_seq / s.t.to_numpy(), t_seq / s.hi.to_numpy(), t_seq / s.lo.to_numpy(), v)
+        cc = np.array(sorted(set(allc)))
+        ideal(c.ax, cc, cc)  # ideal speedup = number of cores
+        c.ax.set_yscale("log", base=2)
+        c.ax.yaxis.set_major_formatter(ScalarFormatter())
+        grid_axes(c, allc, "speedup over sequential\n(log scale)")
+    legend_from(fig, [c.ax for c in cells], ncol=3)
+    title(fig, "Speedup against the sequential version",
+          f"{MODEL_TXT[model]}, {place_txt(ctx.args.placement)}; for every core count the fastest "
+          f"ranks × threads split; {GRID_TXT}")
     save(fig, ctx.out, f"P2-speedup-{model}", ctx.fmts)
 
 
+def p3_efficiency(ctx, model):
+    """P3 parallel efficiency = speedup / cores, same grid as P2."""
+    fig, cells = dataset_grid(ctx, model, 2.0)
+    for c in cells:
+        seq = c.d[c.d.label == "sequential"]
+        need(not seq.empty, f"no sequential run for {model}/{c.ds}")
+        t_seq = seq.t.iloc[0]
+        allc, eff_max = [], 1.0  # never cut a point: an efficiency above 1 must stay visible
+        for v in versions_in(c.d):
+            s = c.d[c.d.label == v].sort_values("cores")
+            if v == "sequential":
+                s = s.assign(cores=1)
+            cc = s.cores.to_numpy()
+            allc += list(cc)
+            sp, lo, hi = t_seq / s.t.to_numpy(), t_seq / s.hi.to_numpy(), t_seq / s.lo.to_numpy()
+            line(c.ax, cc, sp / cc, lo / cc, hi / cc, v)
+            eff_max = max(eff_max, np.nanmax(hi / cc))
+        cc = np.array(sorted(set(allc)))
+        ideal(c.ax, cc, np.ones_like(cc, dtype=float))  # ideal efficiency = 1
+        c.ax.set_ylim(0, eff_max * 1.1 + 0.05)
+        grid_axes(c, allc, "parallel efficiency\n(speedup / cores)")
+    legend_from(fig, [c.ax for c in cells], ncol=3)
+    title(fig, "Parallel efficiency against the sequential version",
+          f"{MODEL_TXT[model]}, {place_txt(ctx.args.placement)}; efficiency = speedup / cores "
+          f"(above 1: the optimization also makes the computation faster); {GRID_TXT}")
+    save(fig, ctx.out, f"P3-efficiency-{model}", ctx.fmts)
+
+
 def p4_strong(ctx, model):
-    """P4 strong scaling: time per iteration vs cores, the dataset (N) fixed. One block per
-    dataset: the REAL (small) one on top, the SYNTHETIC (large) one below."""
-    best = ctx.best
-    dss = sorted(pick_datasets(best, model, ctx.args.large, ctx.args.small), key=is_synth)
-    need(dss, "no parallel data")
-    fig = plt.figure(figsize=(FIG_W, 2.3 * len(dss) + 0.2), layout="constrained")
-    axs = []
-    for sf, ds in zip(blocks(fig, len(dss)), dss):
-        ax = sf.subplots()
-        axs.append(ax)
-        d = best[(best.model == model) & (best.dataset == ds)]
+    """P4 strong scaling: time per iteration vs cores with the dataset fixed, same grid as P2."""
+    fig, cells = dataset_grid(ctx, model, 2.0)
+    for c in cells:
         allc = []
-        for v in versions_in(d):
-            s = d[d.label == v].sort_values("cores")
-            # the sequential version always runs on 1 core
-            c = np.ones(len(s), int) if v == "sequential" else s.cores.to_numpy()
-            allc += list(c)
-            line(ax, c, s.t.to_numpy(), s.lo.to_numpy(), s.hi.to_numpy(), v)
-        seq = d[d.label == "sequential"]
+        for v in versions_in(c.d):
+            s = c.d[c.d.label == v].sort_values("cores")
+            cc = np.ones(len(s), int) if v == "sequential" else s.cores.to_numpy()
+            allc += list(cc)
+            line(c.ax, cc, s.t.to_numpy(), s.lo.to_numpy(), s.hi.to_numpy(), v)
+        seq = c.d[c.d.label == "sequential"]
         if not seq.empty:
-            c = np.array(sorted(set(allc)))
-            ideal(ax, c, seq.t.iloc[0] / c, label="ideal (sequential time / cores)")
-        ax.set_yscale("log")
-        cores_axis(ax, allc, nodes_of(d))
-        ax.set_ylabel("time per iteration (s)\n(log scale)")
-        block_header(sf, f"{kind_of(ds)}: {ds}  (N = {int(d.N.max()):,} points)")
-    legend_from(fig, axs, ncol=3)
+            cc = np.array(sorted(set(allc)))
+            ideal(c.ax, cc, seq.t.iloc[0] / cc, label="ideal (sequential time / cores)")
+        c.ax.set_yscale("log")
+        grid_axes(c, allc, "time per iteration (s)\n(log scale)")
+    legend_from(fig, [c.ax for c in cells], ncol=3)
     title(fig, "Strong scaling: time per iteration with the size of the dataset fixed",
-          f"{MODEL_TXT[model]}, {place_txt(ctx.args.placement)}")
+          f"{MODEL_TXT[model]}, {place_txt(ctx.args.placement)}; {GRID_TXT}")
     save(fig, ctx.out, f"P4-strong-{model}", ctx.fmts)
 
 
@@ -570,38 +622,48 @@ def p7_heatmap(ctx, model):
 
 
 def p8_breakdown(ctx, model):
-    """Stacked bars E-step / M-step / t_comm / I/O. One panel per version (2 x 2), x = cores."""
-    best = ctx.best
-    d = best[best.model == model]
-    vs = versions_in(d)
-    need(vs, "no data")
-    ds = pick_datasets(best, model, ctx.args.large, ctx.args.small)
-    need(ds, "no parallel data")
-    d = d[d.dataset == ds[0]]
-    fig, axs, nc = panel_grid(len(vs), row_h=2.4)
-    for ax, v in zip(axs, vs):
-        s = d[d.label == v].sort_values("cores")
-        x = np.arange(len(s))          # one bar per core count
-        bottom = np.zeros(len(s))      # height reached by the stack so far
-        for name, col in STEP_COL.items():
-            y = s[col].fillna(0).to_numpy()
-            ax.bar(x, y, 0.6, bottom=bottom, color=STEP_COLOR[name], edgecolor=TEXT, linewidth=0.5,
-                   label=STEP_LABEL[name])
-            bottom += y
-        for xi, tot in zip(x, bottom):  # total time above every bar
-            ax.text(xi, tot, f"{tot:.2f} s", ha="center", va="bottom", fontsize=7, color=TEXT)
-        # own y scale per panel (the sequential run is 10-40x longer and would flatten the others);
-        # room above the bars for the labels
-        ax.set_ylim(0, (bottom.max() if len(bottom) else 1) * 1.15)
-        ax.set_xticks(x, [str(c) for c in s.cores])
-        ax.set_xlabel("number of cores")
-        panel_name(ax, VERSION_LABEL[v])
-    for ax in axs[::nc]:
-        ax.set_ylabel("time of the whole run (s)")
-    legend_from(fig, axs, ncol=2)
-    title(fig, "Where the time goes: time of the whole run, split by phase",
-          f"{MODEL_TXT[model]}, {ds[0]}, {place_txt(ctx.args.placement)}; "
-          "every panel has its own time scale (read the total above the bars)")
+    """P8 where the time goes, same grid as P2. In every panel one bar per (cores, version) for
+    the cores of BREAKDOWN_CORES: the bar is the whole run split by phase (E-step, M-step,
+    communication, reading) as a SHARE of its time, so datasets of milliseconds and of minutes
+    can be compared; the total time of the run is written above the bar."""
+    fig, cells = dataset_grid(ctx, model, 2.25)
+    w = 0.22  # width of one bar; the bars of one core count are side by side
+    for c in cells:
+        ax, d = c.ax, c.d
+        ticks, names, x0 = [], [], 0.0
+        for cores in BREAKDOWN_CORES:
+            vs = [v for v in VERSION_ORDER if not d[(d.label == v) & (d.cores == cores)].empty]
+            if not vs:
+                continue
+            xs = x0 + (np.arange(len(vs)) - (len(vs) - 1) / 2) * w
+            for xb, v in zip(xs, vs):
+                r = d[(d.label == v) & (d.cores == cores)].iloc[0]
+                vals = [0.0 if pd.isna(r[col]) else float(r[col]) for col in STEP_COL.values()]
+                tot = sum(vals)
+                bottom = 0.0
+                for (name, _), val in zip(STEP_COL.items(), vals):
+                    h = 100 * val / tot if tot > 0 else 0.0
+                    ax.bar(xb, h, w * 0.9, bottom=bottom, color=STEP_COLOR[name], edgecolor=TEXT,
+                           linewidth=0.4, label=STEP_LABEL[name])
+                    bottom += h
+                ax.text(xb, 102, fmt_s(tot), rotation=90, ha="center", va="bottom", fontsize=5.6,
+                        color=TEXT)
+                ticks.append(xb)
+                names.append(VERSION_SHORT[v])
+            # the core count under its group of bars, below the names of the versions
+            ax.annotate(f"{cores} core" + ("s" if cores > 1 else ""), xy=(x0, 0),
+                        xycoords=("data", "axes fraction"), xytext=(0, -25),
+                        textcoords="offset points", ha="center", va="top", fontsize=7)
+            x0 += 1.0
+        ax.set_xticks(ticks, names, fontsize=6, rotation=90)
+        ax.set_ylim(0, 140)
+        ax.set_yticks([0, 25, 50, 75, 100])
+        ax.grid(axis="x", visible=False)
+        ax.set_ylabel("share of the run (%)" if c.col == 0 else "")
+    legend_from(fig, [c.ax for c in cells], ncol=2)
+    title(fig, "Where the time goes: the whole run split by phase",
+          f"{MODEL_TXT[model]}, {place_txt(ctx.args.placement)}; every bar = 100% of one run, "
+          f"the number above it = its total time; seq = sequential, base = baseline; {GRID_TXT}")
     save(fig, ctx.out, f"P8-breakdown-{model}", ctx.fmts)
 
 
@@ -692,64 +754,111 @@ def p1_sweeps(ctx, model):
 
 
 def p10_roofline(ctx, model):
-    """P10 roofline of ONE node: one point per version. x = FLOP / byte, y = GFLOP/s.
-    FLOP and bytes are the analytic count of include/perfmodel.h. The ceilings are the measured
-    peaks of the node, given with --peak-gflops and --peak-bw (e.g. from a STREAM run and from
-    cores x GHz x FLOP/cycle); without them only the points are drawn."""
+    """P10 roofline of ONE node, same grid as P2: one panel per dataset with the versions on the
+    8 cores of one node. x = FLOP / byte, y = GFLOP/s. FLOP and bytes are the analytic count of
+    include/perfmodel.h. The roofs are the peaks of the node (--peak-gflops, --peak-bw) and the
+    peak of the binaries as compiled (--peak-gflops-compiled, SSE2)."""
     a = ctx.agg
-    ds = pick_datasets(ctx.best, model, ctx.args.large, ctx.args.small)
-    need(ds, "no parallel data")
-    d = a[(a.model == model) & (a.dataset == ds[0]) & (a.nodes == 1)
-          & (a.placement.isin([ctx.args.placement, "seq"])) & a.flops.notna() & a.bytes.notna()]
-    need(not d.empty, "no single-node run with flops/bytes (re-run with the new binaries)")
-    d = d.loc[d.groupby("label")["t"].idxmin()]  # best split of every version
-    # the sequential version runs on 1 core: against the roofs of 8 cores it would look 8x worse
-    # than it is, so only the parallel versions (all on the 8 cores of one node) are drawn
-    d = d[d.label != "sequential"]
-    need(not d.empty, "no parallel single-node run with flops/bytes")
-    fig, ax = plt.subplots(figsize=(HALF_W, 3.5), layout="constrained")
-    xs = np.logspace(-1, 2, 100)
     gf, bw, gfc = ctx.args.peak_gflops, ctx.args.peak_bw, ctx.args.peak_gflops_compiled
-    if gf and bw:
-        ax.plot(xs, np.minimum(gf, bw * xs), color=TEXT, lw=1.3, label="roofline (limit of the node)")
-        if gfc:  # the real limit of OUR binaries: -O3 without -march = SSE2, no FMA
-            ax.plot(xs, np.minimum(gfc, bw * xs), color=TEXT, lw=1.0, ls="--",
-                    label=f"limit as compiled (SSE2, {gfc:.0f} GFLOP/s)")
-        ridge = gf / bw  # intensity where the two limits meet
-        ax.axvline(ridge, color=IDEAL, ls=":", lw=0.9)
-        # the two roofs and the two regions, written on the plot
-        ax.text(xs[-1], gf * 1.15, f"peak computation {gf:.0f} GFLOP/s", ha="right", va="bottom",
-                fontsize=7, color=TEXT)
-        bw_label = ax.text(0.13, bw * 0.13 * 1.25, f"memory bandwidth {bw:.0f} GB/s", ha="left",
-                           va="bottom", fontsize=7, color=TEXT, rotation_mode="anchor")
-        ax.text(ridge / 1.15, 0.02, "← memory bound", ha="right", va="bottom", fontsize=7,
-                color=IDEAL, transform=ax.get_xaxis_transform())
-        ax.text(ridge * 1.15, 0.02, "compute bound →", ha="left", va="bottom", fontsize=7,
-                color=IDEAL, transform=ax.get_xaxis_transform())
-    # Versions with the same computation fall on the same point (diagonal: baseline = opt2; full:
-    # opt1 = opt2): the markers are drawn concentric, the larger below, so all of them stay visible
-    size = {"baseline": 13, "opt1": 13, "opt2": 7.5}
-    for _, r in sorted(d.iterrows(), key=lambda kv: -size[kv[1].label]):
-        v = r.label
-        ax.plot(r.flops / r.bytes, r.flops / (r.t_estep + r.t_mstep) / 1e9, ls="",
-                marker=VERSION_MARKER[v], color=VERSION_COLOR[v], ms=size[v], mec=TEXT, mew=0.7,
-                label=f"{VERSION_LABEL[v]}, {int(r.cores)} core" + ("s" if r.cores > 1 else ""))
-    ax.set_xscale("log")
-    ax.set_yscale("log")
-    # room under the lowest point for the "memory bound / compute bound" labels
-    pts = d.flops / (d.t_estep + d.t_mstep) / 1e9
-    ax.set_ylim(bottom=min(pts.min(), bw * 0.1 if bw else pts.min()) / 6)
-    ax.set_xlabel("arithmetic intensity (FLOP per byte from memory)")
-    ax.set_ylabel("performance (GFLOP/s)")
-    legend_from(fig, [ax], ncol=2)
-    if gf and bw:  # the bandwidth label follows the slope of the roof, as drawn on the page
-        fig.canvas.draw()
+    fig, cells = dataset_grid(ctx, model, 2.25)
+    xs = np.logspace(-1, 2, 100)
+    rot = []  # (axis, label of the bandwidth roof): rotated along the roof once the layout is known
+    drawn = []
+    for c in cells:
+        ax = c.ax
+        d = a[(a.model == model) & (a.dataset == c.ds) & (a.nodes == 1) & (a.cores == 8)
+              & (a.placement == ctx.args.placement) & (a.label != "sequential")
+              & a.flops.notna() & a.bytes.notna()]
+        if d.empty:
+            ax.set_visible(False)
+            continue
+        drawn.append(c)
+        # the roofs are those of the 8 cores of one node: only the 8-core runs are compared
+        d = d.loc[d.groupby("label")["t"].idxmin()]  # best split of every version
+        if gf and bw:
+            ax.plot(xs, np.minimum(gf, bw * xs), color=TEXT, lw=1.1, label="roofline (limit of the node)")
+            if gfc:
+                ax.plot(xs, np.minimum(gfc, bw * xs), color=TEXT, lw=0.9, ls="--",
+                        label=f"limit as compiled (SSE2, {gfc:.0f} GFLOP/s)")
+            ridge = gf / bw
+            ax.axvline(ridge, color=IDEAL, ls=":", lw=0.8)
+            ax.text(xs[-1], gf * 1.15, f"peak {gf:.0f} GFLOP/s", ha="right", va="bottom",
+                    fontsize=5.8, color=TEXT)
+            rot.append((ax, ax.text(0.13, bw * 0.13 * 1.3, f"bandwidth {bw:.0f} GB/s", ha="left",
+                                    va="bottom", fontsize=5.8, color=TEXT, rotation_mode="anchor")))
+            ax.text(ridge / 1.15, 0.03, "← memory bound", ha="right", va="bottom", fontsize=5.6,
+                    color=IDEAL, transform=ax.get_xaxis_transform())
+            ax.text(ridge * 1.15, 0.03, "compute bound →", ha="left", va="bottom", fontsize=5.6,
+                    color=IDEAL, transform=ax.get_xaxis_transform())
+        # versions with the same computation fall on the same point: concentric markers
+        size = {"baseline": 11, "opt1": 11, "opt2": 6.5}
+        for _, r in sorted(d.iterrows(), key=lambda kv: -size[kv[1].label]):
+            v = r.label
+            ax.plot(r.flops / r.bytes, r.flops / (r.t_estep + r.t_mstep) / 1e9, ls="",
+                    marker=VERSION_MARKER[v], color=VERSION_COLOR[v], ms=size[v], mec=TEXT, mew=0.6,
+                    label=f"{VERSION_LABEL[v]}, 8 cores")
+        ax.set_xscale("log")
+        ax.set_yscale("log")
+        pts = d.flops / (d.t_estep + d.t_mstep) / 1e9
+        ax.set_ylim(min(pts.min(), bw * 0.1 if bw else pts.min()) / 6, (gf or pts.max()) * 4)
+        ax.set_xlabel("FLOP per byte (log)" if c.row == 2 else "")
+        ax.set_ylabel("GFLOP/s (log)" if c.col == 0 else "")
+    need(drawn, "no 8-core single-node run with flops/bytes")
+    legend_from(fig, [c.ax for c in drawn], ncol=2)
+    fig.canvas.draw()  # final layout: the bandwidth labels follow the slope of the roof
+    for ax, lab in rot:
         (x1, y1), (x2, y2) = ax.transData.transform([(0.1, bw * 0.1), (1.0, bw * 1.0)])
-        bw_label.set_rotation(np.degrees(np.arctan2(y2 - y1, x2 - x1)))
+        lab.set_rotation(np.degrees(np.arctan2(y2 - y1, x2 - x1)))
     title(fig, "Roofline: is EM limited by memory or by computation?",
-          f"{MODEL_TXT[model]}, {ds[0]}, 8 cores of 1 node; "
-          "overlapping points are drawn one inside the other")
+          f"{MODEL_TXT[model]}, 8 cores of 1 node, {place_txt(ctx.args.placement)}; overlapping "
+          f"points are drawn one inside the other; {GRID_TXT}")
     save(fig, ctx.out, f"P10-roofline-{model}", ctx.fmts)
+
+
+def p12_size(ctx, model):
+    """P12 speedup against the size of the dataset, ALL the datasets: one point per (dataset,
+    version), on 8 cores (1 node) and on 32 cores (4 nodes). Filled markers = real datasets,
+    empty = synthetic. It shows that the speedup depends on the size, real or synthetic."""
+    best = ctx.best[ctx.best.model == model]
+    seq = best[best.label == "sequential"].set_index("dataset").t
+    need(not seq.empty, "no sequential run")
+    fig, axs = plt.subplots(1, 2, figsize=(FIG_W, 3.0), layout="constrained", sharey=True)
+    for ax, cores in zip(axs, (8, 32)):
+        drawn = False
+        for v in ("baseline", "opt1", "opt2"):
+            s = best[(best.label == v) & (best.cores == cores) & best.dataset.isin(seq.index)]
+            if s.empty:
+                continue
+            drawn = True
+            sp = seq.reindex(s.dataset).to_numpy() / s.t.to_numpy()
+            real = ~s.dataset.map(is_synth).to_numpy()
+            ax.plot(s.N.to_numpy()[real], sp[real], ls="", marker=VERSION_MARKER[v],
+                    color=VERSION_COLOR[v], mec=TEXT, mew=0.4, ms=5, label=VERSION_LABEL[v])
+            ax.plot(s.N.to_numpy()[~real], sp[~real], ls="", marker=VERSION_MARKER[v], mfc="none",
+                    mec=VERSION_COLOR[v], mew=1.2, ms=5)
+        if not drawn:
+            ax.set_visible(False)
+            continue
+        ax.axhline(cores, ls="--", color=IDEAL, lw=1, label="ideal (speedup = cores)")
+        ax.set_xscale("log")
+        ax.set_yscale("log", base=2)
+        ax.yaxis.set_major_formatter(ScalarFormatter())
+        ax.set_xlabel("rows of the dataset N (log scale)")
+        n = {8: 1, 32: 4}[cores]
+        panel_name(ax, f"{cores} cores ({n} node{'s' if n > 1 else ''})")
+    axs[0].set_ylabel("speedup over sequential\n(log scale)")
+    seen = {}
+    for ax in axs:
+        for h, l in zip(*ax.get_legend_handles_labels()):
+            seen.setdefault(l, h)
+    hs = [seen[l] for l in seen] + [
+        plt.Line2D([], [], ls="", marker="o", color=TEXT, ms=5),
+        plt.Line2D([], [], ls="", marker="o", mfc="none", mec=TEXT, mew=1.2, ms=5)]
+    top_legend(fig, hs, list(seen) + ["real dataset", "synthetic dataset"], ncol=3)
+    title(fig, "Speedup against the size of the dataset (all the datasets)",
+          f"{MODEL_TXT[model]}, {place_txt(ctx.args.placement)}; one point per dataset and version; "
+          "filled = real, empty = synthetic")
+    save(fig, ctx.out, f"P12-size-{model}", ctx.fmts)
 
 
 def p11_imbalance(ctx, model):
@@ -789,9 +898,9 @@ def p11_imbalance(ctx, model):
     save(fig, ctx.out, f"P11-imbalance-{model}", ctx.fmts)
 
 
-PLOTS = {"P1": p1_sweeps, "P2": p2_p3_speedup, "P3": p2_p3_speedup, "P4": p4_strong, "P5": p5_weak,
+PLOTS = {"P1": p1_sweeps, "P2": p2_speedup, "P3": p3_efficiency, "P4": p4_strong, "P5": p5_weak,
          "P6": p6_placement, "P7": p7_heatmap, "P8": p8_breakdown, "P9": p9_opt_gain, "P10": p10_roofline,
-         "P11": p11_imbalance}
+         "P11": p11_imbalance, "P12": p12_size}
 
 
 # ---------------------------------------------------------------------------------------------
@@ -800,14 +909,23 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--logs", type=Path, default=ROOT / "results/logs")
     ap.add_argument("--out", type=Path, default=ROOT / "results/plots/performance")
-    ap.add_argument("--plots", nargs="+", default=["P1", "P2", "P4", "P5", "P6", "P7", "P8", "P9", "P10", "P11"],
-                    help="IDs to draw (P3 = the efficiency panels of the P2 figure)")
+    ap.add_argument("--plots", nargs="+", default=["P1", "P2", "P3", "P4", "P5", "P6", "P7", "P8", "P9", "P10", "P11", "P12"],
+                    help="IDs to draw")
     ap.add_argument("--models", nargs="+", default=MODELS, choices=MODELS)
     ap.add_argument("--placement", default="pack", choices=PLACE_ORDER,
                     help="placement fixed for every plot except P6 (the best one found with P6)")
     ap.add_argument("--version", help="version for P6/P7 (default: the most optimized one present)")
-    ap.add_argument("--large", default="synth_clean_p16", help="large dataset (auto: max N if missing)")
-    ap.add_argument("--small", default="cardiotocography", help="small dataset (auto: min N if missing)")
+    # Datasets. The grid figures (P2, P3, P4, P8, P10) show 3 real and 3 synthetic datasets
+    # (small, medium, large); the one-dataset plots (P6, P7, P11) the large synthetic one.
+    # synth_overlap_p16 instead of synth_clean_p16: it needs more iterations, so even the optimized
+    # versions on 32 cores run for several seconds (synth_clean_p16: 0.4 s, mostly overhead)
+    ap.add_argument("--real", nargs=3, default=REAL_DEFAULT, metavar=("SMALL", "MEDIUM", "LARGE"),
+                    help="real datasets of the grid figures")
+    ap.add_argument("--synth", nargs=3, default=SYNTH_DEFAULT, metavar=("SMALL", "MEDIUM", "LARGE"),
+                    help="synthetic datasets of the grid figures")
+    ap.add_argument("--large", default="synth_overlap_p16",
+                    help="dataset of the one-dataset plots P6, P7, P11 (auto: max N if missing)")
+    ap.add_argument("--small", default="cardiotocography", help="fallback small dataset")
     ap.add_argument("--family", default="synth_clean", help="synthetic family for the weak scaling P5")
     # Default roofs of P10, for the 8 cores of the 1-node runs on a Xeon Gold 6252N
     # (src/script/pemc-stream.sh summary, results/logs/stream/):
