@@ -347,11 +347,12 @@ def cores_axis(ax, cores, nodes=None):
         ax.set_xlabel("number of cores")
 
 
-def line(ax, x, y, lo, hi, v):
-    """Line of version v (its color and marker) with an error bar from lo to hi at every point."""
+def line(ax, x, y, lo, hi, v, ms=4.5, lw=1.4, zorder=2):
+    """Line of version v (its color and marker) with an error bar from lo to hi at every point.
+    ms / lw / zorder: larger and lower for a line that another one covers (P1)."""
     ax.errorbar(x, y, yerr=[np.maximum(y - lo, 0), np.maximum(hi - y, 0)], color=VERSION_COLOR[v],
-                marker=VERSION_MARKER[v], ms=4.5, lw=1.4, capsize=2, mec=TEXT, mew=0.4,
-                label=VERSION_LABEL[v])
+                marker=VERSION_MARKER[v], ms=ms, lw=lw, capsize=2, mec=TEXT, mew=0.4,
+                label=VERSION_LABEL[v], zorder=zorder)
 
 
 def ideal(ax, x, y, label="ideal (perfect scaling)"):
@@ -664,7 +665,11 @@ def p1_sweeps(ctx, model):
             s_ = s_.loc[s_.groupby(col)["t"].idxmin()].sort_values(col)  # one layout: 1 row per x
             if s_.empty:
                 continue
-            line(ax, s_[col].to_numpy(), s_.t.to_numpy(), s_.lo.to_numpy(), s_.hi.to_numpy(), v)
+            # opt1 and opt2 of the full model do the same computation, so their lines coincide:
+            # opt1 is drawn thicker and below, opt2 thinner on top (as the markers of P10)
+            big = v == "opt1" and model == "full"
+            line(ax, s_[col].to_numpy(), s_.t.to_numpy(), s_.lo.to_numpy(), s_.hi.to_numpy(), v,
+                 ms=8 if big else 4.5, lw=3.2 if big else 1.4, zorder=2 if big else 3)
             first = first or (s_[col].iloc[0], s_.t.iloc[0], s_[col].to_numpy())
         if first:  # reference slope anchored at the first point of the first version
             x0, y0, xs = first

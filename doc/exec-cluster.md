@@ -182,8 +182,19 @@ Sweeps of K and D (plot P1: time per iteration vs K and vs D), one fixed layout 
 They need the D sweep files made in Phase 2 (`generate-synthetic-dataset.py --sweep`); the logs go in `results/logs/sweep/`:
 
 ```bash
-src/script/pemc-submit.sh sweep
+src/script/pemc-submit.sh sweep                       # all 8 versions: 16 jobs (K and D)
 ```
+
+The first campaign swept only the sequential and the baseline versions. The opt1/opt2 sweeps were added later, without re-running the others (the logs are appended: giving a version again would duplicate its runs):
+
+```bash
+SWEEP_VERSIONS="opt1-MPI-OpenMP-diagonal opt2-MPI-OpenMP-diagonal opt1-MPI-OpenMP-full opt2-MPI-OpenMP-full" \
+DRY_RUN=1 src/script/pemc-submit.sh sweep               # check: 8 qsub (4 versions x K, D)
+SWEEP_VERSIONS="opt1-MPI-OpenMP-diagonal opt2-MPI-OpenMP-diagonal opt1-MPI-OpenMP-full opt2-MPI-OpenMP-full" \
+src/script/pemc-submit.sh sweep                         # 8 jobs, a few minutes each once running
+```
+
+`SWEEP_PLACE` changes the placement (default `pack:excl`, the same as the first sweeps; `pack` starts sooner but the new curves would then be on a shared node). P1 draws every version found in `results/logs/sweep/`, no change to the plot script.
 
 #### Runs on 1, 2 and 4 cores of one node (speedup curves below 8 cores)
 

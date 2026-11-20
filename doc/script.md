@@ -47,6 +47,8 @@ src/script/pemc-submit.sh sweep                                            # K a
 | `REPS=1` | repetitions of every (dataset, layout), default 3 |
 | `SKIP=4` | does not submit the first 4 jobs (resume after a "per-user limit" error) |
 | `BLOCK=64` | rows per block of `opt1` full (sweep over B, logs in `results/logs/block/`) |
+| `SWEEP_VERSIONS="..."` | with `sweep`: only these versions (default all 8; the logs are appended, so give only the new ones) |
+| `SWEEP_PLACE=pack` | with `sweep`: placement of the sweep jobs (default `pack:excl`) |
 | `NODE_FILTER=` / `REQUIRE_CPU=` | empty = any node / no CPU check |
 
 ### `pemc-job.sh`

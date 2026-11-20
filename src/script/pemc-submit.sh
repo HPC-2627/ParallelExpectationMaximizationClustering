@@ -90,16 +90,28 @@ pl() { case $1 in pack) echo pk;; scatter) echo sc;; pack:excl) echo pkx;; scatt
 # node used only by this job) so the only thing that changes is K or D. The D sweep needs the
 # files made by: python3 src/dataset-managed/generate-synthetic-dataset.py --sweep
 # The logs go to results/logs/sweep/ (see pemc-job.sh).
+#   SWEEP_VERSIONS  versions to sweep [default: all 8]. The logs are APPENDED, so to add versions
+#                   later give only the new ones, e.g.
+#                   SWEEP_VERSIONS="opt1-MPI-OpenMP-diagonal opt2-MPI-OpenMP-diagonal
+#                                   opt1-MPI-OpenMP-full opt2-MPI-OpenMP-full" src/script/pemc-submit.sh sweep
+#   SWEEP_PLACE     placement of the sweep jobs [default pack:excl, as the first sweeps]
 SWEEP_LAYOUT=1:1:8
+SWEEP_VERSIONS=${SWEEP_VERSIONS:-baseline-sequential-diagonal baseline-sequential-full
+    baseline-MPI-OpenMP-diagonal baseline-MPI-OpenMP-full opt1-MPI-OpenMP-diagonal
+    opt2-MPI-OpenMP-diagonal opt1-MPI-OpenMP-full opt2-MPI-OpenMP-full}
+SWEEP_PLACE=${SWEEP_PLACE:-pack:excl}
 if [ "$WHAT" = sweep ]; then
     for sw in K D; do
-        for v in baseline-sequential-diagonal baseline-sequential-full; do
-            submit "$(short $v)-sw$sw" "1:ncpus=1:mem=$MEM" pack:excl "VERSION=$v,SWEEP=$sw,REPS=$REPS,REQUIRE_CPU=$REQUIRE_CPU"
-        done
-        for v in baseline-MPI-OpenMP-diagonal baseline-MPI-OpenMP-full; do
-            IFS=: read -r N R T <<< "$SWEEP_LAYOUT"
-            submit "$(short $v)-sw$sw" "$N:ncpus=$((R * T)):mpiprocs=$R:mem=$MEM" pack:excl \
-                   "VERSION=$v,SWEEP=$sw,NODES=$N,RANKS_PER_NODE=$R,THREADS=$T,PLACE=pack:excl,REPS=$REPS,REQUIRE_CPU=$REQUIRE_CPU"
+        for v in $SWEEP_VERSIONS; do
+            case " $(echo $WRITTEN) " in *" $v "*) ;; *) echo "unknown version: $v" >&2; exit 1;; esac
+            if [[ "$v" == *sequential* ]]; then  # sequential: 1 core
+                submit "$(short $v)-sw$sw" "1:ncpus=1:mem=$MEM" "$SWEEP_PLACE" \
+                       "VERSION=$v,SWEEP=$sw,REPS=$REPS,REQUIRE_CPU=$REQUIRE_CPU"
+            else                                 # MPI + OpenMP: the fixed layout
+                IFS=: read -r N R T <<< "$SWEEP_LAYOUT"
+                submit "$(short $v)-sw$sw" "$N:ncpus=$((R * T)):mpiprocs=$R:mem=$MEM" "$SWEEP_PLACE" \
+                       "VERSION=$v,SWEEP=$sw,NODES=$N,RANKS_PER_NODE=$R,THREADS=$T,PLACE=$SWEEP_PLACE,REPS=$REPS,REQUIRE_CPU=$REQUIRE_CPU"
+            fi
         done
     done
     exit 0
