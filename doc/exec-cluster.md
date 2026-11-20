@@ -201,14 +201,13 @@ All the splits of 1, 2 and 4 cores, as for 8 cores:
 | 2 | `1:1:2`, `1:2:1` |
 | 4 | `1:1:4`, `1:2:2`, `1:4:1` |
 
-One node, so only `pack` and `pack:excl` (scatter = pack): 6 layouts x 2 placements = **12 jobs per version**, 72 in all (baseline, opt1, opt2 x 2 models). The logs are new files (`<version>_pack_1n1r1t.log`, ...): nothing is overwritten. The longest jobs are the 1-core ones of the full model, about 2-2.5 h for all the datasets (the sequential full takes 148 min): the 6 h walltime is enough.
+One node, so `scatter` = `pack`: 6 layouts = **6 jobs per version**, 36 in all (baseline, opt1, opt2 x 2 models). The logs are new files (`<version>_pack_1n1r1t.log`, ...): nothing is overwritten. The longest jobs are the 1-core ones of the full model: about 2.5-3.5 h on a shared node for all the datasets (the sequential full takes 148 min on an exclusive node): the 6 h walltime is enough.
 
 ```bash
 export CONFIGS_LIST="1:1:1 1:1:2 1:2:1 1:1:4 1:2:2 1:4:1"
-DRY_RUN=1 src/script/pemc-submit.sh diagonal baseline   # check: prints the 12 qsub, submits nothing
+export PLACES_LIST="pack"                               # pack only (see below)
+DRY_RUN=1 src/script/pemc-submit.sh diagonal baseline   # check: prints the 6 qsub, submits nothing
 
-# ---- batch A: pack -------------------------------------------------------------------------
-export PLACES_LIST="pack"
 src/script/pemc-submit.sh diagonal baseline          # 6 jobs
 src/script/pemc-submit.sh diagonal opt1              # 6 jobs
 src/script/pemc-submit.sh diagonal opt2              # 6 jobs
@@ -216,16 +215,10 @@ src/script/pemc-submit.sh full baseline              # 6 jobs
 src/script/pemc-submit.sh full opt1                  # 6 jobs
 src/script/pemc-submit.sh full opt2                  # 6 jobs
 
-# ---- batch B: pack:excl (can stay queued for long: no node is ever completely free) ---------
-export PLACES_LIST="pack:excl"
-src/script/pemc-submit.sh diagonal baseline          # 6 jobs
-src/script/pemc-submit.sh diagonal opt1              # 6 jobs
-src/script/pemc-submit.sh diagonal opt2              # 6 jobs
-src/script/pemc-submit.sh full baseline              # 6 jobs
-src/script/pemc-submit.sh full opt1                  # 6 jobs
-src/script/pemc-submit.sh full opt2                  # 6 jobs
 unset CONFIGS_LIST PLACES_LIST                       # back to the default layouts and placements
 ```
+
+**Only `pack`, no exclusive runs for these layouts.** We did not run them with `pack:excl` because of the time: the exclusive jobs wait hours in the queue (no Xeon6252N node is ever completely free), and the plots use `pack` for all the core counts. The report says so in the Measurement Methodology.
 
 Batch A is enough for the plots (`plots-performance.py` uses the placement `pack` by default); batch B only completes the set of placements. After "per-user limit" errors resume the same group with `SKIP=<jobs already submitted>`. When the jobs are done copy `results/logs/diagonal/` and `results/logs/full/` to the laptop and run `plots-performance.py` again: the new core counts are picked up from the logs, no change to the scripts (P7 keeps only the splits of the 8 cores of the node).
 

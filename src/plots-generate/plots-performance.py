@@ -36,7 +36,8 @@ Rules (doc/plots.md)
 Reference of the optimizations
     opt1 / opt2 are always compared with the PARALLEL BASELINE (baseline-MPI-OpenMP-<model>) on
     the same cores, dataset and placement (P9), NOT with the sequential version. The sequential
-    version is only the reference of the speedup (P2/P3) and of the weak-scaling efficiency (P5).
+    version is only the reference of the speedup (P2/P3). The weak-scaling efficiency (P5) of
+    every version uses the SAME version on 1 core as reference, so it shows the scaling only.
 
 Extra data in the logs (see include/logger.h and include/perfmodel.h)
     P1  sweeps of K and D: results/logs/sweep/*.log, made with "pemc-submit.sh sweep".
@@ -466,18 +467,23 @@ def p5_weak(ctx, model):
     d = best[(best.model == model) & best.dataset.str.startswith(fam + "_p")].copy()
     need(not d.empty, f"no {fam}_pNN dataset")
     d["p"] = d.dataset.str.extract(r"_p(\d+)$")[0].astype(int)  # size factor = cores of the weak run
-    ref = d[(d.label == "sequential") & (d.p == 1)]
-    need(not ref.empty, f"no sequential {fam}_p01")
-    t1 = ref.t.iloc[0]  # time of ONE core on the smallest problem: weak efficiency = t1 / t(p cores, p x data)
     fig, ax = plt.subplots(figsize=(HALF_W, 3.0), layout="constrained")
     cs = [1]  # core counts drawn (for the ticks and the ideal line)
     eff_max = 1.0  # highest efficiency drawn: the y axis never cuts a point
     for v in versions_in(d):
-        s = d[(d.label == v) & (d.cores == d.p)].sort_values("cores")  # N per core constant
+        # Weak-scaling efficiency of a version = its OWN time on 1 core (smallest problem, p01)
+        # / its time on p cores with p x the data. The reference is the same version, NOT the
+        # sequential one: otherwise a faster algorithm (opt1/opt2 full, ~2x the sequential) would
+        # start above 1 and the plot would mix "faster algorithm" with "scales well" (that gain
+        # is in P2 and P9). The sequential version has no curve here (it never runs on p > 1).
         if v == "sequential":
-            s = s.assign(cores=1)
-        if s.empty:
             continue
+        ref = d[(d.label == v) & (d.p == 1) & (d.cores == 1)]
+        if ref.empty:
+            print(f"  P5 {model}: {v} has no 1-core run on {fam}_p01, skipped")
+            continue
+        t1 = ref.t.iloc[0]
+        s = d[(d.label == v) & (d.cores == d.p)].sort_values("cores")  # N per core constant
         c = s.cores.to_numpy()
         cs += list(c)
         line(ax, c, t1 / s.t.to_numpy(), t1 / s.hi.to_numpy(), t1 / s.lo.to_numpy(), v)
@@ -485,7 +491,7 @@ def p5_weak(ctx, model):
     ideal(ax, sorted(set(cs)), np.ones(len(set(cs))), label="ideal (efficiency 1)")
     cores_axis(ax, cs, nodes_of(d[d.cores == d.p]))
     ax.set_xlabel("number of cores p (nodes); dataset with p × the rows")
-    ax.set_ylabel("weak-scaling efficiency\n(time on 1 core / time on p cores)")
+    ax.set_ylabel("weak-scaling efficiency\n(same version: time on 1 core\n/ time on p cores)")
     ax.set_ylim(0, eff_max * 1.1 + 0.05)
     legend_from(fig, [ax], ncol=2)
     title(fig, "Weak scaling: the data per core is kept constant",

@@ -62,7 +62,7 @@ What we do instead (compromise):
 | P2 | How much faster than sequential? (speedup) | lines + ideal | cores | speedup | versions | 1 large + 1 small dataset, placement |
 | P3 | How efficient? | lines | cores | efficiency | versions | same as P2. Put it as a second panel of P2 |
 | P4 | Strong scaling | lines + ideal | cores | time (or speedup) | versions | N fixed |
-| P5 | Weak scaling | lines | cores | time (or efficiency) | versions | N / core fixed (generated synthetic) |
+| P5 | Weak scaling | lines | cores | efficiency = time of the SAME version on 1 core / time on p cores | versions | N / core fixed (generated synthetic); reference = each version on 1 core, not the sequential |
 | P6 | Does PBS placement matter? | grouped bars | nodes (1, 2, 4) | time / iteration | 4 placements | best version, 1 model, 1 large dataset |
 | P7 | Best ranks x threads at fixed cores? | bars (one per split, fastest framed in red) | ranks x threads | time / iteration | none | 1 node, best version (with 8 cores only 4 splits exist: a ranks x threads table would be mostly empty) |
 | P8 | Where does the time go? | stacked bars | ranks | time | E-step, M-step, `t_comm`, I/O | 1 version per panel or bars side by side |
