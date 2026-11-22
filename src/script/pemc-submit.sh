@@ -9,7 +9,7 @@
 #   src/script/pemc-submit.sh sweep                                 sweeps of K and D for plot P1
 #   DRY_RUN=1 src/script/pemc-submit.sh ...  only prints the qsub commands
 #   PLACES_LIST="pack scatter" src/script/pemc-submit.sh diagonal baseline   only these placements (no :excl)
-#   BLOCK=64 src/script/pemc-submit.sh full opt1      rows per block of opt1/opt2 full (sweep over B, logs
+#   BLOCK=64 src/script/pemc-submit.sh full opt1      rows per block of opt1 full (sweep over B, logs
 #                                           in results/logs/block/)
 #   SKIP=4 src/script/pemc-submit.sh diagonal opt1   does NOT submit the first 4 jobs (same order as the
 #                                           normal run): to send the rest after "per-user limit" errors
@@ -118,7 +118,7 @@ if [ "$WHAT" = sweep ]; then
 fi
 
 COMMON="REPS=$REPS,SYNTH_P=$SYNTH_P,SETS=$SETS,REQUIRE_CPU=$REQUIRE_CPU"
-# Block size of opt1/opt2 full (sweep over B): passed to the jobs only if set; the logs then go to
+# Block size of opt1 full (sweep over B): passed to the jobs only if set; the logs then go to
 # results/logs/block/ (see pemc-job.sh). Example, 1 node only, a few datasets:
 #   BLOCK=64 CONFIGS_LIST="1:1:8" PLACES_LIST="pack:excl" src/script/pemc-submit.sh full opt1
 [ -n "${BLOCK:-}" ] && COMMON="$COMMON,BLOCK=$BLOCK"

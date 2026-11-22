@@ -76,7 +76,7 @@ typedef struct
     const double *rank_compute; /* compute time of every rank (s), array of n_rank_compute values
                                    in rank order; NULL if not available (sequential versions) */
     int n_rank_compute;  /* length of rank_compute (= number of MPI ranks) */
-    int block;           /* rows per block (blocked versions only, opt1/opt2 full); 0 = not a blocked
+    int block;           /* rows per block (blocked version only, opt1 full); 0 = not a blocked
                             version, and the line "block" is not written */
 } RunStats;
 

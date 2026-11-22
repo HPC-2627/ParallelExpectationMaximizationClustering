@@ -201,7 +201,7 @@ src/script/pemc-submit.sh sweep                         # 8 jobs, a few minutes 
 The default layouts start at 8 cores, and 8 -> 16 -> 32 cores also changes 1 -> 2 -> 4 nodes: without these runs P2/P3, P4 and P5 jump from 1 to 8 cores. They give:
 
 - the **scaling inside one node** (1 -> 2 -> 4 -> 8 cores), separated from the network;
-- every version **on 1 core** (`1:1:1`): the gain of the optimization alone, so the efficiency above 1 of opt1/opt2 full (P2, P5) can be split into optimization x parallelism;
+- every version **on 1 core** (`1:1:1`): the gain of the optimization alone, so the efficiency above 1 of opt1 full (P2, P5) can be split into optimization x parallelism;
 - two more points of the **weak scaling** (`synth_clean_p02` on 2 cores, `p04` on 4 cores).
 
 All the splits of 1, 2 and 4 cores, as for 8 cores:
@@ -323,7 +323,7 @@ watch -n 30 'qstat -u $USER | tail -n +6; echo; grep -c "^==== run" results/logs
 
 ### Output
 
-- logs: `results/logs/<model>/<stage>/<version>_<placement>_<nodes>n<ranks>r<threads>t.log` (`<version>_seq.log` for the sequential ones), with model = `diagonal` | `full` and stage = `sequential` | `baseline` | `opt1` | `opt2` (folders already in the repository); sweeps in `results/logs/sweep/`; sweep over the block size of `opt1` (or `opt2`) full (`BLOCK=64 src/script/pemc-submit.sh full opt1`) in `results/logs/block/<version>_<layout>_b<B>.log`; clustering in `results/logs/cluster/` and `results/clusters/`;
+- logs: `results/logs/<model>/<stage>/<version>_<placement>_<nodes>n<ranks>r<threads>t.log` (`<version>_seq.log` for the sequential ones), with model = `diagonal` | `full` and stage = `sequential` | `baseline` | `opt1` | `opt2` (folders already in the repository); sweeps in `results/logs/sweep/`; sweep over the block size of `opt1` full (`BLOCK=64 src/script/pemc-submit.sh full opt1`) in `results/logs/block/<version>_<layout>_b<B>.log`; clustering in `results/logs/cluster/` and `results/clusters/`;
 - standard output/error of the jobs: `results/logs/pbs/<job>.out|.err` (not versioned).
 
 ---
@@ -398,7 +398,7 @@ Without `--map-by slot:PE=T --bind-to core` all threads of a rank share one core
 | `-s S` | init seed (42), same init in every version |
 | `-r R` | restarts, best kept; times summed (1) |
 | `-w N` | untimed warm-up iterations (3), logged as `t_warmup` |
-| `-b B` | block rows for `opt1` and `opt2` full (64) |
+| `-b B` | block rows for `opt1` full (64) |
 | `-l FILE` / `--no-log` | log file (`results/logs/<name>.log`) / no log |
 | `--save DIR` | save labels, weights, means, loglik curve (sequential only) |
 | `-v` | print loglik every iteration |

@@ -26,7 +26,7 @@
 #   SWEEP_K         K used in the D sweep     [default 4]
 #   REQUIRE_CPU     text that the CPU model of EVERY node must contain, else the job stops
 #                   without writing logs [default 6252N; empty = no check]
-#   BLOCK           rows per block, passed as -b (only opt1 and opt2 full use it; the others ignore it)
+#   BLOCK           rows per block, passed as -b (only opt1 full uses it; the others ignore it)
 #                   [default: empty = default of the version]. When it is set the logs go to
 #                   results/logs/block/<version>_<layout>_b<BLOCK>.log, apart from the scaling
 #                   runs (sweep over B to choose the default)

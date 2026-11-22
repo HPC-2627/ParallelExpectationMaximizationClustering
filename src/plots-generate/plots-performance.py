@@ -563,7 +563,7 @@ def p5_weak(ctx, model):
     for v in versions_in(d):
         # Weak-scaling efficiency of a version = its OWN time on 1 core (smallest problem, p01)
         # / its time on p cores with p x the data. The reference is the same version, NOT the
-        # sequential one: otherwise a faster algorithm (opt1/opt2 full, ~2x the sequential) would
+        # sequential one: otherwise a faster algorithm (opt1 full, ~2x the sequential) would
         # start above 1 and the plot would mix "faster algorithm" with "scales well" (that gain
         # is in P2 and P9). The sequential version has no curve here (it never runs on p > 1).
         if v == "sequential":
@@ -766,9 +766,10 @@ def p1_sweeps(ctx, model):
             s_ = s_.loc[s_.groupby(col)["t"].idxmin()].sort_values(col)  # one layout: 1 row per x
             if s_.empty:
                 continue
-            # opt1 and opt2 of the full model do the same computation, so their lines coincide:
-            # opt1 is drawn thicker and below, opt2 thinner on top (as the markers of P10)
-            big = v == "opt1" and model == "full"
+            # opt2 does the same computation as the baseline (both models), so their lines
+            # coincide: the baseline is drawn thicker and below, opt2 thinner on top (as the
+            # markers of P10)
+            big = v == "baseline"
             line(ax, s_[col].to_numpy(), s_.t.to_numpy(), s_.lo.to_numpy(), s_.hi.to_numpy(), v,
                  ms=8 if big else 4.5, lw=3.2 if big else 1.4, zorder=2 if big else 3)
             first = first or (s_[col].iloc[0], s_.t.iloc[0], s_[col].to_numpy())

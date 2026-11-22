@@ -142,7 +142,7 @@ The EM algorithm is the same for both covariance models (Algorithms~\ref{alg:seq
 \begin{itemize}
 \item \emph{Sequential}: single process, single thread. It is the correctness reference (the parallel versions must reach the same final log-likelihood) and gives the serial time used to compute speedup and efficiency.
 \item \emph{Baseline MPI+OpenMP}: the straightforward hybrid parallelization, without optimizations. It is the reference against which the optimizations are measured.
-\item \emph{Optimization 1} and \emph{Optimization 2}: two optimizations of the same model, each changing one aspect only. Optimization~1 starts from the baseline and is measured against it. In the diagonal model Optimization~2 also starts from the baseline; in the full model it starts from Optimization~1 (the full baseline is several times slower, so the communication is measured on top of the optimized computation) and is measured against it. In both models Optimization~1 concerns the computation and Optimization~2 the communication between the MPI processes. The details differ because each model has its own bottleneck (the diagonal model is memory-bound, the full one is compute-bound for large $D$): for the full model Optimization~1 also processes the rows in blocks (Section~\ref{sec:design}).
+\item \emph{Optimization 1} and \emph{Optimization 2}: two optimizations of the same model, each changing one aspect only. Optimization~1 starts from the baseline and is measured against it. Optimization~2 also starts from the baseline, in both models, and is measured against it. In both models Optimization~1 concerns the computation and Optimization~2 the communication between the MPI processes. The details differ because each model has its own bottleneck (the diagonal model is memory-bound, the full one is compute-bound for large $D$): for the full model Optimization~1 also processes the rows in blocks (Section~\ref{sec:design}).
 \end{itemize}
 The two models are compared only within themselves: \emph{diagonal} with \emph{diagonal} and \emph{full} with \emph{full}, because the log-likelihood of different models is not comparable.
 
@@ -483,37 +483,38 @@ read $X_p$ and initialize as in Algorithm~\ref{alg:base-diag} ($\Sigma_k\leftarr
 \end{algorithm}
 
 \subsection{Optimization 2, full model: communication}
-Optimization~2 of the full model starts from Optimization~1 (not from the baseline, which is several times slower) and changes only the communication: the computation (fused pass with its block kernels, update of the parameters, initialization) is the one of Algorithm~\ref{alg:opt1-full}, line by line. The comparison with Optimization~1 isolates the effect of the communication alone.
+Optimization~2 of the full model starts from the full baseline, as Optimization~2 of the diagonal model starts from the diagonal baseline, and changes only the communication: the computation (E-step with the Cholesky factorizations, M-step loop over the rows, update of the parameters, initialization) is the one of Algorithm~\ref{alg:base-full}, line by line. The comparison with the baseline isolates the effect of the communication alone; Optimization~1 is a separate optimization of the computation and is not included.
 \begin{itemize}
-\item \emph{One collective call per iteration.} As in the diagonal model, the local log-likelihood $\ell$ travels in one extra slot at the end of the buffer of the sums, and the whole buffer is reduced with a single \texttt{MPI\_Allreduce} instead of two.
-\item \emph{Packed lower triangle.} The fused pass accumulates only the lower triangle ($b\le a$) of each $\sum_i r_{ik}x_ix_i^\top$, but Optimization~1 reduces the whole $KD^2$ array, half of it zeros. Optimization~2 copies the triangle row by row into a separate communication buffer $[N_k\,|\,S\,|\,\mathrm{tril}(Q)\,|\,\ell]$ of $K+KD+KD(D+1)/2+1$ doubles, reduces it and copies it back into acc. With $K=6$, $D=50$ the sums of $\Sigma_k$ go from 15\,000 doubles (120~KB) to 7\,650 (61~KB).
+\item \emph{One collective call per iteration.} As in the diagonal model, the M-step loop over the rows moves before the convergence test, the local log-likelihood $\ell$ travels in one extra slot at the end of the buffer of the sums, and the whole buffer is reduced with a single \texttt{MPI\_Allreduce} instead of two.
+\item \emph{Packed lower triangle.} The M-step loop accumulates only the lower triangle ($b\le a$) of each $\sum_i r_{ik}x_ix_i^\top$, but the baseline reduces the whole $KD^2$ array, half of it zeros. Optimization~2 copies the triangle row by row into a separate communication buffer $[N_k\,|\,S\,|\,\mathrm{tril}(Q)\,|\,\ell]$ of $K+KD+KD(D+1)/2+1$ doubles, reduces it and copies it back into acc. With $K=6$, $D=50$ the sums of $\Sigma_k$ go from 15\,000 doubles (120~KB) to 7\,650 (61~KB).
 \item \emph{Why it helps.} One latency and one synchronization point per iteration instead of two, as in the diagonal model; in addition, unlike the diagonal messages, the full message grows as $KD^2$, so the bandwidth term also counts and the packing halves it (with Rabenseifner's algorithm for long messages the cost is about $2\lg P\,\alpha+2n\beta+n\gamma$~\cite{thakur}: halving $n$ halves the last two terms). The gain is expected where the communication matters (several nodes, small datasets with short iterations); with one rank or on large datasets it should be close to $1\times$.
-\item \emph{No extra computation.} In Optimization~1 the local sums are already computed in every fused pass, also the converged one: Optimization~2 only sends them on the last iteration too (one unused message per run). The pack and unpack copies cost $O(KD^2)$ per iteration, negligible against the pass over the rows, and are counted in $t_{\mathrm{comm}}$.
-\item \emph{Same result.} The global $\mathcal{L}$ of iteration $t$ is the sum of the same local values as in Optimization~1, so the convergence test takes the same decision at the same iteration; when the run has converged the received sums are not applied. With one rank the result is bitwise identical to Optimization~1; with more ranks MPI may choose a different reduction algorithm for the different message size (MPI libraries select the algorithm by message size~\cite{thakur}), which changes the order of the sums (last-digit rounding).
+\item \emph{What it costs.} To send $\ell$ with the sums, the local sums must be computed before the convergence test: on the last iteration of a converged run they are computed and then thrown away, i.e. one extra M-step loop per run ($O(n_pKD^2)$, out of tens or hundreds of iterations), as in the diagonal model. The pack and unpack copies cost $O(KD^2)$ per iteration, negligible against the loops over the rows, and are counted in $t_{\mathrm{comm}}$.
+\item \emph{Same result.} The global $\mathcal{L}$ of iteration $t$ is computed from the same parameters as in the baseline, so the convergence test takes the same decision at the same iteration; when the run has converged the received sums are not applied. With one rank the result is bitwise identical to the baseline; with more ranks MPI may choose a different reduction algorithm for the different message size (MPI libraries select the algorithm by message size~\cite{thakur}), which changes the order of the sums (last-digit rounding).
 \end{itemize}
-The complete execution sequence is outlined in Algorithm~\ref{alg:opt2-full}. Compared with Algorithm~\ref{alg:opt1-full}, the fused pass is unchanged and the two collective calls become one packed call.
+The complete execution sequence is outlined in Algorithm~\ref{alg:opt2-full}. Compared with Algorithm~\ref{alg:base-full}, the M-step loop moves before the convergence test and the two collective calls become one packed call; the loops over the rows are unchanged.
 
 \begin{algorithm}[H]
 \footnotesize
 \DontPrintSemicolon
 \SetAlgoLined
-\KwIn{file of $X$, $K$, seed, $\varepsilon$, $T_{\max}$, block size $B$; rank $p$ of $P$, $T$ threads per rank}
+\KwIn{file of $X$, $K$, seed, $\varepsilon$, $T_{\max}$; rank $p$ of $P$, $T$ threads per rank}
 \KwOut{$\pi,\mu,\Sigma$ and $\mathcal{L}$ (on every rank); labels (on rank 0)}
 read $X_p$ and initialize as in Algorithm~\ref{alg:base-diag} ($\Sigma_k\leftarrow I$)\;
 $M\leftarrow K+KD+KD(D+1)/2+1$ \tcp*{size of the communication buffer cbuf}
 \For{$t\leftarrow 1$ \KwTo $T_{\max}$}{
-  \tcp{Computation: the fused, blocked pass of Algorithm~\ref{alg:opt1-full}, unchanged}
-  $(\ell,\ \text{acc}=[N_k\,|\,S\,|\,Q])\leftarrow$ fused pass on $X_p$ \tcp*{Cholesky + E-step + local sums}
+  \tcp{Computation: the two loops of Algorithm~\ref{alg:base-full}, unchanged}
+  $(\ell,\ r)\leftarrow$ E-step on $X_p$ \tcp*{Cholesky + responsibilities}
+  acc $=[N_k\,|\,S\,|\,Q]\leftarrow$ M-step local sums on $X_p$ \tcp*{also on the converged iteration}
   \tcp{Pack: only the lower triangle of every $Q_k$, then $\ell$}
   cbuf $\leftarrow[N_k\,|\,S\,|\,Q_{k,ab}\ \text{for}\ b\le a\,|\,\ell]$ \tcp*{$O(KD^2)$ copy}
   \tcp{Communication: ONE call for $\mathcal{L}$ and the sums}
-  \texttt{MPI\_Allreduce}(IN\_PLACE, cbuf, $M$, SUM) \tcp*{Opt.~1: two calls, $1+K+KD+KD^2$ doubles}
-  acc $\leftarrow$ unpack(cbuf); $\mathcal{L}\leftarrow$ cbuf$[M-1]$ \tcp*{same value as in Opt.~1}
+  \texttt{MPI\_Allreduce}(IN\_PLACE, cbuf, $M$, SUM) \tcp*{baseline: two calls, $1+K+KD+KD^2$ doubles}
+  acc $\leftarrow$ unpack(cbuf); $\mathcal{L}\leftarrow$ cbuf$[M-1]$ \tcp*{same value as in the baseline}
   \lIf{$|\mathcal{L}-\mathcal{L}_{\mathrm{prev}}|\le\varepsilon|\mathcal{L}|$}{\textbf{break} \tcp*[f]{the global sums are not applied}}
   update $\pi,\mu,\Sigma$ from acc as in Algorithm~\ref{alg:seq-full} \tcp*{every rank: no broadcast}
   $\mathcal{L}_{\mathrm{prev}}\leftarrow\mathcal{L}$\;
 }
-\lIf{$T_{\max}$ reached}{one more fused pass and its \texttt{MPI\_Allreduce}($\ell$)}
+\lIf{$T_{\max}$ reached}{repeat the E-step and its \texttt{MPI\_Allreduce}($\ell$)}
 \texttt{MPI\_Gatherv}(labels of $X_p$, rank 0) \tcp*{only for the evaluation, not timed}
 \caption{Optimization 2 MPI+OpenMP, full model (rank $p$)}
 \label{alg:opt2-full}
