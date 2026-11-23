@@ -23,6 +23,11 @@
 \setlength{\textfloatsep}{6pt plus 1.0pt minus 1.5pt}
 \setlength{\floatsep}{6pt plus 1.0pt minus 1.5pt}
 \setlength{\intextsep}{6pt plus 1.0pt minus 1.5pt}
+% A figure together with the text that describes it: a minipage cannot be split, so the text and
+% the figure always stay on the same page (a float could move the figure to another page)
+\newenvironment{figblock}{\par\medskip\noindent\begin{minipage}{\textwidth}\setlength{\parskip}{4pt}}{\end{minipage}\par\medskip}
+% Link to a file or folder of the repository, written as its path
+\newcommand{\repolink}[1]{\href{https://github.com/HPC-2627/ParallelExpectationMaximizationClustering/tree/main/#1}{\textcolor{blue}{\nolinkurl{#1}}}}
 
 \begin{document}
 \pagestyle{plain} % page number centred at the bottom of every page
@@ -55,7 +60,7 @@
 In this project we used an AI assistant (Claude, by Anthropic) for three purposes: (i) support in writing and debugging the code; (ii) searching for sources and papers for the state of the art and for the datasets; (iii) mathematical and grammatical correction of the report. The design choices, the experiments and the analysis of the results are our own, and we reviewed the output of the assistant.
 
 \begin{abstract}
-\sloppy We parallelize the Expectation--Maximization (EM) algorithm for Gaussian mixture models with a hybrid MPI+OpenMP design, for two covariance models: diagonal and full (Cholesky). For each model we implement a sequential version, a baseline that splits the rows in contiguous blocks among the MPI ranks and the OpenMP threads and reduces the sums with two \texttt{MPI\_Allreduce} per iteration, and two optimizations of the baseline: Optimization~1 changes the computation (fused E- and M-step, one parallel region per iteration, and in the full model blocks of rows vectorized with SIMD), Optimization~2 the communication (one collective per iteration, and in the full model only the lower triangle of the covariance sums). Every parallel version reaches the same iterations and the same log-likelihood as the sequential one \textcolor{red}{[to confirm with the new Opt.~2 full logs: relative difference below $10^{-8}$]}. We measure strong and weak scaling up to 4 nodes (32 cores) of the HPC3 cluster of the University of Trento, on real medical datasets and on synthetic ones of up to 4 million rows, plus an MRI scan of 11.9 million voxels. The public medical tables are too small to benefit from parallelism, while on the large datasets Optimization~1 reaches a speedup of 27--29$\times$ over the sequential version in the diagonal model and about 50$\times$ in the full model, where the blocked computation is 3--8$\times$ faster than the baseline. Optimization~2 gives $1.5\times$ over the baseline in the diagonal model only where the ranks wait at the synchronization points, \textcolor{red}{[add the result of Opt.~2 full vs the full baseline on 32 cores, from the new runs]}.
+\sloppy We parallelize the Expectation--Maximization (EM) algorithm for Gaussian mixture models with a hybrid MPI+OpenMP design, for two covariance models: diagonal and full (Cholesky). For each model we implement a sequential version, a baseline that splits the rows in contiguous blocks among the MPI ranks and the OpenMP threads and reduces the sums with two \texttt{MPI\_Allreduce} per iteration, and two optimizations of the baseline: Optimization~1 changes the computation (fused E- and M-step, one parallel region per iteration, and in the full model blocks of rows vectorized with SIMD), Optimization~2 the communication (one collective per iteration, and in the full model only the lower triangle of the covariance sums). Every parallel version reaches the same iterations and the same log-likelihood as the sequential one (relative difference below $10^{-8}$ over 9\,849 runs). We measure strong and weak scaling up to 4 nodes (32 cores) of the HPC3 cluster of the University of Trento. The public medical datasets we found are small: their runs last milliseconds and measure mostly noise, so we generated synthetic datasets with a clinical structure of up to 4 million rows, and we show only the datasets whose runs all last at least one second (all the logs are in the repository). On these datasets Optimization~1 reaches a speedup of 27--29$\times$ over the sequential version in the diagonal model and about 50$\times$ in the full model, where the blocked computation is 3--8$\times$ faster than the baseline; its ranks are also balanced. Optimization~2 removes almost all the communication cost that is not waiting (on 32 cores from 0.6 to 0.08~ms per iteration in the diagonal model and from 6.5 to 0.5~ms in the full one), but on these datasets this is at most 2\% of an iteration: the time of the baseline is decided by the wait for the slowest rank, which only a faster and balanced computation reduces.
 \textcolor{red}{[Before delivery: check that every number matches the final Performance Evaluation, Discussion and Conclusion.]}
 \end{abstract}
 
@@ -522,6 +527,211 @@ $M\leftarrow K+KD+KD(D+1)/2+1$ \tcp*{size of the communication buffer cbuf}
 \label{alg:opt2-full}
 \end{algorithm}
 
+\subsection{Data Dependence Analysis}\label{sec:deps}
+A parallel loop gives the same result as the sequential one only if the parallel execution does not break a data dependence between its statements. For every OpenMP loop of the six MPI+OpenMP programs we applied the three steps of the methodology of the course, taken from Chandra et al.~\cite{chandra}: detection, classification and removal.
+
+\paragraph{Definitions.}
+\begin{itemize}
+\item \emph{Data dependence.} Two statements access the same memory location and at least one of them writes it. Two statements with a dependence cannot run in parallel: their order would be decided by the threads, not by the program (a \emph{data race}).
+\item \emph{Loop-carried or not.} The iterations of a parallel loop run in parallel, but the statements of one iteration run in order. What matters is therefore a dependence between statements of \emph{different} iterations of the loop, called \emph{loop-carried}. A dependence inside the same iteration is \emph{non loop-carried} and needs no treatment. Both kinds can coexist in the same loop.
+\item \emph{Kind of dataflow.} Let $S_1$ come before $S_2$ in the serial execution, both on the same location. If $S_1$ writes and $S_2$ reads, it is a \emph{flow} dependence (true dependence, the hardest to remove); if $S_1$ reads and $S_2$ writes, an \emph{anti} dependence; if both write, an \emph{output} dependence.
+\end{itemize}
+
+\paragraph{Detection.} For every loop we examined every variable written in it, following the whole dynamic extent of the loop, i.e.\ also the functions it calls (\texttt{log\_sum\_exp}, \texttt{exp}, \texttt{log}, \texttt{gmm\_full\_factorize}, \texttt{gmm\_cholesky} and the block kernels of Optimization~1 full): none of them has static or global variables, and they write only through their arguments. A variable needs no further analysis in three cases:
+\begin{itemize}
+\item it is only read in the loop: the data $X$, the parameters and, in the baselines and in Optimization~2, the cluster terms ($1/\sigma^2_{kd}$, $L_k$, $c_k$), computed by the master thread before the loop (in the full model this includes the $K$ Cholesky factorizations);
+\item it is declared inside the loop body (distances, \texttt{lse}, pointers to the current row): every iteration has its own copy;
+\item every element is written by exactly one iteration: the responsibilities of row $i$ inside the E-step loop, and the labels of row $i$.
+\end{itemize}
+All the other written variables appear in the tables.
+
+\paragraph{How to read the tables.} Tables~\ref{tab:dep-base-diag}--\ref{tab:dep-opt2-full} give, for every program, its dependences in the format of the course: the memory location; the earlier and the later statement, each with its line in the source file, its iteration and its access; whether the dependence is loop-carried; its kind of dataflow. A last column, \emph{Removal}, adds the third step: how the program handles the dependence. Every block of rows is one loop. The column \emph{Iter.} names the loop that carries the dependence: $i$ for the rows, blk for the blocks of Optimization~1 full, $k$ for the clusters, $t$ for the EM iterations, $a$ and $(i,j)$ for the inner loops of the forward substitution and of the Cholesky factorization; ``loop-carried: yes'' refers to that loop. A dependence between two different loops is marked ``no'': the later statement belongs to another loop, which starts only when the earlier one has ended.
+
+\paragraph{Removal.} Every dependence of the tables falls in one of four cases.
+\begin{itemize}
+\item \emph{Privatization}, for the anti and output dependences on the scratch buffers that every iteration writes again: the log-densities \texttt{logp}, $z$ and \texttt{buf}, and in Optimization~1 full the block buffers \texttt{Xt}, \texttt{LP}, \texttt{R} and \texttt{Zt} (reused as \texttt{RX}). Every thread has its own slice of the buffer, or its own local array, so two threads never write the same location; the dependence remains only between iterations of the same thread, which run in order.
+\item \emph{Reduction}, for the flow dependences of the sums ($\mathcal{L}$ and \texttt{acc} $=[N_k\,|\,S\,|\,Q]$): every thread accumulates in a private copy and OpenMP adds the copies at the end of the loop (\texttt{reduction(+:ll)}, and the array reduction \texttt{reduction(+:acc[:len])}); between the ranks the same sums are added by \texttt{MPI\_Allreduce}. In Optimization~1 full the sums over the rows of a block (\texttt{nk}, \texttt{s1}, \texttt{s2}) are SIMD reductions (\texttt{omp simd reduction}), which let the compiler vectorize them. Only the order of the additions changes, so the results differ only by rounding.
+\item \emph{End of a loop}, for the flow dependences between two loops. In the baselines and in Optimization~2 the E-step loop writes the responsibilities $r$ and the M-step loop reads them: they are two separate \texttt{parallel for}, and at the end of the first one all the threads join, so the M-step starts only when $r$ is complete. In Optimization~1 the two loops are in the same parallel region, and the implicit barrier at the end of the first \texttt{omp for} plays the same role for the cluster terms.
+\item \emph{Not removable}, for three recurrences. (1) The EM loop: iteration $t+1$ needs the parameters computed at iteration $t$, so it stays sequential and the parallelism is inside one iteration. (2) The forward substitution $L_kz=x_i-\mu_k$ of the full model: $z_a$ needs $z_0,\dots,z_{a-1}$. (3) The Cholesky factorization: the element $(i,j)$ of $L_k$ needs the elements already computed in the rows $i$ and $j$. The last two are inside \emph{one} iteration of the parallel loop (one row, one block, one cluster): for the parallel loop they are not loop-carried and do not prevent its parallelization, they only keep the inner loop sequential. Optimization~1 full also finds parallelism around them: it solves 8 independent rows of a block together, one per SIMD lane, and it splits the $K$ factorizations among the threads, each of which writes only its own $L_k$.
+\end{itemize}
+No dependence was found unhandled, so no change to the code was needed. The correctness check of Section~\ref{sec:method} agrees: in all the runs the parallel versions reach the same iterations as the sequential one and the log-likelihood differs by less than $10^{-8}$ (rounding), while a data race would give random and much larger differences.
+
+\begin{table}[H]
+\centering
+\caption{Data dependences of \texttt{src/diagonal/PEMC-baseline-MPI-OpenMP-diagonal.c}.}\label{tab:dep-base-diag}
+\scriptsize
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{lrllrllllp{0.31\textwidth}}
+\toprule
+\textbf{Memory} & \multicolumn{3}{c}{\textbf{Earlier statement}} & \multicolumn{3}{c}{\textbf{Later statement}} & \textbf{Loop-} & \textbf{Kind of} & \textbf{Removal} \\
+\cmidrule(lr){2-4} \cmidrule(lr){5-7}
+\textbf{location} & Line & Iter. & Access & Line & Iter. & Access & \textbf{carried?} & \textbf{dataflow} & \\
+\midrule
+\multicolumn{10}{p{0.92\textwidth}}{\emph{E-step loop over the local rows $i$, line 157: \texttt{omp parallel for reduction(+:ll)}}} \\
+\texttt{logp} & 173 & $i$ & write & 177 & $i$ & read & no & flow & none (same iteration) \\
+\texttt{logp} & 173 & $i$ & write & 173 & $i+1$ & write & yes & output & privatization: one slice per thread (l.~161) \\
+\texttt{logp} & 181 & $i$ & read & 173 & $i+1$ & write & yes & anti & privatization: one slice per thread (l.~161) \\
+\texttt{ll} & 178 & $i$ & read/write & 178 & $i+1$ & read/write & yes & flow & \texttt{reduction(+:ll)} (l.~157); between the ranks \texttt{MPI\_Allreduce} (l.~292) \\
+\midrule
+\multicolumn{10}{p{0.92\textwidth}}{\emph{M-step loop over the local rows $i$, line 206: \texttt{omp parallel for reduction(+:acc[:len])}}} \\
+$r$ & 181 & $i$ & write & 213 & $i$ & read & no & flow & between two loops: written in the E-step loop (l.~157), read in the M-step loop; all the threads join at the end of the first \texttt{parallel for} \\
+\texttt{acc} ($N_k$, $S$, $Q$) & 214--221 & $i$ & read/write & 214--221 & $i+1$ & read/write & yes & flow & array reduction \texttt{reduction(+:acc[:len])} (l.~206); between the ranks \texttt{MPI\_Allreduce} (l.~330) \\
+\midrule
+\multicolumn{10}{p{0.92\textwidth}}{\emph{EM loop over the iterations $t$, line 311 (not parallel)}} \\
+$\pi,\mu,\sigma^2$ & 332 & $t$ & write & 288 & $t+1$ & read & yes & flow & not removable (recurrence): the parallelism is inside one iteration \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Data dependences of \texttt{src/diagonal/PEMC-opt1-MPI-OpenMP-diagonal.c}.}\label{tab:dep-opt1-diag}
+\scriptsize
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{lrllrllllp{0.31\textwidth}}
+\toprule
+\textbf{Memory} & \multicolumn{3}{c}{\textbf{Earlier statement}} & \multicolumn{3}{c}{\textbf{Later statement}} & \textbf{Loop-} & \textbf{Kind of} & \textbf{Removal} \\
+\cmidrule(lr){2-4} \cmidrule(lr){5-7}
+\textbf{location} & Line & Iter. & Access & Line & Iter. & Access & \textbf{carried?} & \textbf{dataflow} & \\
+\midrule
+\multicolumn{10}{p{0.92\textwidth}}{\emph{Parallel region, line 145: \texttt{omp parallel reduction(+:ll) reduction(+:acc[:len])}; first loop over the clusters $k$, line 153 (\texttt{omp for})}} \\
+\texttt{inv\_var}, \texttt{c} & 160, 163 & $k$ & write & 182, 184 & any & read & no & flow & between two loops: implicit barrier at the end of the \texttt{omp for} (l.~153) \\
+\midrule
+\multicolumn{10}{p{0.92\textwidth}}{\emph{Second loop, over the local rows $i$, line 168 (\texttt{omp for}): fused E-step and M-step}} \\
+\texttt{buf} & 184 & $i$ & write & 188 & $i$ & read & no & flow & none (same iteration) \\
+\texttt{buf} & 184 & $i$ & write & 184 & $i+1$ & write & yes & output & privatization: \texttt{buf} is a local array of each thread (l.~149) \\
+\texttt{buf} & 193 & $i$ & read/write & 184 & $i+1$ & write & yes & anti & privatization (l.~149) \\
+\texttt{ll} & 189 & $i$ & read/write & 189 & $i+1$ & read/write & yes & flow & \texttt{reduction(+:ll)} (l.~145); between the ranks \texttt{MPI\_Allreduce} (l.~281) \\
+\texttt{acc} ($N_k$, $S$, $Q$) & 203--210 & $i$ & read/write & 203--210 & $i+1$ & read/write & yes & flow & array reduction \texttt{reduction(+:acc[:len])} (l.~145); between the ranks \texttt{MPI\_Allreduce} (l.~316) \\
+\midrule
+\multicolumn{10}{p{0.92\textwidth}}{\emph{EM loop over the iterations $t$, line 299 (not parallel)}} \\
+$\pi,\mu,\sigma^2$ & 318 & $t$ & write & 277 & $t+1$ & read & yes & flow & not removable (recurrence): the parallelism is inside one iteration \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Data dependences of \texttt{src/diagonal/PEMC-opt2-MPI-OpenMP-diagonal.c}. The loops are those of the baseline (Table~\ref{tab:dep-base-diag}); only the reduction between the ranks changes.}\label{tab:dep-opt2-diag}
+\scriptsize
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{lrllrllllp{0.31\textwidth}}
+\toprule
+\textbf{Memory} & \multicolumn{3}{c}{\textbf{Earlier statement}} & \multicolumn{3}{c}{\textbf{Later statement}} & \textbf{Loop-} & \textbf{Kind of} & \textbf{Removal} \\
+\cmidrule(lr){2-4} \cmidrule(lr){5-7}
+\textbf{location} & Line & Iter. & Access & Line & Iter. & Access & \textbf{carried?} & \textbf{dataflow} & \\
+\midrule
+\multicolumn{10}{p{0.92\textwidth}}{\emph{E-step loop over the local rows $i$, line 169: \texttt{omp parallel for reduction(+:ll)}}} \\
+\texttt{logp} & 185 & $i$ & write & 189 & $i$ & read & no & flow & none (same iteration) \\
+\texttt{logp} & 185 & $i$ & write & 185 & $i+1$ & write & yes & output & privatization: one slice per thread (l.~173) \\
+\texttt{logp} & 193 & $i$ & read & 185 & $i+1$ & write & yes & anti & privatization: one slice per thread (l.~173) \\
+\texttt{ll} & 190 & $i$ & read/write & 190 & $i+1$ & read/write & yes & flow & \texttt{reduction(+:ll)} (l.~169); between the ranks: written in the last slot of \texttt{acc} (l.~333), same \texttt{MPI\_Allreduce} as the sums (l.~335) \\
+\midrule
+\multicolumn{10}{p{0.92\textwidth}}{\emph{M-step loop over the local rows $i$, line 219: \texttt{omp parallel for reduction(+:acc[:len])}}} \\
+$r$ & 193 & $i$ & write & 226 & $i$ & read & no & flow & between two loops: written in the E-step loop (l.~169), read in the M-step loop; all the threads join at the end of the first \texttt{parallel for} \\
+\texttt{acc} ($N_k$, $S$, $Q$) & 227--234 & $i$ & read/write & 227--234 & $i+1$ & read/write & yes & flow & array reduction \texttt{reduction(+:acc[:len])} (l.~219); between the ranks \texttt{MPI\_Allreduce} (l.~335) \\
+\midrule
+\multicolumn{10}{p{0.92\textwidth}}{\emph{EM loop over the iterations $t$, line 355 (not parallel)}} \\
+$\pi,\mu,\sigma^2$ & 373 & $t$ & write & 330 & $t+1$ & read & yes & flow & not removable (recurrence): the parallelism is inside one iteration \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Data dependences of \texttt{src/full/PEMC-baseline-MPI-OpenMP-full.c}.}\label{tab:dep-base-full}
+\scriptsize
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{lrllrllllp{0.31\textwidth}}
+\toprule
+\textbf{Memory} & \multicolumn{3}{c}{\textbf{Earlier statement}} & \multicolumn{3}{c}{\textbf{Later statement}} & \textbf{Loop-} & \textbf{Kind of} & \textbf{Removal} \\
+\cmidrule(lr){2-4} \cmidrule(lr){5-7}
+\textbf{location} & Line & Iter. & Access & Line & Iter. & Access & \textbf{carried?} & \textbf{dataflow} & \\
+\midrule
+\multicolumn{10}{p{0.92\textwidth}}{\emph{E-step loop over the local rows $i$, line 165: \texttt{omp parallel for reduction(+:ll)}}} \\
+\texttt{z} & 186 & $a$ & write & 184 & $a'>a$ & read & yes & flow & carried by the loop over $a$ (l.~179): not removable (forward substitution), the loop over $a$ stays sequential inside one row \\
+\texttt{z} & 186 & $i$ & write & 186 & $i+1$ & write & yes & output & privatization: one slice per thread (l.~171) \\
+\texttt{z} & 184 & $i$ & read & 186 & $i+1$ & write & yes & anti & privatization: one slice per thread (l.~171) \\
+\texttt{logp} & 189 & $i$ & write & 193 & $i$ & read & no & flow & none (same iteration) \\
+\texttt{logp} & 189 & $i$ & write & 189 & $i+1$ & write & yes & output & privatization: one slice per thread (l.~170) \\
+\texttt{logp} & 197 & $i$ & read & 189 & $i+1$ & write & yes & anti & privatization: one slice per thread (l.~170) \\
+\texttt{ll} & 194 & $i$ & read/write & 194 & $i+1$ & read/write & yes & flow & \texttt{reduction(+:ll)} (l.~165); between the ranks \texttt{MPI\_Allreduce} (l.~318) \\
+\midrule
+\multicolumn{10}{p{0.92\textwidth}}{\emph{M-step loop over the local rows $i$, line 222: \texttt{omp parallel for reduction(+:acc[:len])}}} \\
+$r$ & 197 & $i$ & write & 229 & $i$ & read & no & flow & between two loops: written in the E-step loop (l.~165), read in the M-step loop; all the threads join at the end of the first \texttt{parallel for} \\
+\texttt{acc} ($N_k$, $S$, tril $Q$) & 230--239 & $i$ & read/write & 230--239 & $i+1$ & read/write & yes & flow & array reduction \texttt{reduction(+:acc[:len])} (l.~222); between the ranks \texttt{MPI\_Allreduce} (l.~356) \\
+\midrule
+\multicolumn{10}{p{0.92\textwidth}}{\emph{EM loop over the iterations $t$, line 337 (not parallel)}} \\
+$\pi,\mu,\Sigma$ & 358 & $t$ & write & 314 & $t+1$ & read & yes & flow & not removable (recurrence): the parallelism is inside one iteration \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Data dependences of \texttt{src/full/PEMC-opt1-MPI-OpenMP-full.c}.}\label{tab:dep-opt1-full}
+\scriptsize
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{lrllrllllp{0.31\textwidth}}
+\toprule
+\textbf{Memory} & \multicolumn{3}{c}{\textbf{Earlier statement}} & \multicolumn{3}{c}{\textbf{Later statement}} & \textbf{Loop-} & \textbf{Kind of} & \textbf{Removal} \\
+\cmidrule(lr){2-4} \cmidrule(lr){5-7}
+\textbf{location} & Line & Iter. & Access & Line & Iter. & Access & \textbf{carried?} & \textbf{dataflow} & \\
+\midrule
+\multicolumn{10}{p{0.92\textwidth}}{\emph{Parallel region, line 404: \texttt{omp parallel reduction(+:ll) reduction(+:acc[:len])}; first loop over the clusters $k$, line 415 (\texttt{omp for reduction(max:bad)})}} \\
+$L_k$ & 176, 179$^\dagger$ & $(i,j)$ & write & 169$^\dagger$ & later & read & yes & flow & carried by the loops over the elements of $L_k$ ($^\dagger$lines of \texttt{src/common/gmm.c}), inside one iteration $k$: not removable (Cholesky recurrence); every $k$ is done by one thread and writes only its own $L_k$ \\
+\texttt{bad} & 420 & $k$ & write & 420 & $k'>k$ & write & yes & output & \texttt{reduction(max:bad)} (l.~415) \\
+$L_k$, \texttt{c} & 418--419 & $k$ & write & 440--441 & any & read & no & flow & between two loops: implicit barrier at the end of the \texttt{omp for} (l.~415) \\
+\midrule
+\multicolumn{10}{p{0.92\textwidth}}{\emph{Second loop, over the blocks of $B$ rows, line 431 (\texttt{omp for}): fused and blocked E-step and M-step}} \\
+\texttt{Xt} & 230 & blk & write & 230 & blk$+1$ & write & yes & output & privatization: one 64-byte aligned slice per thread (l.~407) \\
+\texttt{LP} & 287 & blk & write & 302 & blk & read & no & flow & none (same iteration) \\
+\texttt{LP} & 306 & blk & read/write & 287 & blk$+1$ & write & yes & anti & privatization (l.~407) \\
+\texttt{R} & 312 & blk & write & 312 & blk$+1$ & write & yes & output & privatization (l.~407) \\
+\texttt{R} & 334, 346 & blk & read & 312 & blk$+1$ & write & yes & anti & privatization (l.~407) \\
+\texttt{Zt} as \texttt{RX} & 347 & blk & write & 265 & blk$+1$ & write & yes & output & privatization (l.~407); \texttt{Zt} is reused as the scratch \texttt{RX} of the M-step sums (l.~444) \\
+\texttt{Zt} as \texttt{RX} & 364 & blk & read & 265 & blk$+1$ & write & yes & anti & privatization (l.~407) \\
+\texttt{Zt} & 265 & $a$ & write & 258 & $a'>a$ & read & yes & flow & carried by the loop over $a$ (l.~245): not removable (forward substitution); the 8 rows of a tile are independent: SIMD over the rows (l.~256) \\
+\texttt{ll} & 302 & blk & read/write & 302 & blk$+1$ & read/write & yes & flow & \texttt{reduction(+:ll)} (l.~404); between the ranks \texttt{MPI\_Allreduce} (l.~526); the kernel gets the address of the private copy \\
+\texttt{nk}, \texttt{s1}, \texttt{s2} & 334--364 & $i$ & read/write & 334--364 & $i+1$ & read/write & yes & flow & carried by the loops over the rows of the block: \texttt{omp simd reduction(+:...)} (l.~332, 343, 362) \\
+\texttt{acc} ($N_k$, $S$, tril $Q$) & 335--365 & blk & read/write & 335--365 & blk$+1$ & read/write & yes & flow & array reduction \texttt{reduction(+:acc[:len])} (l.~404); between the ranks \texttt{MPI\_Allreduce} (l.~561) \\
+\midrule
+\multicolumn{10}{p{0.92\textwidth}}{\emph{EM loop over the iterations $t$, line 544 (not parallel)}} \\
+$\pi,\mu,\Sigma$ & 563 & $t$ & write & 522 & $t+1$ & read & yes & flow & not removable (recurrence): the parallelism is inside one iteration \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Data dependences of \texttt{src/full/PEMC-opt2-MPI-OpenMP-full.c}. The loops are those of the baseline (Table~\ref{tab:dep-base-full}); only the reduction between the ranks changes.}\label{tab:dep-opt2-full}
+\scriptsize
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{lrllrllllp{0.31\textwidth}}
+\toprule
+\textbf{Memory} & \multicolumn{3}{c}{\textbf{Earlier statement}} & \multicolumn{3}{c}{\textbf{Later statement}} & \textbf{Loop-} & \textbf{Kind of} & \textbf{Removal} \\
+\cmidrule(lr){2-4} \cmidrule(lr){5-7}
+\textbf{location} & Line & Iter. & Access & Line & Iter. & Access & \textbf{carried?} & \textbf{dataflow} & \\
+\midrule
+\multicolumn{10}{p{0.92\textwidth}}{\emph{E-step loop over the local rows $i$, line 210: \texttt{omp parallel for reduction(+:ll)}}} \\
+\texttt{z} & 231 & $a$ & write & 229 & $a'>a$ & read & yes & flow & carried by the loop over $a$ (l.~224): not removable (forward substitution), the loop over $a$ stays sequential inside one row \\
+\texttt{z} & 231 & $i$ & write & 231 & $i+1$ & write & yes & output & privatization: one slice per thread (l.~216) \\
+\texttt{z} & 229 & $i$ & read & 231 & $i+1$ & write & yes & anti & privatization: one slice per thread (l.~216) \\
+\texttt{logp} & 234 & $i$ & write & 238 & $i$ & read & no & flow & none (same iteration) \\
+\texttt{logp} & 234 & $i$ & write & 234 & $i+1$ & write & yes & output & privatization: one slice per thread (l.~215) \\
+\texttt{logp} & 242 & $i$ & read & 234 & $i+1$ & write & yes & anti & privatization: one slice per thread (l.~215) \\
+\texttt{ll} & 239 & $i$ & read/write & 239 & $i+1$ & read/write & yes & flow & \texttt{reduction(+:ll)} (l.~210); between the ranks: packed with the sums (l.~440), one \texttt{MPI\_Allreduce} (l.~441) \\
+\midrule
+\multicolumn{10}{p{0.92\textwidth}}{\emph{M-step loop over the local rows $i$, line 267: \texttt{omp parallel for reduction(+:acc[:len])}}} \\
+$r$ & 242 & $i$ & write & 274 & $i$ & read & no & flow & between two loops: written in the E-step loop (l.~210), read in the M-step loop; all the threads join at the end of the first \texttt{parallel for} \\
+\texttt{acc} ($N_k$, $S$, tril $Q$) & 275--284 & $i$ & read/write & 275--284 & $i+1$ & read/write & yes & flow & array reduction \texttt{reduction(+:acc[:len])} (l.~267); between the ranks: lower triangle packed (l.~440), one \texttt{MPI\_Allreduce} (l.~441) \\
+\midrule
+\multicolumn{10}{p{0.92\textwidth}}{\emph{EM loop over the iterations $t$, line 462 (not parallel)}} \\
+$\pi,\mu,\Sigma$ & 480 & $t$ & write & 436 & $t+1$ & read & yes & flow & not removable (recurrence): the parallelism is inside one iteration \\
+\bottomrule
+\end{tabular}
+\end{table}
+
 \section{Experimental Setup \& Dataset}
 \subsection{Hardware Infrastructure}\label{sec:hw}
 All the measurements were run on the HPC3 cluster of the University of Trento, managed by PBS Pro (queue \texttt{shortCPUQ}, 6~h requested per job). The cluster is heterogeneous (several Xeon generations), so every job was restricted to a single node type, \texttt{cpu\_type=Xeon6252N} (87 nodes), and each job checks the CPU model of all its nodes before writing any result. The CPU model recorded in the log is the same in all the runs. Table~\ref{tab:hw} summarizes the nodes.
@@ -563,13 +773,13 @@ The same procedure is used for every version, so that the times of sequential, b
 \begin{itemize}
 \item \emph{Same machine.} Every job runs on Xeon Gold 6252N nodes only (\texttt{cpu\_type} in the PBS request) and checks the CPU model of all its nodes before starting: a job on a different CPU stops without writing results. The CPU model is also written in every log entry.
 \item \emph{Same inputs.} Every version runs on the same datasets with the same $K$ (number of true classes), the same seed (42), tolerance $\varepsilon=10^{-6}$, $T_{\max}=200$ and one initialization ($R=1$). The only exception is the sweep over $K$ (Section~\ref{sec:sweeps}), where $K$ is the parameter being varied.
-\item \emph{Correctness check.} All the versions of a model must reach the same number of iterations and the same final $\mathcal{L}$ on every dataset and layout. This holds for both models: over all the versions (sequential, baseline, Optimization~1 and~2), layouts and placements (3\,675 runs of the diagonal model, 3\,528 of the full one) the number of iterations is identical on every dataset, and the relative difference of $\mathcal{L}$ from the sequential version is at most $4.4\cdot10^{-9}$ (diagonal) and $7.6\cdot10^{-9}$ (full). Both maxima are on \texttt{brainweb}, which runs all the $T_{\max}=200$ iterations; on the other datasets the difference is at most $1.4\cdot10^{-10}$ in the full model and zero, to the digits written in the log, in the diagonal one. The differences come only from the order of the floating-point sums (threads, ranks, blocks). \textcolor{red}{TODO: recompute these counts and maxima with the logs of the new Optimization~2 full (built on the baseline), once its runs on 1, 2 and 4 cores are finished.}
+\item \emph{Correctness check.} All the versions of a model must reach the same number of iterations and the same final $\mathcal{L}$ on every dataset and layout. This holds for both models: over all the versions (sequential, baseline, Optimization~1 and~2), layouts and placements (5\,025 runs of the diagonal model, 4\,824 of the full one) the number of iterations is identical on every dataset, and the relative difference of $\mathcal{L}$ from the sequential version is at most $4.9\cdot10^{-9}$ (diagonal) and $7.7\cdot10^{-9}$ (full). Both maxima are on \texttt{brainweb}, which runs all the $T_{\max}=200$ iterations; on the other datasets the difference is at most $1.5\cdot10^{-10}$ in the full model and zero, to the digits written in the log, in the diagonal one. The differences come only from the order of the floating-point sums (threads, ranks, blocks).
 \item \emph{Warm-up.} Before the measured run, 3 EM iterations are executed and discarded, with the same OpenMP regions and the same \texttt{MPI\_Allreduce} calls as the measured run. They remove one-time costs: first touch of the memory, creation of the thread pool, opening of the MPI connections, CPU frequency ramp-up. The parameters are then re-initialized with the same seed, so the result is the same as without warm-up.
 \item \emph{Timers.} Times are wall-clock times, taken with \texttt{MPI\_Wtime} (\texttt{gettimeofday} in the sequential versions). An \texttt{MPI\_Barrier} aligns the ranks only before the global timers (start of reading, initialization, EM); there is no barrier inside the loop, because it would add a cost that the algorithm does not have.
 \item \emph{What is measured.} Per run: $t_{\mathrm{read}}$, $t_{\mathrm{init}}$, $t_E$ and $t_M$ (computation only, without MPI calls) and $t_{\mathrm{comm}}$ (time inside the \texttt{MPI\_Allreduce} calls, including the waiting for the slowest rank). In the sequential versions, the baselines and Optimization~2 of both models, $t_E$ and $t_M$ are the E-step and M-step loops (the M-step also includes the update of the parameters; in Optimization~2 it also includes the extra M-step loop of the converged iteration, which is real work of that version). In Optimization~1 of both models the E-step and M-step are fused in one pass that cannot be split: $t_E$ is the whole fused pass (Cholesky factorizations included in the full model) and $t_M$ only the update of the parameters from the global sums. In Optimization~2 full $t_{\mathrm{comm}}$ also includes the pack and unpack copies of the buffer. Each time is the maximum over the ranks. The main metric is the time per iteration, $t_{\mathrm{it}}=(t_E+t_M+t_{\mathrm{comm}})/\text{iterations}$: it does not depend on how many iterations a dataset needs to converge, so datasets and versions can be compared. The compute time of every rank is also logged, to measure the load imbalance.
 \item \emph{Repetitions.} Every (version, layout, dataset) is run 3 times, as separate processes. The plots show the median, with the minimum and the maximum as error bar.
-\item \emph{Placement.} Every layout is run with four PBS placements: \texttt{pack} and \texttt{scatter} (nodes possibly shared with other jobs) and \texttt{pack:excl}, \texttt{scatter:excl} (nodes reserved for the job). The only exception are the layouts with 1, 2 and 4 cores on one node, measured only with \texttt{pack}: the exclusive jobs stayed queued for hours. Threads are bound to physical cores (Section~\ref{sec:hw}). \textcolor{red}{With \texttt{pack} (and \texttt{pack:excl}) PBS places all the chunks of a 2- or 4-node request on ONE node, because a node has 96 cores (checked in the list of nodes assigned to every job): those runs are 16 or 32 cores of one node, not multi-node runs. Only \texttt{scatter} places the chunks on different nodes. The scaling figures therefore use \texttt{pack} on one node (1 to 8 cores) and \texttt{scatter:excl} on 2 and 4 nodes (16 and 32 cores): real multi-node runs on reserved nodes (on shared nodes the spread of the repetitions of \texttt{scatter} is about 25\%).}
-\item \emph{Stability.} On the exclusive placements the spread of the 3 repetitions (max$-$min over median) is a few percent; on shared nodes it is larger, because other jobs use the memory bandwidth and the caches \textcolor{red}{(TODO: check the final values per placement and report them)}.
+\item \emph{Placement.} Every layout is run with four PBS placements: \texttt{pack} and \texttt{scatter} (nodes possibly shared with other jobs) and \texttt{pack:excl}, \texttt{scatter:excl} (nodes reserved for the job). The only exception are the layouts with 1, 2 and 4 cores on one node, measured only with \texttt{pack}: the exclusive jobs stayed queued for hours. Threads are bound to physical cores (Section~\ref{sec:hw}). \textcolor{red}{With \texttt{pack} (and \texttt{pack:excl}) PBS places all the chunks of a 2- or 4-node request on ONE node, because a node has 96 cores (checked in the list of nodes assigned to every job): those runs are 16 or 32 cores of one node, not multi-node runs. Only \texttt{scatter} places the chunks on different nodes. The scaling figures therefore use \texttt{pack} on one node (1 to 8 cores) and \texttt{scatter:excl} on 2 and 4 nodes (16 and 32 cores): real multi-node runs on reserved nodes (on shared nodes the median spread of the repetitions of \texttt{scatter} is 22\%).}
+\item \emph{Stability.} The spread of the 3 repetitions (max$-$min over median) depends on the length of the run (Section~\ref{sec:shown}) and on the placement. On the runs longer than 1~s the median spread is 1.6\% with \texttt{pack} and 1.4\% with \texttt{pack:excl} on one node, and 3.7\% with \texttt{scatter:excl} on several nodes (one layout out of ten above 26\%); with \texttt{scatter} on shared nodes it is 22\% (one out of ten above 68\%), because other jobs use the same cores, memory bandwidth and caches.
 \item \emph{Not controlled.} The CPU frequency (turbo) is not fixed by the jobs; the network between nodes is shared with the other users of the cluster.
 \item \emph{Raw data.} Every run appends one entry to a text log (version, dataset, layout, node, CPU, iterations, $\mathcal{L}$, all the times); all the tables and plots are generated from these logs.
 \item \emph{Execution on the cluster.} The scripts that compile the programs and submit the PBS jobs are in \texttt{src/script/}; the step-by-step instructions (compilation, submission of every experiment, check of the finished jobs, download of the logs and generation of the plots) are in \srclink{https://github.com/HPC-2627/ParallelExpectationMaximizationClustering/blob/main/doc/exec-cluster.md}{\texttt{doc/exec-cluster.md}}.
@@ -815,19 +1025,213 @@ Only the plots linked to the performance are kept here: the convergence (which f
 \clearpage
 
 \section{Performance Evaluation}\label{sec:perf}
-\textcolor{red}{\paragraph{Why real and synthetic datasets.} The project started from real datasets, mostly medical (Table~\ref{tab:real}). Measuring them, we found that on most of them the parallel baseline and the two optimizations bring little: the medical tables have at most 254\,000 rows, an EM iteration takes a few milliseconds, and the fixed costs of the threads, of their synchronization and of the MPI communication are as large as the computation itself. On these data the sequential version is already enough. To verify how the parallel versions and the optimizations actually scale, we therefore generated synthetic datasets of increasing size (from 250\,000 to 4 million rows, Table~\ref{tab:synth-profiles}), on which a sequential run lasts from about one second to 17 minutes (diagonal model: 0.7 to 135~s; full model: 8 to 1009~s). With the optimizations on 32 cores (4 nodes) the runs of the smallest synthetic files become short (down to 0.05~s), while those of the largest still last several seconds (5~s diagonal, 20~s full); even on runs of 0.1--1~s the three repetitions differ by about 2\% (median), so these times are reliable. The only large real dataset, \texttt{brainweb} (11.9 million voxels of an MRI scan), behaves like the synthetic ones: what decides whether the parallelization pays off is the amount of data, not whether the data are real or generated.}
+All the figures of this section are generated from the logs by \repolink{src/plots-generate/plots-performance.py}. The rules are the same in every figure:
+\begin{itemize}
+\item Every point is the median of the 3 repetitions of the time per iteration $t_{\mathrm{it}}$ (Section~\ref{sec:method}); the bar goes from the fastest to the slowest repetition.
+\item On one node (1 to 8 cores) the runs use \texttt{pack}; on 2 and 4 nodes (16 and 32 cores) \texttt{scatter:excl}, the only placement that really spreads the ranks over several reserved nodes (Section~\ref{sec:method}). Under every core count the axis writes the number of nodes (\texttt{1n}, \texttt{2n}, \texttt{4n}).
+\item For every core count the fastest ranks $\times$ threads split is shown. On 2 and 4 nodes only one split per node was measured: 2 ranks $\times$ 4 threads.
+\item Speedup and efficiency are computed against the sequential version of the same model on the same dataset. The gain of the optimizations (Figures~\ref{fig:p9-diag} and~\ref{fig:p9-full}) is computed against the parallel baseline on the same cores.
+\item Diagonal and full model are never in the same figure.
+\end{itemize}
 
-\textcolor{red}{The figures of this section show three real and three synthetic datasets, a small, a medium and a large one. In every class we take the dataset with the most work, so that the measured runs are as long as possible: \texttt{cardiotocography}, \texttt{cdc\_diabetes} and \texttt{brainweb} among the real ones; for the synthetic ones the files of 0.5, 2 and 4 million rows of the family with the most work for each model (\texttt{synth\_overlap} for the diagonal model, \texttt{synth\_rare} for the full one), so that inside a figure only the number of rows changes. Figure~P12 completes the picture with the speedup of all the datasets against their number of rows (TODO: replace ``P12'' with the reference of the figure once it is inserted).}
+\subsection{Datasets Shown and Duration of the Runs}\label{sec:shown}
+\paragraph{Why synthetic datasets.} We started from real datasets, mostly medical, because clustering patients is the application we had in mind. The public medical datasets we found, however, are small: nine of the ten tables of Table~\ref{tab:real} have at most 254\,000 rows. On 32 cores a whole EM run on them lasts from 0.1~ms to about 0.1~s, and even the slowest run (one core) exceeds one second only for \texttt{gene\_rnaseq} in the diagonal model and for \texttt{diabetes130} and \texttt{cdc\_diabetes} in the full one. A run so short measures mostly the fixed costs (start and synchronization of the threads, latency of MPI) and the noise of the machine. The spread of the 3 repetitions (maximum minus minimum, over the median) shows it. Over all the measured layouts:
+\begin{itemize}
+\item runs shorter than 10~ms: median spread 7.3\%, and above 50\% in one layout out of ten;
+\item runs of 10 to 100~ms: median 4.4\%;
+\item runs longer than 1~s: median 2.3\% (1.4--1.6\% on one node, 3.7\% on reserved multi-node runs).
+\end{itemize}
+On such short runs the differences between the versions are of the same order as the noise, and nothing reliable can be said about the scaling. For this reason we generated the synthetic datasets of Tables~\ref{tab:synth-profiles} and~\ref{tab:weak}: they have the structure of clinical data, but from 250\,000 to 4 million rows, and their runs last from seconds to minutes. Among the real datasets only \texttt{brainweb} (11.9 million voxels of a brain MRI) is large enough.
+
+\paragraph{Only runs of at least one second.} A dataset is shown in the figures of this section only if \emph{every} one of its runs (every version, every number of cores, including the fastest one on 32 cores) lasts at least 1~s in the measured part of the run, $t_E+t_M+t_{\mathrm{comm}}$. In this way every point of every figure is a concrete measure, with a spread of a few percent, and not noise. The datasets that pass this rule (in brackets their shortest run) are:
+\begin{itemize}
+\item \emph{diagonal model}: \texttt{brainweb} (21~s), \texttt{synth\_overlap\_p08} (2.8~s), \texttt{synth\_overlap\_p16} (4.9~s) and \texttt{synth\_rare\_p16} (2.0~s);
+\item \emph{full model}: \texttt{brainweb} (21~s), \texttt{synth\_overlap\_p04}, \texttt{p08}, \texttt{p16} (1.3--7.3~s) and \texttt{synth\_rare\_p02}, \texttt{p04}, \texttt{p08}, \texttt{p16} (2.0--20~s).
+\end{itemize}
+They are called the \emph{long datasets} below. The other real datasets (shortest run at most 0.07~s in the diagonal model and 0.09~s in the full one), all the \texttt{synth\_clean} files and the smaller \texttt{synth\_overlap} and \texttt{synth\_rare} files are not shown. The scaling figures use \texttt{brainweb} and two sizes of the synthetic profile with the most work for the model (\texttt{synth\_overlap} for the diagonal model, \texttt{synth\_rare} for the full one); the gain of the optimizations (Figures~\ref{fig:p9-diag} and~\ref{fig:p9-full}) uses all the long datasets. The weak scaling (Figures~\ref{fig:p5-diag} and~\ref{fig:p5-full}) uses the files \texttt{synth\_overlap\_p}$NN$ on $NN$ cores: every one of these runs lasts at least 6~s, also for the small files, because the data per core is constant.
+
+
+\paragraph{All the results are kept.} The datasets not shown were measured with exactly the same procedure, and nothing was deleted: the logs of every run of every dataset (9\,849 runs) are in the repository, in \repolink{results/logs/diagonal} and \repolink{results/logs/full} (one folder per version), the datasets are described in Tables~\ref{tab:real}--\ref{tab:sweeps}, and the same script draws the figures with all the datasets (option \texttt{--min-run 0}). Every figure below also links the logs it comes from.
 
 \subsection{Execution Time and Throughput}
-\subsection{Strong Scaling}
-\textcolor{red}{Every job runs on a different node, and the nodes are not identical (Section~\ref{sec:hw}): two versions with the same computation can differ by up to about 15\% on one core (e.g.\ diagonal Optimization~2 and baseline on \texttt{synth\_overlap\_p16}). On the large datasets the runs on 4 real nodes are faster than 32 cores of one node: every node brings its own memory bandwidth; on the small datasets they are slower, because the network costs more than the computation. The multi-node runs use 2 ranks $\times$ 4 threads per node, while on one node the baseline and Optimization~2 of the diagonal model are up to about 2.5 times faster with 8 ranks $\times$ 1 thread (P7): with the same split (2 ranks $\times$ 4 threads), going from 1 to 2 nodes gives a speedup of 2.1--2.3 on the large datasets. The drop of these two versions at 16 cores therefore comes from the split rank/threads, not from the network; Optimization~1 has no drop because its threads are as fast as the ranks.}
+\begin{figblock}
+\paragraph{Diagonal model} (Figure~\ref{fig:p4-diag}). On one node the three parallel versions have almost the same time per iteration: on 8 cores 0.39--0.52~s on \texttt{brainweb} and 66--71~ms on \texttt{synth\_overlap\_p08}. They separate on 2 and 4 nodes: on 32 cores Optimization~1 needs 0.11~s per iteration on \texttt{brainweb}, Optimization~2 0.15~s and the baseline 0.22~s, and on the synthetic files Optimization~1 is about 1.7 times faster than the other two (17 vs 29~ms on \texttt{synth\_overlap\_p08}). From 8 to 16 cores the baseline and Optimization~2 gain little (the baseline needs 0.44~s per iteration on both core counts on \texttt{brainweb}); the reason is the rank/thread split of the multi-node runs (Section~\ref{sec:disc-split}).
+
+{\centering
+\includegraphics[width=0.82\textwidth]{../../results/plots/performance/P4-strong-diagonal.pdf}
+\captionof{figure}{Strong scaling, diagonal model: time per iteration against the number of cores, dataset fixed. Logs: \repolink{results/logs/diagonal}.}\label{fig:p4-diag}
+\par}
+\end{figblock}
+
+\begin{figblock}
+\paragraph{Full model} (Figure~\ref{fig:p4-full}). Here the difference is already visible on one core: thanks to the blocks of rows, Optimization~1 is 1.2--1.6 times faster than the sequential version on the synthetic files (e.g.\ 24~s instead of 34~s per iteration on \texttt{synth\_rare\_p16}), and it keeps this advantage at every core count, down to 0.67~s per iteration on 32 cores. The baseline and Optimization~2 have the same computation and lie on the same curve on one node; on 32 cores they need 2.0--2.3~s per iteration on \texttt{synth\_rare\_p16}. On \texttt{brainweb} ($D=1$) there is nothing to block and Optimization~1 behaves like in the diagonal model.
+
+{\centering
+\includegraphics[width=0.82\textwidth]{../../results/plots/performance/P4-strong-full.pdf}
+\captionof{figure}{Strong scaling, full model: time per iteration against the number of cores, dataset fixed. Logs: \repolink{results/logs/full}.}\label{fig:p4-full}
+\par}
+\end{figblock}
+
+\begin{figblock}
+\paragraph{Throughput: roofline} (Figures~\ref{fig:p10-diag} and~\ref{fig:p10-full}). The FLOP and the bytes are the analytic count of \texttt{include/perfmodel.h}, the same for all the versions of a model, so a higher point means more useful work per second (\texttt{exp} and \texttt{log} count as 1 FLOP, so the values are a lower bound). The roofs are those of the 8 cores of one node: peak of the AVX-512 units (589~GFLOP/s), peak of our binaries as compiled (SSE2, 74~GFLOP/s) and STREAM bandwidth (97~GB/s). In the diagonal model all the versions reach about 22~GFLOP/s on the synthetic files, far below both roofs: the fusion of Optimization~1 raises the arithmetic intensity from 1.9 to 4.6~FLOP/byte (the data is read once and the responsibilities are never written), but on 8 cores of one node this does not change the speed. On \texttt{brainweb} ($D=1$, $K=12$) the matrix of the responsibilities is 12 times larger than the data and the baseline has the lowest intensity (0.9~FLOP/byte).
+
+{\centering
+\includegraphics[width=0.82\textwidth]{../../results/plots/performance/P10-roofline-diagonal.pdf}
+\captionof{figure}{Roofline of one node (8 cores), diagonal model. Logs: \repolink{results/logs/diagonal}.}\label{fig:p10-diag}
+\par}
+\end{figblock}
+
+\begin{figblock}
+In the full model the baseline and Optimization~2 reach 20--21~GFLOP/s on \texttt{synth\_rare}, Optimization~1 46--48~GFLOP/s: the blocks of rows make it 2.3 times faster on the same useful work, at 62--65\% of the roof of the SSE2 binaries.
+
+{\centering
+\includegraphics[width=0.82\textwidth]{../../results/plots/performance/P10-roofline-full.pdf}
+\captionof{figure}{Roofline of one node (8 cores), full model. Logs: \repolink{results/logs/full}.}\label{fig:p10-full}
+\par}
+\end{figblock}
+
+\subsection{Strong Scaling: Speedup and Efficiency}
+\begin{figblock}
+\paragraph{Diagonal model} (Figures~\ref{fig:p2-diag} and~\ref{fig:p3-diag}). On one node the three versions follow the ideal line up to 8 cores (speedup 6.0--7.9). On 32 cores (4 nodes) Optimization~1 reaches a speedup of 27--29 (29.2 on \texttt{brainweb}, 27.2 and 27.5 on \texttt{synth\_overlap\_p08} and \texttt{p16}, 29.4 on \texttt{synth\_rare\_p16}), an efficiency of 0.85--0.92. The baseline and Optimization~2 stop at 14--21 (efficiency 0.43--0.67), and gain almost nothing from 8 to 16 cores.
+
+{\centering
+\includegraphics[width=0.82\textwidth]{../../results/plots/performance/P2-speedup-diagonal.pdf}
+\captionof{figure}{Speedup over the sequential version, diagonal model. Logs: \repolink{results/logs/diagonal}.}\label{fig:p2-diag}
+\par}
+\end{figblock}
+
+\begin{figblock}
+{\centering
+\includegraphics[width=0.82\textwidth]{../../results/plots/performance/P3-efficiency-diagonal.pdf}
+\captionof{figure}{Parallel efficiency (speedup / cores), diagonal model. Logs: \repolink{results/logs/diagonal}.}\label{fig:p3-diag}
+\par}
+\end{figblock}
+
+\begin{figblock}
+\paragraph{Full model} (Figures~\ref{fig:p2-full} and~\ref{fig:p3-full}). Optimization~1 reaches a speedup of about 50 on 32 cores on every synthetic file (49.1--52.4), an efficiency above 1 (1.5--1.6): it is not a superlinear scaling, but the speed-up of the blocked computation multiplied by an almost ideal scaling (the blocked code is 1.2--1.6 times faster already on one core). The baseline and Optimization~2 reach 6--18 on 32 cores; on \texttt{synth\_overlap} the baseline is even slower on 16 cores than on 8 (speedup 4.9 against 5.3), because the ranks wait for the slowest one (Section~\ref{sec:breakdown}). On one core the speedup of the baseline and of Optimization~2 is 0.7--0.9: they pay the structure of the parallel code (OpenMP reductions on private copies, MPI calls) without any gain.
+
+{\centering
+\includegraphics[width=0.82\textwidth]{../../results/plots/performance/P2-speedup-full.pdf}
+\captionof{figure}{Speedup over the sequential version, full model. Logs: \repolink{results/logs/full}.}\label{fig:p2-full}
+\par}
+\end{figblock}
+
+\begin{figblock}
+{\centering
+\includegraphics[width=0.82\textwidth]{../../results/plots/performance/P3-efficiency-full.pdf}
+\captionof{figure}{Parallel efficiency (speedup / cores), full model. Above 1 the optimization also makes the computation faster. Logs: \repolink{results/logs/full}.}\label{fig:p3-full}
+\par}
+\end{figblock}
+
+\subsection{Gain of the Optimizations over the Baseline}
+\begin{figblock}
+\paragraph{Diagonal model} (Figure~\ref{fig:p9-diag}, 32 cores, 4 nodes). Optimization~1 needs 0.48--0.68 of the time of the baseline (1.5--2.1 times faster). Optimization~2 is at 0.97--1.02 on the three synthetic files, i.e.\ the same time as the baseline within the noise, and at 0.65 on \texttt{brainweb}; Section~\ref{sec:disc-opt2} shows that this last value comes from the nodes assigned to the two jobs, not from the communication.
+
+{\centering
+\includegraphics[width=0.82\textwidth]{../../results/plots/performance/P9-opt-gain-diagonal.pdf}
+\captionof{figure}{Time of Optimization~1 and~2 divided by the time of the parallel baseline on 32 cores (below 1 = faster), every long dataset. Logs: \repolink{results/logs/diagonal}.}\label{fig:p9-diag}
+\par}
+\end{figblock}
+
+\begin{figblock}
+\paragraph{Full model} (Figure~\ref{fig:p9-full}). Optimization~1 needs 0.12--0.35 of the time of the baseline on the synthetic files (2.9--8.3 times faster), 0.46 on \texttt{brainweb}. Optimization~2 is at 0.64--0.89 on five synthetic files and at 1.02--1.15 on the other three (\texttt{brainweb}, \texttt{synth\_overlap\_p16}, \texttt{synth\_rare\_p02}). The two optimizations have very different weights: Optimization~1 changes the time of every row, Optimization~2 only a few milliseconds per iteration (Section~\ref{sec:breakdown}).
+
+{\centering
+\includegraphics[width=0.82\textwidth]{../../results/plots/performance/P9-opt-gain-full.pdf}
+\captionof{figure}{Time of Optimization~1 and~2 divided by the time of the parallel baseline on 32 cores (below 1 = faster), every long dataset. Logs: \repolink{results/logs/full}.}\label{fig:p9-full}
+\par}
+\end{figblock}
+
+\subsection{Communication vs Computation Breakdown}\label{sec:breakdown}
+\begin{figblock}
+\paragraph{Where the time goes} (Figures~\ref{fig:p8-diag} and~\ref{fig:p8-full}). Every bar is one whole run split by phase. On one node the communication is at most 9\% of the run. On 32 cores it is 12--28\% for the diagonal baseline, 11--16\% for diagonal Optimization~2, 17--26\% for the full baseline, 11--31\% for full Optimization~2, and only 1--9\% for Optimization~1 of both models. In the full baseline on \texttt{synth\_rare} the M-step is 41--42\% of the run on 8 cores (the sums of $\Sigma_k$ cost as much as the distances); Optimization~1 has a single fused pass, so its bar is almost all ``E-step''. Reading the dataset is always at most 1\%.
+
+{\centering
+\includegraphics[width=0.82\textwidth]{../../results/plots/performance/P8-breakdown-diagonal.pdf}
+\captionof{figure}{Where the time goes, diagonal model: every bar is 100\% of one run on 1, 8 or 32 cores; the number above the bar is its total time. Logs: \repolink{results/logs/diagonal}.}\label{fig:p8-diag}
+\par}
+\end{figblock}
+
+\begin{figblock}
+{\centering
+\includegraphics[width=0.82\textwidth]{../../results/plots/performance/P8-breakdown-full.pdf}
+\captionof{figure}{Where the time goes, full model (same layout as Figure~\ref{fig:p8-diag}). Logs: \repolink{results/logs/full}.}\label{fig:p8-full}
+\par}
+\end{figblock}
+
+\paragraph{What $t_{\mathrm{comm}}$ contains.} $t_{\mathrm{comm}}$ is the time inside \texttt{MPI\_Allreduce}, including the wait for the slowest rank (Section~\ref{sec:method}). The logs also contain the compute time of every rank, so the two parts can be separated: the \emph{wait} is the difference between the slowest and the fastest rank, and what is left is the real cost of the \emph{collectives}. The values below are per iteration, on 2 and 4 nodes (\texttt{scatter:excl}, 2 ranks $\times$ 4 threads per node), medians over the runs of the long datasets; the imbalance is how much longer the slowest rank computes than the average rank.
+\begin{itemize}
+\item \emph{Wait.} In the baseline and in Optimization~2 almost all of $t_{\mathrm{comm}}$ is waiting: in the diagonal model 18.5 and 8.5~ms (baseline, 16 and 32 cores) and 15.7 and 10.4~ms (Optimization~2), in the full model 63 and 93~ms (baseline) and 110 and 71~ms (Optimization~2). Their imbalance is 6--8\% in the diagonal model and 8--19\% in the full one. In Optimization~1 the ranks are balanced (imbalance at most 2\%) and the wait is 0.6--1.0~ms.
+\item \emph{Collectives.} The part that is not waiting is what Optimization~2 changes. On 32 cores it is 0.60~ms in the diagonal baseline, 0.33~ms in Optimization~1 and 0.08~ms in Optimization~2; in the full model 6.5~ms in the baseline, 0.58~ms in Optimization~1 and 0.50~ms in Optimization~2 (on 16 cores: 0.28, 0.21, 0.07 and 4.7, 0.35, 0.40~ms). In the baseline this part is only 0.5--2\% of an iteration on these datasets.
+\end{itemize}
+
+
+\begin{figblock}
+\paragraph{Load imbalance} (Figures~\ref{fig:p11-diag} and~\ref{fig:p11-full}, Optimization~2 on the largest synthetic file). The bars are the compute time of the ranks of every layout, the number above them how much longer the slowest rank works than the average. On one node the ranks are balanced within 0--5.5\% (one layout of the diagonal model, 2 ranks $\times$ 2 threads, reaches 13\%); on 2 and 4 nodes the slowest rank works 5--9\% more than the average, and the others wait for it at every iteration.
+
+{\centering
+\includegraphics[width=0.82\textwidth]{../../results/plots/performance/P11-imbalance-diagonal.pdf}
+\captionof{figure}{Load imbalance between the MPI ranks, Optimization~2, diagonal model, \texttt{synth\_overlap\_p16}. Logs: \repolink{results/logs/diagonal/opt2}.}\label{fig:p11-diag}
+\par}
+\end{figblock}
+
+\begin{figblock}
+{\centering
+\includegraphics[width=0.82\textwidth]{../../results/plots/performance/P11-imbalance-full.pdf}
+\captionof{figure}{Load imbalance between the MPI ranks, Optimization~2, full model, \texttt{synth\_rare\_p16}. Logs: \repolink{results/logs/full/opt2}.}\label{fig:p11-full}
+\par}
+\end{figblock}
+
 \subsection{Weak Scaling}
-\textcolor{red}{A few points are slightly above 1 (at most 1.13, e.g.\ Optimization~1 full on 2 and 4 cores): this is the variability between nodes and caches, not a faster-than-ideal scaling.}
-\subsection{Communication vs Computation Breakdown}
-\textcolor{red}{The reading of the small datasets is sometimes delayed by the shared file system: it normally takes about 0.3~ms, but up to 30~ms in some repetitions (e.g.\ \texttt{cardiotocography}, diagonal model, 8 cores, where the delay is larger than the whole EM).}
+\begin{figblock}
+\paragraph{Diagonal model} (Figure~\ref{fig:p5-diag}). The file \texttt{synth\_overlap\_p}$p$ has $p$ times the rows of \texttt{synth\_overlap\_p01} and runs on $p$ cores, so the data per core is constant; the efficiency of a version is its own time on one core divided by its time on $p$ cores. On one node all the versions stay between 0.85 and 1.13. On 16 cores (2 nodes) Optimization~1 keeps 0.96, while the baseline and Optimization~2 fall to 0.63 and 0.57, for the split and the imbalance seen above. Points slightly above 1 are the variability between nodes and caches, not a better-than-ideal scaling.
+
+{\centering
+\includegraphics[width=0.52\textwidth]{../../results/plots/performance/P5-weak-diagonal.pdf}
+\captionof{figure}{Weak scaling, diagonal model: \texttt{synth\_overlap\_p}$NN$ on $NN$ cores. Logs: \repolink{results/logs/diagonal}.}\label{fig:p5-diag}
+\par}
+\end{figblock}
+
+\begin{figblock}
+\paragraph{Full model} (Figure~\ref{fig:p5-full}). Optimization~1 stays between 1.07 and 1.12 up to 16 cores, i.e.\ it scales ideally. The baseline and Optimization~2 are at 0.83--0.99 on one node and fall to 0.43 and 0.39 on 2 nodes, where the wait for the slowest rank is 20\% of their iteration.
+
+{\centering
+\includegraphics[width=0.52\textwidth]{../../results/plots/performance/P5-weak-full.pdf}
+\captionof{figure}{Weak scaling, full model: \texttt{synth\_overlap\_p}$NN$ on $NN$ cores. Logs: \repolink{results/logs/full}.}\label{fig:p5-full}
+\par}
+\end{figblock}
 
 \section{Discussion}\label{sec:discussion}
+
+\subsection{When the Parallelization Pays Off}
+What decides whether the parallel versions are useful is the amount of work per iteration, not whether the data is real or generated. On the real medical tables a whole run of the parallel versions lasts at most about 0.1~s, the times are dominated by fixed costs and noise, and the sequential program is already enough; this is why they are not in the figures (Section~\ref{sec:shown}). On \texttt{brainweb}, the only large real dataset, and on the synthetic files from 1--2 million rows up, every run lasts seconds to minutes, and there the hybrid code scales: up to 29 (diagonal) and 52 (full) times faster than the sequential version on 32 cores. The synthetic files were needed exactly to reach this regime with data shaped like the clinical one.
+
+\subsection{Optimization 1: the Bottleneck Was the Computation}
+Optimization~1 is the clear winner in both models (Figures~\ref{fig:p9-diag} and~\ref{fig:p9-full}), and for the same reason the rest of the analysis points to: the time of an iteration is the time of the computation of the slowest rank.
+\begin{itemize}
+\item In the full model the blocks of rows make every core faster (2.3 times more useful FLOP/s on the same node, Figure~\ref{fig:p10-full}), which gives the 1.2--1.6 on one core and the speedup of about 50 on 32 cores.
+\item In both models its ranks are balanced (imbalance 0.3--2\%, Section~\ref{sec:breakdown}), so the wait at the collectives almost disappears, and the speed does not depend on the rank/thread split (Section~\ref{sec:disc-split}). The fused pass reads the data once and never writes the responsibilities, and the per-thread buffers no longer share cache lines.
+\item In the diagonal model one node of 8 cores does not show the gain (Figure~\ref{fig:p10-diag}: same GFLOP/s), but 2 and 4 nodes do, because there the balance between the ranks counts.
+\end{itemize}
+
+\subsection{Optimization 2: What the Saved Communication Is Worth}\label{sec:disc-opt2}
+Optimization~2 does what it was designed for: the cost of the collectives that is not waiting drops from 0.60 to 0.08~ms per iteration in the diagonal model and from 6.5 to 0.5~ms in the full one (Section~\ref{sec:breakdown}, 32 cores). In the diagonal model the message is a few hundred bytes, so the saving is one latency per iteration. In the full model Optimization~1, which sends the same two messages as the baseline, has a collective cost close to Optimization~2 (0.58 against 0.50~ms): the bytes saved by the packed triangle are not visible, and the 6~ms of the baseline are mainly the second synchronization point, where the ranks that were faster in the M-step wait again.
+
+On the long datasets, however, this saving is only 0.5--2\% of an iteration, smaller than the variation between the jobs. The design expected the gain ``with several nodes, on small datasets with short iterations'' (Section~\ref{sec:design}): those are exactly the runs of a few milliseconds that we exclude, because on them the noise (median spread 7\%) is as large as the effect. On the long runs the time of the baseline and of Optimization~2 is decided by the wait for the slowest rank (8--110~ms per iteration), which Optimization~2 does not change, because the computation is the same. The values of Optimization~2 in Figures~\ref{fig:p9-diag} and~\ref{fig:p9-full} (from 0.64 to 1.15) therefore follow the nodes that PBS assigned to each job: on diagonal \texttt{brainweb}, for example, in the three repetitions the slowest rank of the baseline computes for 29--39~s and that of Optimization~2 for 24--25~s, with the same code. Optimization~2 is correct and removes most of the communication cost, but on these datasets and on this network the communication was not the bottleneck.
+
+\subsection{Rank/Thread Split and Load Imbalance}\label{sec:disc-split}
+\begin{itemize}
+\item \emph{The split.} The multi-node runs were measured only with 2 ranks $\times$ 4 threads per node. On one node the baseline and Optimization~2 of the diagonal model are up to 2.1 times faster with 8 ranks $\times$ 1 thread than with 2 ranks $\times$ 4 threads (e.g.\ 71 against 148~ms on \texttt{synth\_overlap\_p08}), most likely because of the false sharing of their per-thread buffers (Section~\ref{sec:design}). With the same split (2 ranks $\times$ 4 threads per node), going from 1 to 2 nodes gives 1.8--2.6 and from 1 to 4 nodes 3.6--5.1 on the synthetic files: the flat step from 8 to 16 cores in Figures~\ref{fig:p2-diag} and~\ref{fig:p4-diag} comes from the split, not from the network. Optimization~1, which removed both problems, changes by at most 25\% between the splits.
+\item \emph{The imbalance.} The rows are split evenly, so the imbalance does not come from the work: it comes from the nodes. The 3 repetitions of a layout run in the same job, on the same nodes, and often the same rank is the slowest in all three (e.g.\ one rank of the full baseline on \texttt{synth\_rare\_p16} computes for 56~s while the others take 44--50~s). The nodes differ in the number of populated memory channels (Section~\ref{sec:hw}); the baseline and Optimization~2, which read the data twice and write the responsibilities, are more sensitive to the memory bandwidth than Optimization~1. We did not measure which node every rank ran on, so this explanation is likely but not proved.
+\end{itemize}
+
+\subsection{Limits of the Measurements}
+\begin{itemize}
+\item Each version and layout ran in its own PBS job (all the datasets and repetitions inside it), on nodes chosen by PBS: two versions with the same computation can differ by up to about 20\% on one core (e.g.\ diagonal Optimization~2 and baseline on \texttt{synth\_overlap\_p16}) and more on several nodes. The min--max bars show the variability inside a job, not between jobs.
+\item The CPU frequency (turbo) was not fixed and the network is shared with the other users of the cluster.
+\item On 2 and 4 nodes only one split was measured (2 ranks $\times$ 4 threads per node), and the multi-node runs stop at 4 nodes.
+\item The FLOP and bytes of the roofline are an analytic count, a lower bound of the real work.
+\end{itemize}
 
 \section{Conclusion}
 
@@ -846,6 +1250,7 @@ Only the plots linked to the performance are kept here: the convergence (which f
 \bibitem{byu} BYU CS584 course project, \href{https://faculty.cs.byu.edu/~snell/Classes/CS584/projectsF98/serr/PEMpaper.html}{\textcolor{blue}{``A parallel implementation of the Expectation Maximization algorithm''}}, Brigham Young University, 1998.
 \bibitem{hubert} L. Hubert, P. Arabie, \href{https://doi.org/10.1007/BF01908075}{\textcolor{blue}{``Comparing partitions''}}, \emph{Journal of Classification}, vol.~2, no.~1, pp.~193--218, 1985.
 \bibitem{schwarz} G. Schwarz, \href{https://doi.org/10.1214/aos/1176344136}{\textcolor{blue}{``Estimating the dimension of a model''}}, \emph{The Annals of Statistics}, vol.~6, no.~2, pp.~461--464, 1978.
+\bibitem{chandra} R. Chandra, L. Dagum, D. Kohr, D. Maydan, J. McDonald, R. Menon, \emph{Parallel Programming in OpenMP}, Morgan Kaufmann, 2001.
 \bibitem{akaike} H. Akaike, \href{https://doi.org/10.1109/TAC.1974.1100705}{\textcolor{blue}{``A new look at the statistical model identification''}}, \emph{IEEE Trans. Automatic Control}, vol.~19, no.~6, pp.~716--723, 1974.
 \end{thebibliography}
 

@@ -2,14 +2,16 @@
 """
 plots-performance.py
 
-Performance plots of the report (catalog P1-P12 of doc/plots.md).
+Performance plots of the report (catalog P1-P12 of doc/plots.md; the default set is the one of
+the report: P2, P3, P4, P5, P8, P9, P10, P11).
 Reads all the logs in results/logs/<model>/<stage>/*.log and writes PDF files in results/plots/performance/.
 
 Usage (from the root of the repository):
-    python3 src/plots-generate/plots-performance.py                 # all the plots
+    python3 src/plots-generate/plots-performance.py                 # the plots of the report
     python3 src/plots-generate/plots-performance.py --plots P2 P6   # only some
     python3 src/plots-generate/plots-performance.py --placement scatter:excl --large synth_clean_p16
-    python3 src/plots-generate/plots-performance.py --real statlog_heart diabetes130 brainweb
+    python3 src/plots-generate/plots-performance.py --grid brainweb synth_rare_p04 synth_rare_p16
+    python3 src/plots-generate/plots-performance.py --min-run 0     # also the short datasets
 
 Where the data comes from
     One log file per PBS job: results/logs/<model>/<stage>/<VERSION>_<TAG>.log
@@ -34,10 +36,15 @@ Rules (doc/plots.md)
     - Size: drawn at the final size of the report, FIG_W = 7 in (include with width=\textwidth)
       or HALF_W = 4.4 in for the single-panel plots P5, P6, P7, P10 (width=0.62\textwidth),
       so the labels stay 7-8 pt in the PDF.
-    - Datasets: P2, P3, P4, P8, P10 are a 3 x 2 grid, REAL datasets on the left and SYNTHETIC
-      ones on the right, small / medium / large from top to bottom (--real, --synth); P9 and P12
-      show ALL the datasets; P6, P7, P11 one large synthetic dataset (--large): they measure the
-      machine (placement, splits, balance), not the data.
+    - Only LONG datasets (--min-run, default 1 s): a dataset is drawn only if EVERY one of its
+      runs (all versions, all core counts) spends at least min-run seconds in the measured
+      iterations (t_estep + t_mstep + t_comm). Shorter runs are dominated by noise (spread of the
+      repetitions ~6% below 10 ms); their logs stay in results/logs/. P5 is checked on its own
+      (its weak runs are all long). The figures do not write the threshold: the report does.
+    - Datasets: P2, P3, P4, P8, P10 are one row of panels (--grid, default GRID_DEFAULT: the
+      real brainweb and two large synthetic ones); P9 shows ALL the long datasets, real first;
+      P6, P7, P11 one large synthetic dataset (--large): they measure the machine (placement,
+      splits, balance), not the data.
 
 Reference of the optimizations
     opt1 / opt2 are always compared with the PARALLEL BASELINE (baseline-MPI-OpenMP-<model>) on
@@ -188,7 +195,17 @@ def aggregate(df):
     a = g["t_iter"].agg(t="median", lo="min", hi="max", reps="count")
     for c in ("t_estep", "t_mstep", "t_comm", "t_read", "N", "flops", "bytes"):
         a[c] = g[c].median()
+    # length of the measured part of the run (all the iterations, no reading / warm-up): the
+    # filter --min-run of the datasets (long_datasets)
+    a["t_run"] = a.t_estep + a.t_mstep + a.t_comm
     return a.reset_index()
+
+
+def long_datasets(best, min_run):
+    """{(model, dataset)} whose SHORTEST run (over all the versions and core counts in best)
+    lasts at least min_run seconds: the only datasets drawn, the others are mostly noise."""
+    g = best.groupby(["model", "dataset"])["t_run"].min()
+    return set(g[g >= min_run].index)
 
 
 def best_split(agg, placement, multi="scatter:excl"):
@@ -215,21 +232,14 @@ def versions_in(d):
     return [v for v in VERSION_ORDER if v in set(d.label)]
 
 
-# Datasets of the grid figures (P2, P3, P4, P8, P10): 3 sizes x (real, synthetic), --real and
-# --synth. In every size class the dataset with the MOST work (the longest runs), so that the
-# measures are as long as possible:
-#   real (by rows: small < 10k, medium 10k-1M, large > 1M), the same for both models:
-#       small  cardiotocography  2,126 rows, K = 10, D = 21 (the slowest small one present in both
-#              models; gene_rnaseq, 801 rows x 20,264 variables, has no full-covariance run)
-#       medium cdc_diabetes      253,680 rows (the largest medium one)
-#       large  brainweb          11.9 M rows (the only large one)
-#   synthetic: the largest file of each class, small = p02 (500k rows), medium = p08 (2M),
-#       large = p16 (4M), of the family with the most work for the model: synth_overlap (K = 5,
-#       D = 20) for diagonal, synth_rare (K = 6, D = 50) for full. One family per model, so
-#       inside a figure only N changes.
-REAL_DEFAULT = ["cardiotocography", "cdc_diabetes", "brainweb"]
-SYNTH_DEFAULT = {"diagonal": ["synth_overlap_p02", "synth_overlap_p08", "synth_overlap_p16"],
-                 "full": ["synth_rare_p02", "synth_rare_p08", "synth_rare_p16"]}
+# Datasets of the grid figures (P2, P3, P4, P8, P10), one panel each in one row (--grid). Only
+# datasets whose runs all last >= 1 s (long_datasets): the real one is brainweb (11.9 M rows, the
+# only real dataset that long; the other real ones finish in milliseconds), the synthetic ones
+# are two sizes (2 M and 4 M rows) of the family with the most work for the model: synth_overlap
+# (K = 5, D = 20) for diagonal, synth_rare (K = 6, D = 50) for full. One family per model, so
+# between the two synthetic panels only N changes.
+GRID_DEFAULT = {"diagonal": ["brainweb", "synth_overlap_p08", "synth_overlap_p16"],
+                "full": ["brainweb", "synth_rare_p08", "synth_rare_p16"]}
 # dataset of the one-dataset plots P6, P7, P11: the large synthetic one of the grid
 LARGE_DEFAULT = {"diagonal": "synth_overlap_p16", "full": "synth_rare_p16"}
 
@@ -239,40 +249,37 @@ def large_of(ctx, model):
     return ctx.args.large or LARGE_DEFAULT[model]
 
 
-SIZE_NAMES = ["small", "medium", "large"]
 BREAKDOWN_CORES = [1, 8, 32]  # core counts of the bars of P8
 VERSION_SHORT = {"sequential": "seq", "baseline": "base", "opt1": "opt1", "opt2": "opt2"}
 
 
 def dataset_grid(ctx, model, row_h):
-    """Figure with a 3 x 2 grid of panels: left column the REAL datasets (--real), right column
-    the SYNTHETIC ones (--synth), rows small / medium / large. Returns (fig, cells): one cell per
-    dataset with parallel runs (ax, ds, d = its rows of ctx.best, row, col); the panel of a
-    missing dataset is hidden."""
-    fig = plt.figure(figsize=(FIG_W, row_h * 3 + 0.35), layout="constrained")
-    cols = fig.subfigures(1, 2, wspace=0.04)
+    """Figure with ONE row of panels, one per dataset of --grid (default GRID_DEFAULT), real
+    first. A dataset without parallel runs or shorter than --min-run (not in ctx.best) is
+    skipped with a message. Returns (fig, cells): one cell per drawn dataset (ax, ds, d = its
+    rows of ctx.best, row, col)."""
     data = ctx.best[ctx.best.model == model]
+    names = ctx.args.grid or GRID_DEFAULT[model]
+    names = sorted(names, key=is_synth)  # real first (stable: the rest keeps its order)
+    keep = [ds for ds in names if (data[data.dataset == ds].label != "sequential").sum() > 0]
+    for ds in names:
+        if ds not in keep:
+            print(f"  {model}: {ds} not drawn (no parallel run, or a run shorter than --min-run)")
+    need(keep, f"none of the grid datasets has long parallel runs for {model}")
+    fig, axs = plt.subplots(1, len(keep), figsize=(FIG_W, row_h + 0.35), layout="constrained",
+                            squeeze=False)
     cells = []
-    for c, (sf, kind, names) in enumerate(zip(cols, ("Real datasets", "Synthetic datasets"),
-                                              (ctx.args.real, ctx.args.synth or SYNTH_DEFAULT[model]))):
-        sf.suptitle(kind, fontsize=9, fontweight="bold", color=TEXT)
-        axs = sf.subplots(3, 1)
-        for r, (ax, size, ds) in enumerate(zip(axs, SIZE_NAMES, names)):
-            d = data[data.dataset == ds]
-            if (d.label != "sequential").sum() == 0:  # not measured for this model
-                ax.set_visible(False)
-                continue
-            ax.set_title(f"{size}: {ds}  (N = {int(d.N.max()):,})", fontsize=7.8, fontweight="bold")
-            cells.append(argparse.Namespace(ax=ax, ds=ds, d=d, row=r, col=c))
-    need(cells, f"none of the grid datasets has parallel runs for {model}")
+    for c, (ax, ds) in enumerate(zip(axs[0], keep)):
+        d = data[data.dataset == ds]
+        kind = "synthetic" if is_synth(ds) else "real"
+        ax.set_title(f"{kind}: {ds}\n(N = {int(d.N.max()):,})", fontsize=7.8, fontweight="bold")
+        cells.append(argparse.Namespace(ax=ax, ds=ds, d=d, row=0, col=c))
     return fig, cells
 
 
 def grid_axes(cell, cores, ylabel):
-    """Cores axis of a grid panel; x label only on the bottom row, y label only on the left."""
+    """Cores axis of a grid panel; y label only on the first panel of the row."""
     cores_axis(cell.ax, cores, nodes_of(cell.d))
-    if cell.row < 2:
-        cell.ax.set_xlabel("")
     cell.ax.set_ylabel(ylabel if cell.col == 0 else "")
 
 
@@ -285,9 +292,6 @@ def fmt_s(t):
     if t >= 1e-3:
         return f"{t * 1e3:.3g} ms"
     return f"{t * 1e6:.3g} µs"
-
-
-GRID_TXT = "real datasets left, synthetic right; small, medium, large from top to bottom"
 
 
 def pick_datasets(best, model, large, small):
@@ -382,17 +386,6 @@ def panel_name(ax, text):
     ax.set_title(text, fontsize=8.5, fontweight="bold")
 
 
-def panel_grid(n, row_h, ncols=2):
-    """n panels in a grid with ncols columns (4 panels = 2 x 2), FIG_W wide, row_h inches per
-    row. Returns (fig, list of the n axes, ncols); empty cells of the last row are hidden."""
-    ncols = min(ncols, n)
-    nrows = -(-n // ncols)  # ceiling division
-    fig, axs = plt.subplots(nrows, ncols, figsize=(FIG_W, row_h * nrows + 0.2), squeeze=False,
-                            layout="constrained")
-    axs = list(axs.ravel())
-    for ax in axs[n:]:
-        ax.set_visible(False)
-    return fig, axs[:n], ncols
 
 
 def is_synth(ds):
@@ -400,21 +393,10 @@ def is_synth(ds):
     return ds.startswith("synth_")
 
 
-def kind_of(ds):
-    """'Real dataset' or 'Synthetic dataset', for the block headers."""
-    return "Synthetic dataset" if is_synth(ds) else "Real dataset"
 
 
-def blocks(fig, n, heights=None):
-    """The figure split in n blocks stacked vertically (subfigures): the REAL datasets go in the
-    top block(s), the SYNTHETIC ones below, every block with its own header (block_header)."""
-    subs = fig.subfigures(n, 1, height_ratios=heights)
-    return [subs] if n == 1 else list(subs)
 
 
-def block_header(sf, head):
-    """Header of a block of panels (e.g. 'Real dataset: cardiotocography'): bold, on the left."""
-    sf.suptitle(head, x=0.0, ha="left", fontsize=9, fontweight="bold", color=TEXT)
 
 
 def nodes_of(d):
@@ -433,9 +415,10 @@ def cores_axis(ax, cores, nodes=None):
     ax.xaxis.set_major_locator(FixedLocator(ticks))
     ax.xaxis.set_minor_locator(FixedLocator([]))
     if nodes:
-        ax.set_xticks(ticks, [f"{c}\n{nodes[c]} node{'s' if nodes[c] > 1 else ''}" if c in nodes
-                              else str(c) for c in ticks], fontsize=6.8)
-        ax.set_xlabel("number of cores (nodes)")
+        # "8\n1n" = 8 cores on 1 node (short: "1 node" under every tick overlaps)
+        ax.set_xticks(ticks, [f"{c}\n{nodes[c]}n" if c in nodes else str(c) for c in ticks],
+                      fontsize=6.8)
+        ax.set_xlabel("number of cores (n = nodes)")
     else:
         ax.xaxis.set_major_formatter(ScalarFormatter())
         ax.set_xlabel("number of cores")
@@ -475,7 +458,7 @@ def need(cond, why):
 # ---------------------------------------------------------------------------------------------
 def p2_speedup(ctx, model):
     """P2 speedup against the sequential version, 3 x 2 grid of datasets (dataset_grid)."""
-    fig, cells = dataset_grid(ctx, model, 2.0)
+    fig, cells = dataset_grid(ctx, model, 2.4)
     for c in cells:
         seq = c.d[c.d.label == "sequential"]
         need(not seq.empty, f"no sequential run for {model}/{c.ds}")
@@ -497,13 +480,13 @@ def p2_speedup(ctx, model):
     legend_from(fig, [c.ax for c in cells], ncol=3)
     title(fig, "Speedup against the sequential version",
           f"{MODEL_TXT[model]}, {scale_txt(ctx.args)}; for every core count the fastest "
-          f"ranks × threads split; {GRID_TXT}")
+          f"ranks × threads split")
     save(fig, ctx.out, f"P2-speedup-{model}", ctx.fmts)
 
 
 def p3_efficiency(ctx, model):
     """P3 parallel efficiency = speedup / cores, same grid as P2."""
-    fig, cells = dataset_grid(ctx, model, 2.0)
+    fig, cells = dataset_grid(ctx, model, 2.4)
     for c in cells:
         seq = c.d[c.d.label == "sequential"]
         need(not seq.empty, f"no sequential run for {model}/{c.ds}")
@@ -525,13 +508,13 @@ def p3_efficiency(ctx, model):
     legend_from(fig, [c.ax for c in cells], ncol=3)
     title(fig, "Parallel efficiency against the sequential version",
           f"{MODEL_TXT[model]}, {scale_txt(ctx.args)}; efficiency = speedup / cores "
-          f"(above 1: the optimization also makes the computation faster); {GRID_TXT}")
+          f"(above 1: the optimization also makes the computation faster)")
     save(fig, ctx.out, f"P3-efficiency-{model}", ctx.fmts)
 
 
 def p4_strong(ctx, model):
     """P4 strong scaling: time per iteration vs cores with the dataset fixed, same grid as P2."""
-    fig, cells = dataset_grid(ctx, model, 2.0)
+    fig, cells = dataset_grid(ctx, model, 2.4)
     for c in cells:
         allc = []
         for v in versions_in(c.d):
@@ -547,16 +530,24 @@ def p4_strong(ctx, model):
         grid_axes(c, allc, "time per iteration (s)\n(log scale)")
     legend_from(fig, [c.ax for c in cells], ncol=3)
     title(fig, "Strong scaling: time per iteration with the size of the dataset fixed",
-          f"{MODEL_TXT[model]}, {scale_txt(ctx.args)}; {GRID_TXT}")
+          f"{MODEL_TXT[model]}, {scale_txt(ctx.args)}")
     save(fig, ctx.out, f"P4-strong-{model}", ctx.fmts)
 
 
 def p5_weak(ctx, model):
     """Weak scaling: synthetic <family>_pNN has N proportional to NN, run on NN cores."""
-    best, fam = ctx.best, ctx.args.family
+    # ctx.best_all: the small sizes (p01, p02) are below --min-run as datasets (their runs on
+    # 16-32 cores are short), but the WEAK runs (p on p cores) all have the same work per core
+    # as p01 on 1 core: they are checked one by one below
+    best, fam = ctx.best_all, ctx.args.family
     d = best[(best.model == model) & best.dataset.str.startswith(fam + "_p")].copy()
     need(not d.empty, f"no {fam}_pNN dataset")
     d["p"] = d.dataset.str.extract(r"_p(\d+)$")[0].astype(int)  # size factor = cores of the weak run
+    weak = d[(d.label != "sequential") & (d.cores == d.p)]
+    short = weak[weak.t_run < ctx.args.min_run]
+    if not short.empty:
+        print(f"  P5 {model}: {len(short)} weak runs shorter than --min-run "
+              f"({short.t_run.min():.2f} s): the curve is noisy")
     fig, ax = plt.subplots(figsize=(HALF_W, 3.0), layout="constrained")
     cs = [1]  # core counts drawn (for the ticks and the ideal line)
     eff_max = 1.0  # highest efficiency drawn: the y axis never cuts a point
@@ -580,7 +571,7 @@ def p5_weak(ctx, model):
         eff_max = max(eff_max, np.nanmax(t1 / s.lo.to_numpy()))
     ideal(ax, sorted(set(cs)), np.ones(len(set(cs))), label="ideal (efficiency 1)")
     cores_axis(ax, cs, nodes_of(d[d.cores == d.p]))
-    ax.set_xlabel("number of cores p (nodes); dataset with p × the rows")
+    ax.set_xlabel("number of cores p (n = nodes); dataset with p × the rows")
     ax.set_ylabel("weak-scaling efficiency\n(same version: time on 1 core\n/ time on p cores)")
     ax.set_ylim(0, eff_max * 1.1 + 0.05)
     legend_from(fig, [ax], ncol=2)
@@ -665,7 +656,7 @@ def p8_breakdown(ctx, model):
     the cores of BREAKDOWN_CORES: the bar is the whole run split by phase (E-step, M-step,
     communication, reading) as a SHARE of its time, so datasets of milliseconds and of minutes
     can be compared; the total time of the run is written above the bar."""
-    fig, cells = dataset_grid(ctx, model, 2.25)
+    fig, cells = dataset_grid(ctx, model, 2.6)
     w = 0.22  # width of one bar; the bars of one core count are side by side
     for c in cells:
         ax, d = c.ax, c.d
@@ -702,7 +693,7 @@ def p8_breakdown(ctx, model):
     legend_from(fig, [c.ax for c in cells], ncol=2)
     title(fig, "Where the time goes: the whole run split by phase",
           f"{MODEL_TXT[model]}, {scale_txt(ctx.args)}; every bar = 100% of one run, "
-          f"the number above it = its total time; seq = sequential, base = baseline; {GRID_TXT}")
+          f"the number above it = its total time; seq = sequential, base = baseline")
     save(fig, ctx.out, f"P8-breakdown-{model}", ctx.fmts)
 
 
@@ -720,29 +711,32 @@ def p9_opt_gain(ctx, model):
     cores = max(set(base.cores) & set(d[d.label.isin(opts)].cores))
     d = d[d.cores == cores]
     every = sorted(set(d[d.label == "baseline"].dataset))
-    # two blocks: the REAL datasets on top, the SYNTHETIC ones below
-    groups = [(h, l) for h, l in (("Real datasets", [x for x in every if not is_synth(x)]),
-                                  ("Synthetic datasets", [x for x in every if is_synth(x)])) if l]
-    fig = plt.figure(figsize=(FIG_W, 2.7 * len(groups) + 0.2), layout="constrained")
-    axs = []
+    # ONE panel (with the long datasets only one is real: two blocks would give it a whole row):
+    # the REAL datasets first, a dotted line, then the SYNTHETIC ones
+    real = [x for x in every if not is_synth(x)]
+    dss = real + [x for x in every if is_synth(x)]
+    fig, ax = plt.subplots(figsize=(FIG_W, 3.0), layout="constrained")
     w = 0.8 / len(opts)
-    for sf, (head, dss) in zip(blocks(fig, len(groups)), groups):
-        ax = sf.subplots()
-        axs.append(ax)
-        for i, v in enumerate(opts):
-            y = []  # time / baseline time for every dataset (NaN if one of the two runs is missing)
-            for ds in dss:
-                tb = d[(d.label == "baseline") & (d.dataset == ds)].t
-                tv = d[(d.label == v) & (d.dataset == ds)].t
-                y.append(tv.iloc[0] / tb.iloc[0] if len(tb) and len(tv) else np.nan)
-            ax.bar(np.arange(len(dss)) + (i - (len(opts) - 1) / 2) * w, y, w, color=VERSION_COLOR[v],
-                   edgecolor=TEXT, linewidth=0.6, label=VERSION_LABEL[v])
-        ax.axhline(1, ls="--", color=IDEAL, lw=1, label="baseline MPI + OpenMP (= 1)")
-        ax.set_xticks(range(len(dss)), dss, rotation=40, ha="right", fontsize=7)
-        ax.set_xlim(-0.6, len(dss) - 0.4)
-        ax.set_ylabel("time / baseline time\n(below 1 = faster)")
-        block_header(sf, head)
-    legend_from(fig, axs)
+    for i, v in enumerate(opts):
+        y = []  # time / baseline time for every dataset (NaN if one of the two runs is missing)
+        for ds in dss:
+            tb = d[(d.label == "baseline") & (d.dataset == ds)].t
+            tv = d[(d.label == v) & (d.dataset == ds)].t
+            y.append(tv.iloc[0] / tb.iloc[0] if len(tb) and len(tv) else np.nan)
+        x = np.arange(len(dss)) + (i - (len(opts) - 1) / 2) * w
+        ax.bar(x, y, w, color=VERSION_COLOR[v], edgecolor=TEXT, linewidth=0.6, label=VERSION_LABEL[v])
+        for xi, yi in zip(x, y):  # the ratio above every bar (opt1 full is a very short bar)
+            if not np.isnan(yi):
+                ax.text(xi, yi, f"{yi:.2f}", ha="center", va="bottom", fontsize=5.8, color=TEXT)
+    ax.axhline(1, ls="--", color=IDEAL, lw=1, label="baseline MPI + OpenMP (= 1)")
+    if real and len(real) < len(dss):
+        ax.axvline(len(real) - 0.5, ls=":", color=IDEAL, lw=1)
+    ax.set_xticks(range(len(dss)), [f"{x} (real)" if not is_synth(x) else x for x in dss],
+                  rotation=30, ha="right", fontsize=7)
+    ax.set_xlim(-0.6, len(dss) - 0.4)
+    ax.set_xlabel("dataset")
+    ax.set_ylabel("time / baseline time\n(below 1 = faster)")
+    legend_from(fig, [ax])
     title(fig, "Gain of the optimizations over the parallel baseline, per dataset",
           f"{MODEL_TXT[model]}, {cores} cores, {scale_txt(ctx.args)}")
     save(fig, ctx.out, f"P9-opt-gain-{model}", ctx.fmts)
@@ -800,7 +794,7 @@ def p10_roofline(ctx, model):
     peak of the binaries as compiled (--peak-gflops-compiled, SSE2)."""
     a = ctx.agg
     gf, bw, gfc = ctx.args.peak_gflops, ctx.args.peak_bw, ctx.args.peak_gflops_compiled
-    fig, cells = dataset_grid(ctx, model, 2.25)
+    fig, cells = dataset_grid(ctx, model, 2.6)
     xs = np.logspace(-1, 2, 100)
     rot = []  # (axis, label of the bandwidth roof): rotated along the roof once the layout is known
     drawn = []
@@ -841,7 +835,7 @@ def p10_roofline(ctx, model):
         ax.set_yscale("log")
         pts = d.flops / (d.t_estep + d.t_mstep) / 1e9
         ax.set_ylim(min(pts.min(), bw * 0.1 if bw else pts.min()) / 6, (gf or pts.max()) * 4)
-        ax.set_xlabel("FLOP per byte (log)" if c.row == 2 else "")
+        ax.set_xlabel("FLOP per byte (log)")
         ax.set_ylabel("GFLOP/s (log)" if c.col == 0 else "")
     need(drawn, "no 8-core single-node run with flops/bytes")
     legend_from(fig, [c.ax for c in drawn], ncol=2)
@@ -851,7 +845,7 @@ def p10_roofline(ctx, model):
         lab.set_rotation(np.degrees(np.arctan2(y2 - y1, x2 - x1)))
     title(fig, "Roofline: is EM limited by memory or by computation?",
           f"{MODEL_TXT[model]}, 8 cores of 1 node, {place_txt(ctx.args.placement)}; overlapping "
-          f"points are drawn one inside the other; {GRID_TXT}")
+          f"points are drawn one inside the other")
     save(fig, ctx.out, f"P10-roofline-{model}", ctx.fmts)
 
 
@@ -950,8 +944,10 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--logs", type=Path, default=ROOT / "results/logs")
     ap.add_argument("--out", type=Path, default=ROOT / "results/plots/performance")
-    ap.add_argument("--plots", nargs="+", default=["P1", "P2", "P3", "P4", "P5", "P6", "P7", "P8", "P9", "P10", "P11", "P12"],
-                    help="IDs to draw")
+    # P1 (sweeps), P6 (placement), P7 (ranks x threads) and P12 (speedup vs size) are not in the
+    # report: their runs are short (milliseconds) and say little; they can still be drawn
+    ap.add_argument("--plots", nargs="+", default=["P2", "P3", "P4", "P5", "P8", "P9", "P10", "P11"],
+                    help="IDs to draw (all: P1 ... P12)")
     ap.add_argument("--models", nargs="+", default=MODELS, choices=MODELS)
     ap.add_argument("--placement", default="pack", choices=PLACE_ORDER,
                     help="placement of the runs on ONE node (every plot except P6) [pack]")
@@ -959,19 +955,21 @@ def main():
                     help="placement of the runs on 2-4 nodes (pack would put them on ONE node) "
                          "[scatter:excl]")
     ap.add_argument("--version", help="version for P6/P7 (default: the most optimized one present)")
-    # Datasets. The grid figures (P2, P3, P4, P8, P10) show 3 real and 3 synthetic datasets
-    # (small, medium, large); the one-dataset plots (P6, P7, P11) the large synthetic one.
-    # (defaults and the reason of the choice: REAL_DEFAULT, SYNTH_DEFAULT, LARGE_DEFAULT)
-    ap.add_argument("--real", nargs=3, default=REAL_DEFAULT, metavar=("SMALL", "MEDIUM", "LARGE"),
-                    help="real datasets of the grid figures")
-    ap.add_argument("--synth", nargs=3, default=None, metavar=("SMALL", "MEDIUM", "LARGE"),
-                    help="synthetic datasets of the grid figures, both models (default: "
-                         "synth_overlap_p02/p08/p16 for diagonal, synth_rare_p02/p08/p16 for full)")
+    # Datasets. The grid figures (P2, P3, P4, P8, P10) show one row of datasets; the one-dataset
+    # plots (P6, P7, P11) the large synthetic one.
+    # (defaults and the reason of the choice: GRID_DEFAULT, LARGE_DEFAULT)
+    ap.add_argument("--grid", nargs="+", default=None, metavar="DATASET",
+                    help="datasets of the grid figures, both models (default: brainweb + "
+                         "synth_overlap_p08/p16 for diagonal, brainweb + synth_rare_p08/p16 for full)")
+    ap.add_argument("--min-run", type=float, default=1.0,
+                    help="draw only the datasets whose runs ALL last at least this many seconds "
+                         "(t_estep + t_mstep + t_comm); 0 = all the datasets [1.0]")
     ap.add_argument("--large", default=None,
                     help="dataset of the one-dataset plots P6, P7, P11 (default: the large synthetic "
                          "one of the grid, synth_overlap_p16 diagonal / synth_rare_p16 full)")
     ap.add_argument("--small", default="cardiotocography", help="fallback small dataset")
-    ap.add_argument("--family", default="synth_clean", help="synthetic family for the weak scaling P5")
+    ap.add_argument("--family", default="synth_overlap",
+                    help="synthetic family for the weak scaling P5 [synth_overlap]")
     # Default roofs of P10, for the 8 cores of the 1-node runs on a Xeon Gold 6252N
     # (src/script/pemc-stream.sh summary, results/logs/stream/):
     #   peak = 8 cores x 2.3 GHz x 32 FLOP/cycle (AVX-512, 2 FMA ports) = 588.8 GFLOP/s
@@ -993,11 +991,19 @@ def main():
     df = load_logs(args.logs)
     agg = aggregate(df)
     best = best_split(agg, args.placement, args.multi_placement)
+    # only the long datasets (--min-run): best_all keeps all of them for P5 (see p5_weak)
+    best_all = best
+    keep = long_datasets(best, args.min_run)
+    is_long = lambda t: [(m, ds) in keep for m, ds in zip(t.model, t.dataset)]
+    best, agg = best[is_long(best)], agg[is_long(agg)]
+    for m in args.models:
+        print(f"{m}: datasets with all the runs >= {args.min_run:g} s: "
+              f"{sorted(ds for mm, ds in keep if mm == m)}")
     sweep_df = load_logs(args.logs / "sweep", required=False, pattern="*.log")  # P1 only
     sweep = aggregate(sweep_df) if sweep_df is not None else None
     # everything the plot functions need, in one object (they are called as plot(ctx, model))
-    ctx = argparse.Namespace(args=args, df=df, agg=agg, best=best, sweep=sweep, out=args.out,
-                             fmts=args.fmt)
+    ctx = argparse.Namespace(args=args, df=df, agg=agg, best=best, best_all=best_all, sweep=sweep,
+                             out=args.out, fmts=args.fmt)
     print(f"{len(df)} runs, versions: {sorted(set(df.label))}, placement: {args.placement} on 1 node, "
           f"{args.multi_placement} on 2-4 nodes")
 
