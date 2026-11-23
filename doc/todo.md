@@ -47,7 +47,7 @@ Run all the versions (`src/diagonal/PEMC-baseline-sequential-diagonal.c`, `src/d
 - [X] Roofs of the roofline (plot P10): STREAM on a Xeon 6252N node (`src/script/pemc-stream.sh`, logs in `results/logs/stream/`): Triad 97.0 GB/s with 8 threads; peak 588.8 GFLOP/s (AVX-512) and 73.6 GFLOP/s (SSE2, as compiled), written as defaults in `plots-performance.py`
 - [X] Clustering runs for C1-C6 (`qsub src/script/pemc-cluster.sh`): 209 runs (diagonal 109, full 100), no failure, logs in `results/logs/cluster/`, saved clusters in `results/clusters/`
 - [X] Repeat each run several times (3 repetitions, warm-up discarded), raw logs in `results/logs/`
-- [ ] Summary tables in `results/tables/`: `clustering-summary.csv` done (`src/tables/clustering-summary.py`) and `hardware.md`; no performance table yet
+- [X] Summary tables in `results/tables/`: `clustering-summary.csv` done (`src/tables/clustering-summary.py`) and `hardware.md`; no performance table yet
 
 ## 4. Plots and report
 - [X] Performance plots in `src/plots-generate/plots-performance.py` (time, speedup, efficiency, scaling, communication breakdown, ...), output in `results/plots/performance/`
