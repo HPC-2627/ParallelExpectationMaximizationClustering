@@ -195,9 +195,8 @@ TODO
 - [doc/exec-cluster.md](doc/exec-cluster.md): run everything on the cluster, from VPN to plots
 - [doc/script.md](doc/script.md): the scripts in `src/script/` and their variables
 - [doc/todo.md](doc/todo.md): task list and workflow
-- [doc/todo-jobs.md](doc/todo-jobs.md): checklist of the submission commands (batch A, B)
 - [doc/em-explained.md](doc/em-explained.md): EM algorithm (formulas, notation, parallelism)
 - [doc/datasets.md](doc/datasets.md): synthetic, sweep and real datasets (sources, format)
-- [doc/papers_and_references.md](doc/papers_and_references.md): papers and references for each technique, linked to our code (PDFs local only)
+- [doc/papers_and_references.md](doc/papers_and_references.md): papers and references
 - [doc/latex/Group6-Report.pdf](doc/latex/Group6-Report.pdf): IEEE-style report
 - [Presentation](https://docs.google.com/presentation/d/1nnzwo61ZBHoQlmlYfGVbIb39rVTOexQlnH01uqBfev0/edit?slide=id.g4dfce81f19_0_45#slide=id.g4dfce81f19_0_45): slides (Google Slides)

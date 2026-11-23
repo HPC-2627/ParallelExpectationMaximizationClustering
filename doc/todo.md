@@ -32,7 +32,7 @@ Workflow, in order. Phases overlap on purpose: datasets are prepared while the c
 - [X] Optimization 2, diagonal: `src/diagonal/PEMC-opt2-MPI-OpenMP-diagonal.c` (compared against `src/diagonal/PEMC-baseline-MPI-OpenMP-diagonal.c`) --> to choose
 - [X] Optimization 2, full covariance: `src/full/PEMC-opt2-MPI-OpenMP-full.c`: communication between the MPI processes, same idea as the diagonal opt2 (one `MPI_Allreduce` per iteration, packed lower triangle of sxx), built on the full baseline and compared against it (2026-11-22: rebuilt from the baseline, before it was built on opt1 full). Correctness checked locally (same iterations, same log-likelihood at every iteration and same ARI as the baseline full, 1/2/4 ranks, converged and max_iter runs)
 - [X] Re-run opt2 full on the cluster (new version built on the baseline): 22 jobs, every file with 72 runs, logs in `results/logs/full/opt2/` (the 6 jobs on 1, 2, 4 cores finished 2026-11-23)
-- [X] Compare opt2 full with the baseline full: P9 full and Table "Communication per iteration" of the report (opt2 removes the collective cost that is not waiting, 6.5 -> 0.5 ms/iteration on 32 cores, but that is <= 2% of an iteration; the time is decided by the wait for the slowest rank)
+- [X] Compare opt2 full with the baseline full (2026-11-23): P9 full and report, Section "Communication vs Computation Breakdown" (opt2 removes the collective cost that is not waiting, 6.5 -> 0.5 ms/iteration on 32 cores, but that is <= 2% of an iteration; the time is decided by the wait for the slowest rank)
 - [X] Build rules for all the versions in `makefile`
 - [ ] Check performances on course notes.
 
@@ -52,7 +52,7 @@ Run all the versions (`src/diagonal/PEMC-baseline-sequential-diagonal.c`, `src/d
 ## 4. Plots and report
 - [X] Performance plots in `src/plots-generate/plots-performance.py` (time, speedup, efficiency, scaling, communication breakdown, ...), output in `results/plots/performance/`
 - [X] Clustering plots in `src/plots-generate/plots-cluster.py` (PCA, centroid heatmap, cluster sizes, log-likelihood, ...), output in `results/plots/cluster/`
-- [ ] Abstract: written (2026-11-23), numbers checked against Performance Evaluation and Discussion; re-check once the Conclusion is written
+- [X] Abstract: final version (2026-11-23), numbers checked against Performance Evaluation, Discussion and Conclusion
 - [X] keywords of the report
 - [X] Correct opt2 full everywhere it appeared with the old version (2026-11-23, checked against the code): report (list of the versions, subsection and pseudocode of Optimization 2 full, Measurement Methodology "What is measured"), `README.md`, `doc/papers_and_references.md`, `doc/exec-cluster.md`, comments of `args.h`, `logger.h`, `args.c`, `pemc-job.sh`, `pemc-submit.sh`. Still to do with the new data: correctness check, numbers, plots, Discussion (items below)
 - [X] Opt2 references checked against the code (2026-11-23): Thakur et al. (#T) and BYU (#4.3a/#4.3b) for both opt2, both built on the baseline; no paper of opt1 (#4.1, #4.2, #4.4) is cited any more for opt2 full
@@ -62,29 +62,36 @@ Run all the versions (`src/diagonal/PEMC-baseline-sequential-diagonal.c`, `src/d
   - [X] report: every figure right below the paragraph that describes it (environment `figblock`: text + figure never split across pages), "Logs:" link to `results/logs/<model>/` in every caption
   - [X] sweep log of the OLD opt2 full: already removed from `results/logs/sweep/`
 - [X] IMPORTANT :  example table slide 23 Lecture 19 --> Data dependence analysis (Lecture 19, "Data dependences and OpenMP"): new subsection of "Parallel Design Methodology" in the report, no code change expected. For every parallel loop of every version (baseline, opt1, opt2, diagonal and full) apply the 3 steps of the lecture: -- DONE 2026-11-23: subsection "Data Dependence Analysis" (end of Parallel Design Methodology), definitions + one table per MPI+OpenMP file in the format of slide 25, with a Removal column; line numbers written by hand from the sources (update them if the code changes). No unhandled dependence, no code change
-- detection: every variable written in the loop (scalars and arrays), including the functions called inside (`log_sum_exp`, `exp`, `log`: no `static` or global state)
-  - classification: table as in slide 23 (memory location, earlier/later statement, loop-carried or not, flow / anti / output)
-  - removal: how each one is handled (`reduction(+:ll)`, array reduction `reduction(+:acc[:len])` + `MPI_Allreduce`, per-thread slice of `logp`/`z` = privatization, `reduction(max:bad)`, `simd reduction` of opt1 full)
-  - non-removable dependences: the outer EM loop (iteration t+1 needs the parameters of t: recurrence, so the parallelism is inside one iteration) and the forward substitution of the full model (`z_a` needs `z_0..z_{a-1}`; opt1 goes around it with 8 independent rows in SIMD, as slide 34)
-  - re-check opt1 and opt2 line by line; change the code only if a dependence turns out to be unhandled (data race)
+  - [X] detection: every variable written in the loop (scalars and arrays), including the functions called inside (`log_sum_exp`, `exp`, `log`: no `static` or global state)
+  - [X] classification: table as in slide 23 (memory location, earlier/later statement, loop-carried or not, flow / anti / output)
+  - [X] removal: how each one is handled (`reduction(+:ll)`, array reduction `reduction(+:acc[:len])` + `MPI_Allreduce`, per-thread slice of `logp`/`z` = privatization, `reduction(max:bad)`, `simd reduction` of opt1 full)
+  - [X] non-removable dependences: the outer EM loop (iteration t+1 needs the parameters of t: recurrence, so the parallelism is inside one iteration) and the forward substitution of the full model (`z_a` needs `z_0..z_{a-1}`; opt1 goes around it with 8 independent rows in SIMD, as slide 34)
+  - [X] re-check opt1 and opt2 line by line; change the code only if a dependence turns out to be unhandled (data race)
   - [X] tables of slides 23-25 for the 6 MPI+OpenMP versions: written directly in the report (Tables "Data dependences of <file>"); the old plan with `results/tables/data-dependences/*.xlsx` and `src/tables/data-dependences.py` was not kept (those files are not in the repository)
+  - [X] tables completed (2026-11-23): added the rows of `r` (E-step -> M-step, baseline and opt2 of both models), `R` and `Zt` reused as `RX` (opt1 full) and the Cholesky recurrence (opt1 full, lines of `src/common/gmm.c`); new paragraph "How to read the tables" and the four removal cases (privatization, reduction, end of a loop, not removable) explained in the text
   - [X] write the subsection of the report from the tables (one summary table, not all the rows)
-  - "Data Dependence Analysis" is already in the index terms of the report (IEEEkeywords): if this subsection is not written, remove it from there
+  - [X] "Data Dependence Analysis" is in the index terms of the report and the subsection is written: keep it
 - [X] Parallel design section (Foster, communication): data distribution by blocks of rows, one `MPI_Allreduce` of a contiguous buffer per iteration, per-thread buffers with padding, results equal to the sequential up to rounding, meaning of `t_comm` (includes load imbalance)
-- [ ] (important) --> CHECK COSTO COMPUTAZIONE VS COMUNICAZIONE E COME LO HO MISURATO ETC....
+- [X] (important) Computation vs communication and how it is measured (2026-11-23): report, paragraph "What t_comm contains": t_comm split into the wait for the slowest rank (slowest minus fastest `rank_compute`) and the real cost of the collectives, per version, on 16 and 32 cores
 - [X] Experimental setup section: hardware infrastructure (cluster, nodes, PBS placements); hardware of the 40 nodes collected with `src/script/pemc-hwinfo.sh`, summary in `results/tables/hardware.md`, same table in the README
-- [ ] Check whether the times of the memory-bound runs depend on the node type (2, 4 or 6 memory channels populated; TODO in the report, Hardware Infrastructure)
-- [ ] Implementation and performance evaluation sections of the report (`doc/latex/Group6-Report.tex`)
-- [ ] Performance evaluation: compare opt1 and opt2 of both models against the baseline of their model (same model, same layouts and placements), and compare our results with the papers that use the same techniques (e.g. fused E/M per thread: Lee et al., arXiv:1606.02054, `doc/papers_and_references.md` #4.1; cache blocking / matrix formulation: Kwedlo 2023, #4.2; per-thread accumulators + reduction: Sanderson & Curtin, #2), discussing differences in setting (datasets, covariance type, hardware)
+- [ ] Check whether the times of the memory-bound runs depend on the node type (2, 4 or 6 memory channels populated; red TODO in the report, Hardware Infrastructure). Not measured: the Discussion gives it as the likely cause of the imbalance between nodes, "likely but not proved" (the node of every rank is not logged). Either measure it or turn the red TODO into a sentence on the limits
+- [X] Implementation and performance evaluation sections of the report (`doc/latex/Group6-Report.tex`), rewritten 2026-11-23
+- [ ] Performance evaluation: compare opt1 and opt2 of both models against the baseline of their model -- DONE (P9, Discussion). STILL TO DO: compare our results with the papers that use the same techniques (fused E/M per thread: Lee et al., arXiv:1606.02054, `doc/papers_and_references.md` #4.1; cache blocking / matrix formulation: Kwedlo 2023, #4.2; per-thread accumulators + reduction: Sanderson & Curtin, #2; multi-node EM: Lee et al. 2020), discussing differences in setting (datasets, covariance type, hardware): one subsection of the Discussion
 - [X] Report: description of opt1 and opt2 once chosen, and cite the data sources (tables already have the links)
 - [X] After the 6 opt2 full jobs: plots regenerated, Performance Evaluation and Discussion rewritten (2026-11-23), correctness check recomputed (9,849 runs, max relative difference 4.9e-9 diagonal / 7.7e-9 full), expected gain of opt2 connected to the figures (Discussion, "Optimization 2: What the Saved Communication Is Worth")
-- [ ] Conclusion (Discussion written 2026-11-23)
+- [X] Conclusion (2026-11-23), with future work. Performance Evaluation also lists, with links, the figures not in the report (P1, P6, P7, P12, regenerated with `--min-run 0`)
+- [X] Discussion (2026-11-23): when the parallelization pays off, Optimization 1 (computation is the bottleneck), Optimization 2 (what the saved communication is worth), rank/thread split and load imbalance, limits of the measurements
+- [X] Report, Performance Evaluation (2026-11-23): tables "Datasets shown" and "Communication per iteration" removed, their content written in the text (list of the long datasets; wait / collectives / imbalance per version)
+- [X] Report, Measurement Methodology (2026-11-23): correctness check recomputed with all the logs (5,025 diagonal + 4,824 full runs, max 4.9e-9 / 7.7e-9), "Stability" with the measured spread per placement (red TODO removed)
+- [X] Plots P1, P6, P7, P12 regenerated with the current logs (`--plots P1 P6 P7 P12 --min-run 0`), linked in the report as figures not included
+- [X] Old PBS outputs of the opt2 full built on opt1 (`results/logs/pbs/o2f-*`) replaced by the new ones, nested folder `results/logs/pbs/pbs/` removed
 - [X] AI statement (mandatory): written at the top of the report (code help, search of sources, mathematical and grammatical correction); check that it is accurate before delivery
 - [ ] Repo link (SET TO PUBLIC) and data sources cited
 - [X] Report: insert the link to the execution on the cluster (TODO in Measurement Methodology, item "Execution on the cluster")
+- [ ] Report: three parts still in red: "Choice of B=64" (Optimization 1 full: text is correct, make it black or shorten it), the placement note in Measurement Methodology (verified, make it black), the node-type TODO in Hardware Infrastructure (see the item above)
 - [ ] Report: before delivery, check that every index term (IEEEkeywords) has its own part in the report; remove the ones that do not
 - [X] Report: insert the link to the visualization of the algorithm (TODO at the end of the subsection "The EM algorithm for Gaussian mixtures", paragraph "Visualization of the algorithm")
-- [ ] (IMPORTANT) --> compared performance for own algorithm with different paper with the same technique or differrentc ECC..
+- [ ] (IMPORTANT) --> compare the performance of our algorithm with the papers that use the same techniques (same item as "Performance evaluation" above: still to do)
 - [X] Report at least 10 pages
 - [ ] IMPORTANT --> TODO: check if all link, references, papers and content correspondign with implementation and  C code
 
@@ -96,6 +103,7 @@ Run all the versions (`src/diagonal/PEMC-baseline-sequential-diagonal.c`, `src/d
   - no leftover portability or "just in case" code that the cluster does not need (we already removed the custom RNG, the architecture/endianness check on the datasets and `_POSIX_C_SOURCE`; look for similar cases: unneeded `#define`s, defensive checks, duplicated helpers)
   - no behaviour hidden in the code that is not in the README (options, defaults, file formats)
   - `make` from scratch with no warnings (`-Wall -Wextra`), and the visualization still matches the C binary after any change
+- [ ] (optional) Run a data race detector (e.g. ThreadSanitizer, `-fsanitize=thread`) on the 6 MPI+OpenMP versions: today the absence of races rests on the dependence analysis and on the correctness check
 - [ ] Code commented, `makefile` builds from scratch, `README.md` has build and usage instructions
 - [ ] Both team members ready for the oral exam
 

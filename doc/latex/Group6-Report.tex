@@ -26,7 +26,8 @@
 % A figure together with the text that describes it: a minipage cannot be split, so the text and
 % the figure always stay on the same page (a float could move the figure to another page)
 \newenvironment{figblock}{\par\medskip\noindent\begin{minipage}{\textwidth}\setlength{\parskip}{4pt}}{\end{minipage}\par\medskip}
-% Link to a file or folder of the repository, written as its path
+% Link to a file or folder of the repository, written as its path (\repolink) or with a text (\repolinkas)
+\newcommand{\repolinkas}[2]{\href{https://github.com/HPC-2627/ParallelExpectationMaximizationClustering/tree/main/#1}{\textcolor{blue}{#2}}}
 \newcommand{\repolink}[1]{\href{https://github.com/HPC-2627/ParallelExpectationMaximizationClustering/tree/main/#1}{\textcolor{blue}{\nolinkurl{#1}}}}
 
 \begin{document}
@@ -60,8 +61,7 @@
 In this project we used an AI assistant (Claude, by Anthropic) for three purposes: (i) support in writing and debugging the code; (ii) searching for sources and papers for the state of the art and for the datasets; (iii) mathematical and grammatical correction of the report. The design choices, the experiments and the analysis of the results are our own, and we reviewed the output of the assistant.
 
 \begin{abstract}
-\sloppy We parallelize the Expectation--Maximization (EM) algorithm for Gaussian mixture models with a hybrid MPI+OpenMP design, for two covariance models: diagonal and full (Cholesky). For each model we implement a sequential version, a baseline that splits the rows in contiguous blocks among the MPI ranks and the OpenMP threads and reduces the sums with two \texttt{MPI\_Allreduce} per iteration, and two optimizations of the baseline: Optimization~1 changes the computation (fused E- and M-step, one parallel region per iteration, and in the full model blocks of rows vectorized with SIMD), Optimization~2 the communication (one collective per iteration, and in the full model only the lower triangle of the covariance sums). Every parallel version reaches the same iterations and the same log-likelihood as the sequential one (relative difference below $10^{-8}$ over 9\,849 runs). We measure strong and weak scaling up to 4 nodes (32 cores) of the HPC3 cluster of the University of Trento. The public medical datasets we found are small: their runs last milliseconds and measure mostly noise, so we generated synthetic datasets with a clinical structure of up to 4 million rows, and we show only the datasets whose runs all last at least one second (all the logs are in the repository). On these datasets Optimization~1 reaches a speedup of 27--29$\times$ over the sequential version in the diagonal model and about 50$\times$ in the full model, where the blocked computation is 3--8$\times$ faster than the baseline; its ranks are also balanced. Optimization~2 removes almost all the communication cost that is not waiting (on 32 cores from 0.6 to 0.08~ms per iteration in the diagonal model and from 6.5 to 0.5~ms in the full one), but on these datasets this is at most 2\% of an iteration: the time of the baseline is decided by the wait for the slowest rank, which only a faster and balanced computation reduces.
-\textcolor{red}{[Before delivery: check that every number matches the final Performance Evaluation, Discussion and Conclusion.]}
+\sloppy We parallelize the Expectation--Maximization (EM) algorithm for Gaussian mixture models with a hybrid MPI+OpenMP design, for two covariance models: diagonal and full (Cholesky). For each model we implement a sequential version, a baseline that splits the rows among the MPI ranks and the OpenMP threads and reduces the sums with two \texttt{MPI\_Allreduce} per iteration, and two optimizations of the baseline: Optimization~1 changes the computation (fused E- and M-step in one parallel region, and in the full model blocks of rows vectorized with SIMD), Optimization~2 the communication (one collective per iteration, and in the full model only the lower triangle of the covariance sums). A data dependence analysis of every OpenMP loop shows that all the dependences are handled, and in 9\,849 runs every parallel version reaches the same iterations and the same log-likelihood as the sequential one (relative difference below $10^{-8}$). We measure strong and weak scaling up to 4 nodes (32 cores) of the HPC3 cluster of the University of Trento. The public medical datasets we found are small: their runs last milliseconds and measure mostly noise, so we generated synthetic datasets with a clinical structure of up to 4 million rows, and we show only the datasets whose runs all last at least one second (all the logs are in the repository). On these datasets Optimization~1 reaches a speedup of 27--29$\times$ over the sequential version in the diagonal model and about 50$\times$ in the full model, where the blocked computation is 3--8$\times$ faster than the baseline, and its ranks stay balanced. Optimization~2 removes almost all the cost of the collectives that is not waiting (on 32 cores from 0.6 to 0.08~ms per iteration in the diagonal model and from 6.5 to 0.5~ms in the full one), but this is at most 2\% of an iteration: on this cluster the time is decided by the computation and by the wait for the slowest rank, not by the communication.
 \end{abstract}
 
 \begin{IEEEkeywords}
@@ -1053,6 +1053,14 @@ They are called the \emph{long datasets} below. The other real datasets (shortes
 
 \paragraph{All the results are kept.} The datasets not shown were measured with exactly the same procedure, and nothing was deleted: the logs of every run of every dataset (9\,849 runs) are in the repository, in \repolink{results/logs/diagonal} and \repolink{results/logs/full} (one folder per version), the datasets are described in Tables~\ref{tab:real}--\ref{tab:sweeps}, and the same script draws the figures with all the datasets (option \texttt{--min-run 0}). Every figure below also links the logs it comes from.
 
+\paragraph{Figures not included.} Four more figures, drawn by the same script from the same logs, are only in the repository; they include short runs, so they are a qualitative support:
+\begin{itemize}
+\item \emph{P1, cost of an iteration against $K$ and $D$} (\repolinkas{results/plots/performance/P1-sweep-diagonal.pdf}{diagonal}, \repolinkas{results/plots/performance/P1-sweep-full.pdf}{full}): the time grows linearly with $K$ and as $D$ (diagonal) or $D^2$ (full), as in Table~\ref{tab:models} (1 node, 8 threads; Optimization~2 full not re-run).
+\item \emph{P6, the four PBS placements} (\repolinkas{results/plots/performance/P6-placement-diagonal.pdf}{diagonal}, \repolinkas{results/plots/performance/P6-placement-full.pdf}{full}): \texttt{pack} puts every request on one node, \texttt{scatter} on shared nodes is the slowest and least stable, \texttt{scatter:excl} the fastest on 4 nodes: why the figures use it.
+\item \emph{P7, ranks $\times$ threads on one node} (\repolinkas{results/plots/performance/P7-ranks-threads-diagonal.pdf}{diagonal}, \repolinkas{results/plots/performance/P7-ranks-threads-full.pdf}{full}): for Optimization~2 the split 8 ranks $\times$ 1 thread is the fastest (Section~\ref{sec:disc-split}).
+\item \emph{P12, speedup against the number of rows} (\repolinkas{results/plots/performance/P12-size-diagonal.pdf}{diagonal}, \repolinkas{results/plots/performance/P12-size-full.pdf}{full}): all the datasets on 8 and 32 cores; the speedup grows with $N$; on the smallest tables (a few hundred rows) 32 cores are slower than one, and up to about $10^5$ rows the speedup stays far from the number of cores.
+\end{itemize}
+
 \subsection{Execution Time and Throughput}
 \begin{figblock}
 \paragraph{Diagonal model} (Figure~\ref{fig:p4-diag}). On one node the three parallel versions have almost the same time per iteration: on 8 cores 0.39--0.52~s on \texttt{brainweb} and 66--71~ms on \texttt{synth\_overlap\_p08}. They separate on 2 and 4 nodes: on 32 cores Optimization~1 needs 0.11~s per iteration on \texttt{brainweb}, Optimization~2 0.15~s and the baseline 0.22~s, and on the synthetic files Optimization~1 is about 1.7 times faster than the other two (17 vs 29~ms on \texttt{synth\_overlap\_p08}). From 8 to 16 cores the baseline and Optimization~2 gain little (the baseline needs 0.44~s per iteration on both core counts on \texttt{brainweb}); the reason is the rank/thread split of the multi-node runs (Section~\ref{sec:disc-split}).
@@ -1234,6 +1242,22 @@ On the long datasets, however, this saving is only 0.5--2\% of an iteration, sma
 \end{itemize}
 
 \section{Conclusion}
+We parallelized the EM algorithm for Gaussian mixtures with a hybrid MPI+OpenMP design, for the diagonal and the full covariance model: a sequential version, a baseline and two optimizations per model, eight programs in total. The design splits the rows among the ranks and the threads, keeps the parameters replicated and reduces only the sums of every iteration, so the communication does not depend on the number of rows. The data dependence analysis of every OpenMP loop shows that all the dependences are removed by privatization, reductions and the end of a loop, except the recurrences that are inherent to EM. In all the 9\,849 runs the parallel versions reach the same iterations as the sequential one, with a log-likelihood that differs by less than $10^{-8}$.
+
+The measurements on up to 4 nodes (32 cores) of the HPC3 cluster give three results:
+\begin{itemize}
+\item \emph{The amount of data decides.} The public medical datasets we found are too small: their runs last milliseconds and the sequential program is enough. On large data, the synthetic files of 1--4 million rows and the 11.9 million voxels of \texttt{brainweb}, the parallel versions scale.
+\item \emph{The computation and its balance are the bottleneck.} Optimization~1 reaches a speedup of 27--29 in the diagonal model and about 50 in the full one on 32 cores, up to 8 times faster than the baseline: the fused pass reads the data once, the blocks of rows make every core faster, and the ranks stay balanced.
+\item \emph{The communication is not.} Optimization~2 removes almost all the cost of the collectives that is not waiting (from 0.6 to 0.08~ms per iteration in the diagonal model, from 6.5 to 0.5~ms in the full one), but this is at most 2\% of an iteration. The time of the baseline is decided by the wait for the slowest rank, up to 19\% of imbalance between the nodes, which only a faster and better balanced computation reduces.
+\end{itemize}
+
+\paragraph{Future work.}
+\begin{itemize}
+\item Combine the two optimizations in one program (the computation of Optimization~1 with the single collective of Optimization~2), now measured separately on purpose.
+\item Compile for the AVX-512 units of the nodes (\texttt{-march=cascadelake}): Optimization~1 full already reaches 62--65\% of the peak of the SSE2 binaries.
+\item Measure other rank/thread splits on several nodes (only 2 ranks $\times$ 4 threads per node was measured), and record the node of every rank, to verify that the imbalance comes from the memory configuration of the nodes.
+\item Scale to more nodes and larger real datasets, e.g.\ full MRI volumes, where the communication saved by Optimization~2 could become visible.
+\end{itemize}
 
 \clearpage
 \begin{thebibliography}{99}
