@@ -9,9 +9,6 @@ Only the datasets whose runs all last at least 1 s (the "long" datasets of the r
 the same amount of data, on different nodes: if the channels mattered, the ranks on the nodes with
 fewer channels would be above 1.
 
-Nodes with hardware data: 40. Nodes used by the runs but without hardware data (not in
-the list of `pemc-hwinfo.sh` when it was run): hpc3-c11-n12, hpc3-c11-n14, hpc3-c11-n15, hpc3-c12-n04, hpc3-c12-n05, hpc3-c12-n34, hpc3-c12-n38, hpc3-c12-n39, hpc3-c12-n49.
-
 ## 1. Every node
 
 `multi-node ranks`: ranks of the runs on 2 and 4 nodes (`scatter:excl`) that ran on the node.
@@ -63,8 +60,6 @@ relative to the median of the same dataset and layout.
 
 ## 2. Runs on several nodes, by number of channels
 
-Ranks on a node without hardware data are not counted here (they are in section 3).
-
 | model | version | channels | ranks | mean | min | max |
 |---|---|---|---|---|---|---|
 | diagonal | baseline | 4 | 48 | 0.995 | 0.754 | 1.139 |
@@ -114,7 +109,6 @@ Ranks on a node without hardware data are not counted here (they are in section 
 | o2d-scx-4x2x4 | hpc3-c11-n03 | 4 | 1.006 |
 | o2d-scx-4x2x4 | hpc3-c11-n06 | 4 | 0.998 |
 | o2d-scx-4x2x4 | hpc3-c11-n19 | 4 | 1.008 |
-| o2f-scx-2x2x4 | hpc3-c11-n15 |  | 0.952 |
 | o2f-scx-2x2x4 | hpc3-c11-n30 | 6 | 1.048 |
 | o2f-scx-4x2x4 | hpc3-c11-n23 | 2 | 0.976 |
 | o2f-scx-4x2x4 | hpc3-c11-n27 | 6 | 1.003 |

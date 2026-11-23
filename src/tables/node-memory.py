@@ -205,10 +205,6 @@ def main():
     single = single_node_rows(df, nodes, keep)
     ranks["family"] = np.where(ranks.version == "opt1", "opt1", "baseline/opt2")
 
-    # nodes used by the runs but missing in results/hwinfo/ (added to the cluster list later)
-    used = set(df.hostname.str.replace(".unitn.it", "", regex=False)) | set(ranks.node)
-    missing = sorted(n for n in used if n not in nodes)
-
     # ---- 1. one row per node ----
     per_node = []
     for n, hw in sorted(nodes.items()):
@@ -230,7 +226,7 @@ def main():
         by_ch[c] = by_ch[c].map(fmt)
 
     # ---- 3. multi-node: every job, its nodes and how fast their ranks were ----
-    by_job = (ranks.groupby(["job", "node", "channels"], dropna=False).rel.mean().map(fmt).reset_index()
+    by_job = (ranks.groupby(["job", "node", "channels"]).rel.mean().map(fmt).reset_index()
               .rename(columns={"rel": "mean rel. time"}))
 
     # ---- 4. spread of the ranks inside one run, by family ----
@@ -257,9 +253,6 @@ Only the datasets whose runs all last at least 1 s (the "long" datasets of the r
 the same amount of data, on different nodes: if the channels mattered, the ranks on the nodes with
 fewer channels would be above 1.
 
-Nodes with hardware data: {len(nodes)}. Nodes used by the runs but without hardware data (not in
-the list of `pemc-hwinfo.sh` when it was run): {", ".join(missing) if missing else "none"}.
-
 ## 1. Every node
 
 `multi-node ranks`: ranks of the runs on 2 and 4 nodes (`scatter:excl`) that ran on the node.
@@ -269,8 +262,6 @@ relative to the median of the same dataset and layout.
 {md_table(per_node)}
 
 ## 2. Runs on several nodes, by number of channels
-
-Ranks on a node without hardware data are not counted here (they are in section 3).
 
 {md_table(by_ch)}
 
