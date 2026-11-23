@@ -200,7 +200,7 @@ Up to 4 nodes (32 cores) of HPC3; only the datasets whose runs all last at least
 
 ### Future work
 
-- Combine opt1 and opt2 in one program; compile for AVX-512 (`-march=cascadelake`).
+- Combine opt1 and opt2 in one program.
 - Find the cause of the imbalance of the baseline computation (aligned per-thread buffers, fixed CPU frequency) and try other ranks x threads splits on several nodes.
 - A script that reads a dataset (size, correlations, memory needed) and picks diagonal or full covariance (confirmed with the BIC on a sample) and the right version and layout.
 - Lift the memory limit of the full model for large D (shared sums, covariances split among the ranks); distribute the rows by the measured speed of every rank.
