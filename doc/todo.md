@@ -34,7 +34,7 @@ Workflow, in order. Phases overlap on purpose: datasets are prepared while the c
 - [X] Re-run opt2 full on the cluster (new version built on the baseline): 22 jobs, every file with 72 runs, logs in `results/logs/full/opt2/` (the 6 jobs on 1, 2, 4 cores finished 2026-11-23)
 - [X] Compare opt2 full with the baseline full (2026-11-23): P9 full and report, Section "Communication vs Computation Breakdown" (opt2 removes the collective cost that is not waiting, 6.5 -> 0.5 ms/iteration on 32 cores, but that is <= 2% of an iteration; the time is decided by the wait for the slowest rank)
 - [X] Build rules for all the versions in `makefile`
-- [ ] Check performances on course notes.
+- [X] Check performances on course notes.
 
 ## 3. Experiments
 Run all the versions (`src/diagonal/PEMC-baseline-sequential-diagonal.c`, `src/diagonal/PEMC-baseline-MPI-OpenMP-diagonal.c`, `src/diagonal/PEMC-opt1-MPI-OpenMP-diagonal.c`, `src/diagonal/PEMC-opt2-MPI-OpenMP-diagonal.c`) and, with the same importance but compared only among themselves (different model), the full-covariance ones (`src/full/PEMC-baseline-sequential-full.c`, `src/full/PEMC-baseline-MPI-OpenMP-full.c`, `src/full/PEMC-opt1-MPI-OpenMP-full.c`, `src/full/PEMC-opt2-MPI-OpenMP-full.c`) on the datasets in `data/real/` and `data/synthetic/`.
@@ -74,7 +74,7 @@ Run all the versions (`src/diagonal/PEMC-baseline-sequential-diagonal.c`, `src/d
 - [X] Parallel design section (Foster, communication): data distribution by blocks of rows, one `MPI_Allreduce` of a contiguous buffer per iteration, per-thread buffers with padding, results equal to the sequential up to rounding, meaning of `t_comm` (includes load imbalance)
 - [X] (important) Computation vs communication and how it is measured (2026-11-23): report, paragraph "What t_comm contains": t_comm split into the wait for the slowest rank (slowest minus fastest `rank_compute`) and the real cost of the collectives, per version, on 16 and 32 cores
 - [X] Experimental setup section: hardware infrastructure (cluster, nodes, PBS placements); hardware of the 40 nodes collected with `src/script/pemc-hwinfo.sh`, summary in `results/tables/hardware.md`, same table in the README
-- [ ] Check whether the times of the memory-bound runs depend on the node type (2, 4 or 6 memory channels populated; red TODO in the report, Hardware Infrastructure). Not measured: the Discussion gives it as the likely cause of the imbalance between nodes, "likely but not proved" (the node of every rank is not logged). Either measure it or turn the red TODO into a sentence on the limits
+- [X] Node type (2, 4 or 6 memory channels) vs times: MEASURED a posteriori (2026-11-23) with `results/hwinfo/` (copied from the cluster) + the node of every rank (lines `MCW rank` of the PBS `.err`) + `rank_compute`: `src/tables/node-memory.py` -> `results/tables/node-memory.md`. Result: the channels do NOT change the times (ranks on 4- and 6-channel nodes within 1%; same node slow for the baseline but not for opt1); the imbalance depends on the code (baseline/opt2 ranks 0.68-1.46 of the mean, opt1 0.94-1.03). Report updated (Hardware Infrastructure, Discussion on Optimization 2 and on the imbalance, Limits, Conclusion), README links the table. 9 nodes used by the runs have no hardware file (not in the list of `pemc-hwinfo.sh`); 3 of them in the analysed multi-node runs
 - [X] Implementation and performance evaluation sections of the report (`doc/latex/Group6-Report.tex`), rewritten 2026-11-23
 - [ ] Performance evaluation: compare opt1 and opt2 of both models against the baseline of their model -- DONE (P9, Discussion). STILL TO DO: compare our results with the papers that use the same techniques (fused E/M per thread: Lee et al., arXiv:1606.02054, `doc/papers_and_references.md` #4.1; cache blocking / matrix formulation: Kwedlo 2023, #4.2; per-thread accumulators + reduction: Sanderson & Curtin, #2; multi-node EM: Lee et al. 2020), discussing differences in setting (datasets, covariance type, hardware): one subsection of the Discussion
 - [X] Report: description of opt1 and opt2 once chosen, and cite the data sources (tables already have the links)
@@ -86,26 +86,14 @@ Run all the versions (`src/diagonal/PEMC-baseline-sequential-diagonal.c`, `src/d
 - [X] Plots P1, P6, P7, P12 regenerated with the current logs (`--plots P1 P6 P7 P12 --min-run 0`), linked in the report as figures not included
 - [X] Old PBS outputs of the opt2 full built on opt1 (`results/logs/pbs/o2f-*`) replaced by the new ones, nested folder `results/logs/pbs/pbs/` removed
 - [X] AI statement (mandatory): written at the top of the report (code help, search of sources, mathematical and grammatical correction); check that it is accurate before delivery
-- [ ] Repo link (SET TO PUBLIC) and data sources cited
+- [X] Repo link (SET TO PUBLIC) and data sources cited
 - [X] Report: insert the link to the execution on the cluster (TODO in Measurement Methodology, item "Execution on the cluster")
-- [ ] Report: three parts still in red: "Choice of B=64" (Optimization 1 full: text is correct, make it black or shorten it), the placement note in Measurement Methodology (verified, make it black), the node-type TODO in Hardware Infrastructure (see the item above)
+- [ ] Report: two parts still in red: "Choice of B=64" (Optimization 1 full: text is correct, make it black or shorten it) and the placement note in Measurement Methodology (verified, make it black). The node-type TODO is done
 - [ ] Report: before delivery, check that every index term (IEEEkeywords) has its own part in the report; remove the ones that do not
 - [X] Report: insert the link to the visualization of the algorithm (TODO at the end of the subsection "The EM algorithm for Gaussian mixtures", paragraph "Visualization of the algorithm")
 - [ ] (IMPORTANT) --> compare the performance of our algorithm with the papers that use the same techniques (same item as "Performance evaluation" above: still to do)
 - [X] Report at least 10 pages
 - [ ] IMPORTANT --> TODO: check if all link, references, papers and content correspondign with implementation and  C code
-
-## Final checks
-- [ ] Code audit (`src/`, `src/common/`, `include/`, `src/visual-sequential/`), version by version, before delivery:
-  - every function, struct and non-obvious line is commented (what it does and why), in English
-  - everything is used: no unused functions, parameters, options, macros, includes or files (for example the statistics in `my-time-lib.c` and `dataset_read_header()` if no version ends up calling them); delete what is not used
-  - no hand-made replacements of standard functions (e.g. a custom random generator instead of `rand()`); use the standard library
-  - no leftover portability or "just in case" code that the cluster does not need (we already removed the custom RNG, the architecture/endianness check on the datasets and `_POSIX_C_SOURCE`; look for similar cases: unneeded `#define`s, defensive checks, duplicated helpers)
-  - no behaviour hidden in the code that is not in the README (options, defaults, file formats)
-  - `make` from scratch with no warnings (`-Wall -Wextra`), and the visualization still matches the C binary after any change
-- [ ] (optional) Run a data race detector (e.g. ThreadSanitizer, `-fsanitize=thread`) on the 6 MPI+OpenMP versions: today the absence of races rests on the dependence analysis and on the correctness check
-- [ ] Code commented, `makefile` builds from scratch, `README.md` has build and usage instructions
-- [ ] Both team members ready for the oral exam
 
 ## Nice to have
 - [ ] Segmentation map visualization on a medical image dataset
