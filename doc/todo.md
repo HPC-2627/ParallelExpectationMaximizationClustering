@@ -32,6 +32,12 @@ Workflow, in order. Phases overlap on purpose: datasets are prepared while the c
 - [X] Optimization 2, diagonal: `src/diagonal/PEMC-opt2-MPI-OpenMP-diagonal.c` (compared against `src/diagonal/PEMC-baseline-MPI-OpenMP-diagonal.c`) --> to choose
 - [X] Optimization 2, full covariance: `src/full/PEMC-opt2-MPI-OpenMP-full.c`: communication between the MPI processes, same idea as the diagonal opt2 (one `MPI_Allreduce` per iteration, packed lower triangle of sxx), built on the full baseline and compared against it (2026-11-22: rebuilt from the baseline, before it was built on opt1 full). Correctness checked locally (same iterations, same log-likelihood at every iteration and same ARI as the baseline full, 1/2/4 ranks, converged and max_iter runs)
 - [X] Re-run opt2 full on the cluster (new version built on the baseline): 22 jobs, every file with 72 runs, logs in `results/logs/full/opt2/` (the 6 jobs on 1, 2, 4 cores finished 2026-11-23)
+- [ ] Re-run the K and D sweeps of opt2 full (P1 full has no opt2 curve: the old sweep was of the opt2 built on opt1), so that P1 full has the same 4 curves as P1 diagonal. On the cluster:
+  - [ ] move the old log first (the sweep logs are APPENDED): `mv results/logs/sweep/opt2-MPI-OpenMP-full_pack_excl_1n1r8t.log old-logs/`
+  - [ ] `SWEEP_VERSIONS="opt2-MPI-OpenMP-full" src/script/pemc-submit.sh sweep` (2 jobs `o2f-swK`, `o2f-swD`, `pack:excl`, 1 node 1 rank x 8 threads, as the other sweeps; dry run checked 2026-11-23). If still queued after about one day: `qdel` and relaunch with `SWEEP_PLACE=pack` (then write "opt2 full on a shared node" in the report)
+  - [ ] follow the jobs: `qstat -u $USER`; runs done: `grep -c '==== run' results/logs/sweep/opt2-MPI-OpenMP-full_pack_excl_1n1r8t.log` (goal 33 = 18 K sweep on `synth_clean_p01` + 15 D sweep on `synth_sweep_d*`); reason of a queued job: `qstat -f $(qselect -u $USER -N o2f-swK) | grep -i comment` (same with `o2f-swD`)
+  - [ ] when both jobs are gone from `qstat` and the count is 33, copy the log to the laptop: `scp michael.bernasconi@hpc3-login1.unitn.it:ParallelExpectationMaximizationClustering/results/logs/sweep/opt2-MPI-OpenMP-full_pack_excl_1n1r8t.log results/logs/sweep/`
+  - [ ] regenerate P1 (`python3 src/plots-generate/plots-performance.py --plots P1 --min-run 0`) and remove "Optimization 2 full not re-run" from the report (Performance Evaluation, "Figures not included")
 - [X] Compare opt2 full with the baseline full (2026-11-23): P9 full and report, Section "Communication vs Computation Breakdown" (opt2 removes the collective cost that is not waiting, 6.5 -> 0.5 ms/iteration on 32 cores, but that is <= 2% of an iteration; the time is decided by the wait for the slowest rank)
 - [X] Build rules for all the versions in `makefile`
 - [X] Check performances on course notes.
@@ -89,6 +95,8 @@ Run all the versions (`src/diagonal/PEMC-baseline-sequential-diagonal.c`, `src/d
 - [X] Repo link (SET TO PUBLIC) and data sources cited
 - [X] Report: insert the link to the execution on the cluster (TODO in Measurement Methodology, item "Execution on the cluster")
 - [ ] Report: two parts still in red: "Choice of B=64" (Optimization 1 full: text is correct, make it black or shorten it) and the placement note in Measurement Methodology (verified, make it black). The node-type TODO is done
+- [ ] Report: "every node" -> "the nodes" in the two sentences on the memory channels (Hardware Infrastructure: "using the hardware of every node and the node of every rank"; Discussion, imbalance: "with the configuration of every node and the node of every rank"): we have the hardware of 40 nodes, not of all the nodes used
+- [ ] Commit and push the work of 2026-11-23: report (PDF + tex), `src/tables/node-memory.py`, `results/tables/node-memory.md`, `README.md`, `doc/todo.md` (and later the opt2 full sweep log + P1)
 - [ ] Report: before delivery, check that every index term (IEEEkeywords) has its own part in the report; remove the ones that do not
 - [X] Report: insert the link to the visualization of the algorithm (TODO at the end of the subsection "The EM algorithm for Gaussian mixtures", paragraph "Visualization of the algorithm")
 - [ ] (IMPORTANT) --> compare the performance of our algorithm with the papers that use the same techniques (same item as "Performance evaluation" above: still to do)

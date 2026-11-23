@@ -189,7 +189,22 @@ Everything is regenerable from the logs. The performance plots P1-P11 (sweeps, s
 
 ## Results
 
-TODO
+Up to 4 nodes (32 cores) of HPC3; only the datasets whose runs all last at least 1 s are used (shorter runs are mostly noise). Full analysis in the [report](doc/latex/Group6-Report.pdf), Sections IV-VI.
+
+- **Correct:** all the parallel versions reach the same iterations and log-likelihood as the sequential one (relative difference < 1e-8 over 9,849 runs).
+- **Opt1 (computation) wins:** speedup over the sequential version on 32 cores 27-29x (diagonal) and about 50x (full); 1.5-2.1x (diagonal) and up to 8x (full) faster than the baseline; its ranks stay balanced.
+- **Opt2 (communication) works but barely matters:** the cost of the collectives drops from 0.6 to 0.08 ms (diagonal) and from 6.5 to 0.5 ms (full) per iteration, at most 2% of an iteration.
+- **The bottleneck is the computation and its balance:** in the baseline and opt2 almost all the MPI time is waiting for the slowest rank (up to 19% imbalance); it depends on the code, not on the memory of the nodes ([results/tables/node-memory.md](results/tables/node-memory.md)).
+- **Size decides:** the public medical tables are too small (runs of milliseconds, the sequential version is enough); the parallel versions pay off from 1-2 million rows (synthetic data, `brainweb` MRI).
+- **Figures:** speedup [diagonal](results/plots/performance/P2-speedup-diagonal.pdf) / [full](results/plots/performance/P2-speedup-full.pdf), gain over the baseline [diagonal](results/plots/performance/P9-opt-gain-diagonal.pdf) / [full](results/plots/performance/P9-opt-gain-full.pdf); all the others in [`results/plots/`](results/plots/).
+
+### Future work
+
+- Combine opt1 and opt2 in one program; compile for AVX-512 (`-march=cascadelake`).
+- Find the cause of the imbalance of the baseline computation (aligned per-thread buffers, fixed CPU frequency) and try other ranks x threads splits on several nodes.
+- A script that reads a dataset (size, correlations, memory needed) and picks diagonal or full covariance (confirmed with the BIC on a sample) and the right version and layout.
+- Lift the memory limit of the full model for large D (shared sums, covariances split among the ranks); distribute the rows by the measured speed of every rank.
+- Move the blocked full-model computation to GPUs; scale to more nodes and larger real data (full MRI volumes).
 
 ## Documentation
 
