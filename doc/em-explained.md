@@ -68,7 +68,7 @@ Measures **how much the values spread** around the mean:
 $$\sigma^2 = \frac{1}{N}\sum_{i=1}^{N}(x_i - \bar{x})^2, \qquad \sigma = \sqrt{\sigma^2}$$
 Small variance = values close to the mean (narrow bell). Large = widely spread (wide bell).
 
-### Covariance (the question: what does it do?)
+### Covariance
 Variance looks at **one** variable. Covariance looks at **two** variables together and tells whether they **grow together**:
 $$\mathrm{cov}(a, b) = \frac{1}{N}\sum_{i=1}^{N}(a_i - \bar{a})(b_i - \bar{b})$$
 
@@ -93,10 +93,8 @@ $$\Sigma = \begin{pmatrix} \mathrm{var}(\text{age}) & \mathrm{cov}(\text{age},\t
 | Matrix | complete $D \times D$ | only the diagonal (vector of $D$ variances) |
 | Group shape | tilted ellipse | ellipse aligned with the axes |
 | Parameters per group | about $D^2/2$ | $D$ |
-| Cost per iteration | $O(NKD^2)$ + inversions $O(KD^3)$ | $O(NKD)$ |
+| Cost per iteration | $O(NKD^2)$ + factorizations $O(KD^3)$ | $O(NKD)$ |
 | Risk | unstable with high $D$ and few data | assumes independent variables inside the group |
-
-**The project implements both**, with the same versions each (sequential, baseline, 2 optimizations => computations and communications). 
 
 ### The Gaussian
 **In one dimension**, the bell with mean $\mu$ and variance $\sigma^2$:
@@ -136,7 +134,10 @@ $$\mathcal{L}(\theta) = \sum_{i=1}^{N}\log\sum_{k=1}^{K}\pi_k\,\mathcal{N}(x_i \
 ## 7. The algorithm, step by step
 
 ### Initialization
-Starting values are needed for $\pi_k$, $\mu_k$, $\Sigma_k$ (see section 9).
+Starting values are needed for $\pi_k$, $\mu_k$, $\Sigma_k$. A simple choice, valid because the data are standardized (mean 0, variance 1):
+- $\mu_k$ = $K$ distinct points $x_i$ chosen at random;
+- $\Sigma_k = I$ (identity), that is $\sigma^2_{kd} = 1$ in the diagonal case;
+- $\pi_k = 1/K$ (all groups weigh the same).
 
 ### E-step: computing the responsibilities
 $$r_{ik} = \frac{\pi_k \, \mathcal{N}(x_i \mid \mu_k, \Sigma_k)}{\sum_{j=1}^{K}\pi_j \, \mathcal{N}(x_i \mid \mu_j, \Sigma_j)}$$
@@ -154,11 +155,35 @@ Each formula is the usual mean or variance, with the points **weighted** by $r_{
 | Full covariance | $\Sigma_k = \dfrac{1}{N_k}\sum_{i} r_{ik}\,(x_i-\mu_k)(x_i-\mu_k)^T$ | weighted covariance |
 | Variance (diagonal) | $\sigma_{kd}^2 = \dfrac{1}{N_k}\sum_{i} r_{ik}\,(x_{id}-\mu_{kd})^2$ | weighted variance, variable by variable |
 
+The covariance uses the **new** mean $\mu_k$ just computed, so the mean is updated first.
+
 A point with $r_{ik}=0.9$ counts "almost fully" in group $k$. One with $r_{ik}=0.01$ almost does not count.
 
 ### Convergence check
-$\mathcal{L}$ is computed. If $|\mathcal{L}_{\text{new}}-\mathcal{L}_{\text{old}}|$ is below a tolerance (for example $10^{-6}$ relative), or the maximum number of iterations is reached, it stops. 
+$\mathcal{L}$ is computed and the algorithm stops when the **relative** change is below a tolerance $\varepsilon$ (for example $10^{-6}$):
+$$\frac{|\mathcal{L}_{\text{new}}-\mathcal{L}_{\text{old}}|}{|\mathcal{L}_{\text{new}}|} \le \varepsilon$$
+Otherwise it goes back to the E-step. Being relative, the threshold does not depend on the scale of $\mathcal{L}$. A **maximum number of iterations** is also fixed, as a safety net in case convergence is very slow.
 
-Otherwise it goes back to the E-step.
+### Final result
+At the end every point has $K$ probabilities $r_{ik}$. To get a "hard" label, the most probable group is taken:
+$$\hat{z}_i = \arg\max_k \, r_{ik}$$
+If the dataset has true labels, they can be compared with $\hat{z}_i$ (for example with the Adjusted Rand Index).
 
-**[For the code we need to insert a limit of iterations]**
+## 8. Practical details
+
+### Working with logarithms (log-sum-exp)
+With many variables the densities $\mathcal{N}(x_i \mid \mu_k, \Sigma_k)$ are extremely small (the log is hundreds of units below zero), and computed directly they become $0$ (underflow). So everything is done with logarithms: let $a_k = \log\pi_k + \log\mathcal{N}(x_i \mid \mu_k, \Sigma_k)$ and $m = \max_k a_k$. Then
+$$\log\sum_{k} e^{a_k} = m + \log\sum_{k} e^{a_k - m}, \qquad r_{ik} = e^{\,a_k - \log\sum_j e^{a_j}}$$
+The largest term becomes $e^0 = 1$, so the sum is never $0$ nor infinite. The same quantity gives the contribution of point $i$ to $\mathcal{L}$.
+
+### Degenerate groups
+- If a group captures very few (or identical) points, its variance goes to $0$: the density contains $1/\sigma^2$ and $\log\sigma^2$, so $\mathcal{L}$ would become infinite. A small minimum is imposed: $\sigma^2_{kd} \ge 10^{-6}$ (in the full case a small value is added to the diagonal of $\Sigma_k$).
+- If a group stays empty ($N_k \approx 0$), its mean and variance cannot be computed (division by $\sim 0$): they are kept as they were, and $\pi_k$ gets a tiny positive value so that $\log\pi_k$ is not $-\infty$.
+
+### Full covariance without the inverse
+$\Sigma_k^{-1}$ and $\det\Sigma_k$ are obtained from the **Cholesky factorization** $\Sigma_k = L_k L_k^T$ ($L_k$ lower triangular):
+$$\log\det\Sigma_k = 2\sum_{d}\log (L_k)_{dd}, \qquad (x-\mu_k)^T\Sigma_k^{-1}(x-\mu_k) = \|y\|^2 \ \text{ with } \ L_k\, y = x-\mu_k$$
+Solving the triangular system is cheaper and more stable than computing the inverse.
+
+### Local maxima and restarts
+EM converges only to a **local** maximum, which depends on the initialization. The usual remedy is to run it from several random starts and keep the one with the highest $\mathcal{L}$.
