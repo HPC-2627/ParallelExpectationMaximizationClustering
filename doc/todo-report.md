@@ -16,7 +16,7 @@
 - [ ] Read [`doc/datasets.md`](../doc/datasets.md)
 - [ ] Read [`doc/em-explained.md`](../doc/em-explained.md)
 - [ ] Read [`doc/exec-cluster.md`](../doc/exec-cluster.md)
-- [ ] Read [`doc/exec-visual.md`](../doc/exec-visual.md)
+- [X] Read [`doc/exec-visual.md`](../doc/exec-visual.md)
 - [ ] Read [`doc/papers_and_references.md`](../doc/papers_and_references.md)
 - [ ] Read [`doc/plots.md`](../doc/plots.md)
 - [ ] Read [`doc/script.md`](../doc/script.md)

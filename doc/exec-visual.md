@@ -2,7 +2,9 @@
 
 How to run the step-by-step web visualization of the EM algorithm locally. A small web page shows how EM works on any dataset of `data/`: the initial centroids, then for every iteration the E-step (points coloured by their responsibilities), the convergence test on the log-likelihood and the M-step (means and ellipses moving to their new values). 
 
-It also shows the formulas with the real numbers of the current iteration, the log-likelihood curve, and the calculation of any point you click. How to run the experiments: [exec-cluster.md](exec-cluster.md). Run everything from the root of the repository.
+It also shows the formulas with the real numbers of the current iteration, the log-likelihood curve, and the calculation of any point you click. 
+
+How to run the experiments: [exec-cluster.md](exec-cluster.md). Run everything from the root of the repository.
 
 ## Requirements
 
