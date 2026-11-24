@@ -164,7 +164,7 @@ All the runs use the HPC3 cluster of the University of Trento (PBS Pro, queue `s
 | Caches | L1d 32 KB and L2 1 MB per core, L3 35.75 MB per socket |
 | Memory | 256 GB to 2 TB DDR4 per node, 6 channels per socket (2, 4 or 6 populated) |
 | Network | Ethernet 10 Gb/s |
-| Nodes used | 40 (groups `c10`, `c11`, `c12`) |
+| Nodes used | 49 (groups `c10`, `c11`, `c12`) |
 | Software | Rocky Linux 9.8, GCC 12.3.0 (`-O3 -fopenmp`, no `-march`), Open MPI 4.1.5 + UCX 1.14.1 over TCP |
 
 Collected with [`src/script/pemc-hwinfo.sh`](src/script/pemc-hwinfo.sh); details in [results/tables/hardware.md](results/tables/hardware.md).
@@ -192,7 +192,7 @@ Everything is regenerable from the logs. The performance plots P1-P11 (sweeps, s
 Up to 4 nodes (32 cores) of HPC3; only the datasets whose runs all last at least 1 s are used (shorter runs are mostly noise). Full analysis in the [report](doc/latex/Group6-Report.pdf), Sections IV-VI.
 
 - **Correct:** all the parallel versions reach the same iterations and log-likelihood as the sequential one (relative difference < 1e-8 over 9,849 runs).
-- **Opt1 (computation) wins:** speedup over the sequential version on 32 cores 27-29x (diagonal) and about 50x (full); 1.5-2.1x (diagonal) and up to 8x (full) faster than the baseline; its ranks stay balanced.
+- **Opt1 (computation) wins:** speedup over the sequential version on 32 cores 27-29x (diagonal) and about 50x (full); faster than the baseline 1.5-2.1x (diagonal) and up to 8x (full) on 32 cores, 2.3-2.5x (full) on one node of 8 cores; its ranks stay balanced. The one-node gain of the blocked full model agrees with Kwedlo 2023 (1.75-2.75x on 24 cores).
 - **Opt2 (communication) works but barely matters:** the cost of the collectives drops from 0.6 to 0.08 ms (diagonal) and from 6.5 to 0.5 ms (full) per iteration, at most 2% of an iteration.
 - **The bottleneck is the computation and its balance:** in the baseline and opt2 almost all the MPI time is waiting for the slowest rank (up to 19% imbalance); it depends on the code, not on the memory of the nodes ([results/tables/node-memory.md](results/tables/node-memory.md)).
 - **Size decides:** the public medical tables are too small (runs of milliseconds, the sequential version is enough); the parallel versions pay off from 1-2 million rows (synthetic data, `brainweb` MRI).
