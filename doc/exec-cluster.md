@@ -57,7 +57,7 @@ python3 src/dataset-managed/generate-synthetic-dataset.py
 python3 src/dataset-managed/generate-synthetic-dataset.py --sweep    # D sweep files for plot P1 (K = 4, D = 5 ... 50)
 ```
 
-The generation is deterministic (seed 42): the files are identical to the ones generated locally. Details in [datasets.md](datasets.md#3-synthetic-datasets).
+The generation is deterministic (seed 42): the files are identical to the ones generated locally.
 
 ### Real datasets (about 250 MB to download, about 650 MB after the conversion)
 
@@ -68,7 +68,7 @@ python3 src/dataset-managed/convert-real-to-bin.py        # CSV -> .bin
 python3 src/dataset-managed/convert-brainweb-to-bin.py    # BrainWeb (NIfTI) -> .bin
 ```
 
-If the compute nodes have no internet access, run the downloads on the login node (the job only reads the `.bin` files). Sources and licenses: [datasets.md](datasets.md#41-sources-and-licenses).
+If the compute nodes have no internet access, run the downloads on the login node (the job only reads the `.bin` files). Sources and licenses: [datasets.md](datasets.md#31-sources-and-licenses).
 
 ---
 
@@ -210,7 +210,7 @@ The default layouts start at 8 cores, and 8 -> 16 -> 32 cores also changes 1 -> 
 
 - the **scaling inside one node** (1 -> 2 -> 4 -> 8 cores), separated from the network;
 - every version **on 1 core** (`1:1:1`): the gain of the optimization alone, so the efficiency above 1 of opt1 full (P2, P5) can be split into optimization x parallelism;
-- two more points of the **weak scaling** (`synth_clean_p02` on 2 cores, `p04` on 4 cores).
+- two more points of the **weak scaling** (`synth_overlap_p02` on 2 cores, `p04` on 4 cores, as in P5).
 
 All the splits of 1, 2 and 4 cores, as for 8 cores:
 

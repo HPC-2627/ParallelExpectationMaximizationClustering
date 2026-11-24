@@ -2,7 +2,7 @@
 """Verify the downloaded datasets: size, empty cells, masked missing values.
 
 Reads data/real/<name>/raw/{features,targets}.csv and writes the report into
-doc/datasets.md (section 5), between the markers BEGIN/END verify-real-datasets:
+doc/datasets.md (section 3.2), between the markers BEGIN/END verify-real-datasets:
 the rest of that file is written by hand and is left untouched. Verdict per dataset:
   COMPLETE  - no empty cell in the numeric columns used for clustering
   DISCARD  - empty cells (or masked ones) present in those columns
@@ -32,14 +32,6 @@ ROOT = REPO / "data" / "real"
 REPORT = REPO / "doc" / "datasets.md"
 BEGIN = "<!-- BEGIN verify-real-datasets -->"     # the report is written between these markers
 END = "<!-- END verify-real-datasets -->"
-_UCI = "https://archive.ics.uci.edu/dataset/"
-LINKS = {   # original page of each dataset, used in the summary table
-    "diabetes130": _UCI + "296", "cdc_diabetes": _UCI + "891", "parkinson": _UCI + "189",
-    "eeg_eye_state": _UCI + "264", "gene_rnaseq": _UCI + "401", "heart_failure": _UCI + "519",
-    "cardiotocography": _UCI + "193", "statlog_heart": _UCI + "145",
-    "cardiovascular": "https://www.openml.org/d/45547",
-    "brainweb": "https://brainweb.bic.mni.mcgill.ca/",
-}
 # Strings that mean "missing" in the sources (compared after strip() and lower())
 EMPTY_TOKENS = {"", "?", "na", "n/a", "nan", "null", "none"}
 
@@ -128,8 +120,9 @@ def verify_brainweb():
     n_vox = int(t1.size)
     verdict = "COMPLETE" if nan_t1 == 0 else "DISCARD"
     md = [f"- **brainweb**: T1 only (D = 1), range {t1.min()}-{t1.max()}; the ground-truth labels "
-          f"({int(lab.min())}-{int(lab.max())}, {' x '.join(map(str, lab.shape))}, 0.5 mm) are on a different grid "
-          "than the T1 volume and must be resampled before computing ARI/Dice."]
+          f"({int(lab.min())}-{int(lab.max())}, {' x '.join(map(str, lab.shape))}, 0.5 mm) are on a finer grid "
+          "than the T1 volume: `convert-brainweb-to-bin.py` subsamples them and places them on the "
+          "T1 grid."]
     # Same keys used by the summary table in main() (the other fields do not apply to a volume)
     row = dict(name="brainweb", n=n_vox, d=1, n_num=1, num_empty=nan_t1,
                verdict=verdict, n_dup="n/a")   # duplicates not computed for a volume
@@ -166,8 +159,8 @@ def main():
     out += extra
     rows.sort(key=lambda r: r["name"] == "brainweb")   # brainweb last in the table
     # Summary table first, then the short notes
-    table = ("| Dataset | N x D | Numeric | Empty (numeric) | Duplicate rows | Verdict |\n|---|---|---|---|---|---|\n"
-             + "\n".join(f"| {('[%s](%s)' % (r['name'], LINKS[r['name']])) if r['name'] in LINKS else r['name']} | "
+    table = ("| Dataset | Raw N x D | Numeric | Empty (numeric) | Duplicate rows | Verdict |\n|---|---|---|---|---|---|\n"
+             + "\n".join(f"| `{r['name']}` | "
                          f"{r['n']} x {r['d']} | {r['n_num']} | {r['num_empty']} | {r['n_dup']} | {r['verdict']} |"
                          for r in rows))
     out = [table, "", "Notes:", ""] + out

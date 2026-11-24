@@ -99,7 +99,7 @@ Table instead of plot: the 10 real datasets with N, D, K, log-likelihood, BIC, i
 
 How the data is produced: `src/script/pemc-cluster.sh` runs the sequential baseline (both models) on the datasets for every K of a range (default 2..10, plus the true K) and appends to `results/logs/cluster/`. Only at the true K it also passes `--save results/clusters` (`include/cluster-out.h`): labels of every row, weights and means, log-likelihood after every iteration. BIC and AIC are computed by the script from the log (`loglik`, N, D, K, model), with `p = (K-1) + K*D + K*D` free parameters for diagonal and `(K-1) + K*D + K*D*(D+1)/2` for full.
 
-Notes: C3 draws a random sample of at most 5000 rows (PCA on the sample), and a second row colored by the true classes when the dataset has them. `brainweb` has D = 1, so it has no PCA. `gene_rnaseq` has no full covariance run (D = 20531).
+Notes: C3 draws a random sample of at most 5000 rows (PCA on the sample), and a second row colored by the true classes when the dataset has them. `brainweb` has D = 1, so it has no PCA. `gene_rnaseq` has no full covariance run (D = 20 264).
 
 ## 4. Experiment matrix (what to run on the cluster for each plot)
 

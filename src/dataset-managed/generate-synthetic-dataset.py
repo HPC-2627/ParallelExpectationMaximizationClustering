@@ -14,8 +14,9 @@ Generates 3 datasets of fake "patients", each one with a different profile:
 
 -----------------------------------------------------------------------------------------------------------------
 WHY SYNTHETIC DATA AND WHY THESE THREE PROFILES
-- Real medical datasets are almost always small (a few hundred rows): with so little data the
-  communication weighs more than the computation and no scaling can be observed. For the weak
+- Real medical datasets are small (9 of 10 have at most 254 000 rows, runs of milliseconds): the
+  fixed costs and the communication weigh more than the computation and no scaling can be
+  observed. Only brainweb (11.9 M voxels) is large enough, but its N is fixed: for the weak
   scaling N must be able to grow at will, which is possible only with generated data.
 - Generating the data means knowing the TRUTH: the true subgroup of every patient and the true
   parameters. It is therefore possible to check that all the versions (sequential, baseline,
@@ -34,8 +35,8 @@ to reconstruct):
   3. (only for some profiles) the variables are transformed into clinical units: skewness and
      physiological limits;
   4. the columns are standardized (z-score), because the algorithm works on normalized data.
-The true means and covariances are saved separately, so it is possible to check how well the EM
-finds them.
+The JSON of the profile saves the parameters and the empirical mean of every cluster, so it is
+possible to check how well the EM finds them.
 
 ------------------------------------------------------------------------------------------------------------------
 WEAK SCALING
@@ -45,7 +46,8 @@ For every profile a SEPARATE FILE is created for each number of processes p, for
 synth_clean_p01.bin, synth_clean_p02.bin, synth_clean_p04.bin, ...: each file contains exactly
 N0 * p rows, so the program only has to be given the right file, without having to remember how
 many rows to use. It is the clearest choice for the repository and for the explanation.
-Rank r reads rows from r*N0 to (r+1)*N0 - 1 of the file: every rank always has N0 rows.
+p is the number of cores (MPI ranks x OpenMP threads): every rank reads one contiguous block of
+N/ranks rows, which its threads split again, so every core always has N0 rows.
 The files of the same profile are "nested": the rows are drawn from a single random stream and
 written to all the files that require them, so the file for p=2 contains the rows of the file
 for p=1 plus other N0 rows, and so on. Going from p to 2p only the AMOUNT of data changes and not
@@ -440,7 +442,8 @@ def generate_profile(name, index, p, args, out_dir):
             )
             for pp in procs
         },
-        note="the file of p processes has N0*p rows; rank r reads rows from r*N0 to (r+1)*N0-1",
+        note="the file of p cores has N0*p rows; every rank reads a contiguous block of N/ranks rows, "
+             "split among its threads: N0 rows per core",
     )
     with open(folder / f"{name}.json", "w") as f:
         json.dump(info, f, indent=2)

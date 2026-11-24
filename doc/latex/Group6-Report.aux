@@ -114,11 +114,11 @@
 \@writefile{lot}{\contentsline {table}{\numberline {XI}{\ignorespaces Clinical variables used to build the synthetic data (typical mean $\pm $ std and physiological limits).}}{25}{table.caption.16}\protected@file@percent }
 \newlabel{tab:synth-vars}{{XI}{25}{Clinical variables used to build the synthetic data (typical mean $\pm $ std and physiological limits)}{table.caption.16}{}}
 \@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {III-C}0e}Weak scaling files}{25}{paragraph.3.3.0.5}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {XII}{\ignorespaces Weak scaling: rows and data file size for each profile ($N_0 = 250\,000$ rows per process; labels file of $4N$ bytes for every profile). MB $= 10^6$ bytes.}}{26}{table.caption.17}\protected@file@percent }
-\newlabel{tab:weak}{{XII}{26}{Weak scaling: rows and data file size for each profile ($N_0 = 250\,000$ rows per process; labels file of $4N$ bytes for every profile). MB $= 10^6$ bytes}{table.caption.17}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {XII}{\ignorespaces Weak scaling: rows and data file size for each profile ($N_0 = 250\,000$ rows per core; labels file of $4N$ bytes for every profile). MB $= 10^6$ bytes.}}{26}{table.caption.17}\protected@file@percent }
+\newlabel{tab:weak}{{XII}{26}{Weak scaling: rows and data file size for each profile ($N_0 = 250\,000$ rows per core; labels file of $4N$ bytes for every profile). MB $= 10^6$ bytes}{table.caption.17}{}}
 \@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {III-C}0f}Strong scaling}{26}{paragraph.3.3.0.6}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {XIII}{\ignorespaces Strong scaling (fixed $N = 4\,000\,000$): data per rank and work per rank $N \cdot K \cdot D / p$. The work is an operation count proportional to the cost of an iteration, not a measured time.}}{26}{table.caption.18}\protected@file@percent }
-\newlabel{tab:strong}{{XIII}{26}{Strong scaling (fixed $N = 4\,000\,000$): data per rank and work per rank $N \cdot K \cdot D / p$. The work is an operation count proportional to the cost of an iteration, not a measured time}{table.caption.18}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {XIII}{\ignorespaces Strong scaling on the \texttt  {\_p16} files (fixed $N = 4\,000\,000$): data per core and work per core $N \cdot K \cdot D / p$ on $p$ cores. The work is an operation count proportional to the cost of an iteration, not a measured time.}}{26}{table.caption.18}\protected@file@percent }
+\newlabel{tab:strong}{{XIII}{26}{Strong scaling on the \texttt {\_p16} files (fixed $N = 4\,000\,000$): data per core and work per core $N \cdot K \cdot D / p$ on $p$ cores. The work is an operation count proportional to the cost of an iteration, not a measured time}{table.caption.18}{}}
 \newlabel{sec:sweeps}{{\mbox  {III-C}0g}{26}{Sweeps over $K$ and $D$}{paragraph.3.3.0.7}{}}
 \@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {III-C}0g}Sweeps over $K$ and $D$}{26}{paragraph.3.3.0.7}\protected@file@percent }
 \@writefile{lot}{\contentsline {table}{\numberline {XIV}{\ignorespaces Sweeps over $K$ and $D$ ($N=250\,000$, 1 node). The work is an operation count proportional to the cost of an iteration, not a measured time. Data file sizes: $8+8ND$ bytes, plus a labels file of 1 MB per file.}}{27}{table.caption.19}\protected@file@percent }
@@ -157,52 +157,52 @@
 \newlabel{fig:p10-diag}{{7}{34}{Roofline of one node (8 cores), diagonal model}{figure.7}{}}
 \@writefile{lof}{\contentsline {figure}{\numberline {8}{\ignorespaces Roofline of one node (8 cores), full model.}}{35}{figure.8}\protected@file@percent }
 \newlabel{fig:p10-full}{{8}{35}{Roofline of one node (8 cores), full model}{figure.8}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-C}}Strong Scaling: Speedup and Efficiency}{35}{subsection.4.3}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {IV-C}0a}Diagonal model}{35}{paragraph.4.3.0.1}\protected@file@percent }
-\@writefile{lof}{\contentsline {figure}{\numberline {9}{\ignorespaces Speedup over the sequential version, diagonal model.}}{35}{figure.9}\protected@file@percent }
-\newlabel{fig:p2-diag}{{9}{35}{Speedup over the sequential version, diagonal model}{figure.9}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-C}}Strong Scaling: Speedup and Efficiency}{36}{subsection.4.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {IV-C}0a}Diagonal model}{36}{paragraph.4.3.0.1}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {9}{\ignorespaces Speedup over the sequential version, diagonal model.}}{36}{figure.9}\protected@file@percent }
+\newlabel{fig:p2-diag}{{9}{36}{Speedup over the sequential version, diagonal model}{figure.9}{}}
 \@writefile{lof}{\contentsline {figure}{\numberline {10}{\ignorespaces Parallel efficiency (speedup / cores), diagonal model.}}{36}{figure.10}\protected@file@percent }
 \newlabel{fig:p3-diag}{{10}{36}{Parallel efficiency (speedup / cores), diagonal model}{figure.10}{}}
-\@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {IV-C}0b}Full model}{36}{paragraph.4.3.0.2}\protected@file@percent }
-\@writefile{lof}{\contentsline {figure}{\numberline {11}{\ignorespaces Speedup over the sequential version, full model.}}{36}{figure.11}\protected@file@percent }
-\newlabel{fig:p2-full}{{11}{36}{Speedup over the sequential version, full model}{figure.11}{}}
+\@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {IV-C}0b}Full model}{37}{paragraph.4.3.0.2}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {11}{\ignorespaces Speedup over the sequential version, full model.}}{37}{figure.11}\protected@file@percent }
+\newlabel{fig:p2-full}{{11}{37}{Speedup over the sequential version, full model}{figure.11}{}}
 \@writefile{lof}{\contentsline {figure}{\numberline {12}{\ignorespaces Parallel efficiency (speedup / cores), full model. Above 1 the optimization also makes the computation faster.}}{37}{figure.12}\protected@file@percent }
 \newlabel{fig:p3-full}{{12}{37}{Parallel efficiency (speedup / cores), full model. Above 1 the optimization also makes the computation faster}{figure.12}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-D}}Gain of the Optimizations over the Baseline}{37}{subsection.4.4}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {IV-D}0a}Diagonal model}{37}{paragraph.4.4.0.1}\protected@file@percent }
-\@writefile{lof}{\contentsline {figure}{\numberline {13}{\ignorespaces Time of Optimization~1 and~2 divided by the time of the parallel baseline on 32 cores (below 1 = faster), every long dataset.}}{37}{figure.13}\protected@file@percent }
-\newlabel{fig:p9-diag}{{13}{37}{Time of Optimization~1 and~2 divided by the time of the parallel baseline on 32 cores (below 1 = faster), every long dataset}{figure.13}{}}
-\@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {IV-D}0b}Full model}{38}{paragraph.4.4.0.2}\protected@file@percent }
-\@writefile{lof}{\contentsline {figure}{\numberline {14}{\ignorespaces Time of Optimization~1 and~2 divided by the time of the parallel baseline on 32 cores (below 1 = faster), every long dataset.}}{38}{figure.14}\protected@file@percent }
-\newlabel{fig:p9-full}{{14}{38}{Time of Optimization~1 and~2 divided by the time of the parallel baseline on 32 cores (below 1 = faster), every long dataset}{figure.14}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-E}}Communication vs Computation Breakdown}{39}{subsection.4.5}\protected@file@percent }
-\newlabel{sec:breakdown}{{\mbox  {IV-E}}{39}{Communication vs Computation Breakdown}{subsection.4.5}{}}
-\@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {IV-E}0a}Where the time goes}{39}{paragraph.4.5.0.1}\protected@file@percent }
-\@writefile{lof}{\contentsline {figure}{\numberline {15}{\ignorespaces Where the time goes, diagonal model: every bar is 100\% of one run on 1, 8 or 32 cores; the number above the bar is its total time.}}{39}{figure.15}\protected@file@percent }
-\newlabel{fig:p8-diag}{{15}{39}{Where the time goes, diagonal model: every bar is 100\% of one run on 1, 8 or 32 cores; the number above the bar is its total time}{figure.15}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {16}{\ignorespaces Where the time goes, full model (same layout as Figure~\ref {fig:p8-diag}).}}{40}{figure.16}\protected@file@percent }
-\newlabel{fig:p8-full}{{16}{40}{Where the time goes, full model (same layout as Figure~\ref {fig:p8-diag})}{figure.16}{}}
-\@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {IV-E}0b}What $t_{\mathrm  {comm}}$ contains.}{40}{paragraph.4.5.0.2}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {IV-E}0c}Load imbalance}{41}{paragraph.4.5.0.3}\protected@file@percent }
-\@writefile{lof}{\contentsline {figure}{\numberline {17}{\ignorespaces Load imbalance between the MPI ranks, Optimization~2, diagonal model, \texttt  {synth\_overlap\_p16}.}}{41}{figure.17}\protected@file@percent }
-\newlabel{fig:p11-diag}{{17}{41}{Load imbalance between the MPI ranks, Optimization~2, diagonal model, \texttt {synth\_overlap\_p16}}{figure.17}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {18}{\ignorespaces Load imbalance between the MPI ranks, Optimization~2, full model, \texttt  {synth\_rare\_p16}.}}{41}{figure.18}\protected@file@percent }
-\newlabel{fig:p11-full}{{18}{41}{Load imbalance between the MPI ranks, Optimization~2, full model, \texttt {synth\_rare\_p16}}{figure.18}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-F}}Weak Scaling}{42}{subsection.4.6}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {IV-F}0a}Diagonal model}{42}{paragraph.4.6.0.1}\protected@file@percent }
-\@writefile{lof}{\contentsline {figure}{\numberline {19}{\ignorespaces Weak scaling, diagonal model: \texttt  {synth\_overlap\_p}$NN$ on $NN$ cores.}}{42}{figure.19}\protected@file@percent }
-\newlabel{fig:p5-diag}{{19}{42}{Weak scaling, diagonal model: \texttt {synth\_overlap\_p}$NN$ on $NN$ cores}{figure.19}{}}
-\@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {IV-F}0b}Full model}{43}{paragraph.4.6.0.2}\protected@file@percent }
-\@writefile{lof}{\contentsline {figure}{\numberline {20}{\ignorespaces Weak scaling, full model: \texttt  {synth\_overlap\_p}$NN$ on $NN$ cores.}}{43}{figure.20}\protected@file@percent }
-\newlabel{fig:p5-full}{{20}{43}{Weak scaling, full model: \texttt {synth\_overlap\_p}$NN$ on $NN$ cores}{figure.20}{}}
-\@writefile{toc}{\contentsline {section}{\numberline {V}Discussion}{44}{section.5}\protected@file@percent }
-\newlabel{sec:discussion}{{V}{44}{Discussion}{section.5}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {V-A}}When the Parallelization Pays Off}{44}{subsection.5.1}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {V-B}}Optimization 1: the Bottleneck Was the Computation}{44}{subsection.5.2}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {V-C}}Optimization 2: What the Saved Communication Is Worth}{44}{subsection.5.3}\protected@file@percent }
-\newlabel{sec:disc-opt2}{{\mbox  {V-C}}{44}{Optimization 2: What the Saved Communication Is Worth}{subsection.5.3}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {V-D}}Rank/Thread Split and Load Imbalance}{44}{subsection.5.4}\protected@file@percent }
-\newlabel{sec:disc-split}{{\mbox  {V-D}}{44}{Rank/Thread Split and Load Imbalance}{subsection.5.4}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-D}}Gain of the Optimizations over the Baseline}{38}{subsection.4.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {IV-D}0a}Diagonal model}{38}{paragraph.4.4.0.1}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {13}{\ignorespaces Time of Optimization~1 and~2 divided by the time of the parallel baseline on 32 cores (below 1 = faster), every long dataset.}}{38}{figure.13}\protected@file@percent }
+\newlabel{fig:p9-diag}{{13}{38}{Time of Optimization~1 and~2 divided by the time of the parallel baseline on 32 cores (below 1 = faster), every long dataset}{figure.13}{}}
+\@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {IV-D}0b}Full model}{39}{paragraph.4.4.0.2}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {14}{\ignorespaces Time of Optimization~1 and~2 divided by the time of the parallel baseline on 32 cores (below 1 = faster), every long dataset.}}{39}{figure.14}\protected@file@percent }
+\newlabel{fig:p9-full}{{14}{39}{Time of Optimization~1 and~2 divided by the time of the parallel baseline on 32 cores (below 1 = faster), every long dataset}{figure.14}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-E}}Communication vs Computation Breakdown}{40}{subsection.4.5}\protected@file@percent }
+\newlabel{sec:breakdown}{{\mbox  {IV-E}}{40}{Communication vs Computation Breakdown}{subsection.4.5}{}}
+\@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {IV-E}0a}Where the time goes}{40}{paragraph.4.5.0.1}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {15}{\ignorespaces Where the time goes, diagonal model: every bar is 100\% of one run on 1, 8 or 32 cores; the number above the bar is its total time.}}{40}{figure.15}\protected@file@percent }
+\newlabel{fig:p8-diag}{{15}{40}{Where the time goes, diagonal model: every bar is 100\% of one run on 1, 8 or 32 cores; the number above the bar is its total time}{figure.15}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {16}{\ignorespaces Where the time goes, full model (same layout as Figure~\ref {fig:p8-diag}).}}{41}{figure.16}\protected@file@percent }
+\newlabel{fig:p8-full}{{16}{41}{Where the time goes, full model (same layout as Figure~\ref {fig:p8-diag})}{figure.16}{}}
+\@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {IV-E}0b}What $t_{\mathrm  {comm}}$ contains.}{41}{paragraph.4.5.0.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {IV-E}0c}Load imbalance}{42}{paragraph.4.5.0.3}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {17}{\ignorespaces Load imbalance between the MPI ranks, Optimization~2, diagonal model, \texttt  {synth\_overlap\_p16}.}}{42}{figure.17}\protected@file@percent }
+\newlabel{fig:p11-diag}{{17}{42}{Load imbalance between the MPI ranks, Optimization~2, diagonal model, \texttt {synth\_overlap\_p16}}{figure.17}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {18}{\ignorespaces Load imbalance between the MPI ranks, Optimization~2, full model, \texttt  {synth\_rare\_p16}.}}{42}{figure.18}\protected@file@percent }
+\newlabel{fig:p11-full}{{18}{42}{Load imbalance between the MPI ranks, Optimization~2, full model, \texttt {synth\_rare\_p16}}{figure.18}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-F}}Weak Scaling}{43}{subsection.4.6}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {IV-F}0a}Diagonal model}{43}{paragraph.4.6.0.1}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {19}{\ignorespaces Weak scaling, diagonal model: \texttt  {synth\_overlap\_p}$NN$ on $NN$ cores.}}{43}{figure.19}\protected@file@percent }
+\newlabel{fig:p5-diag}{{19}{43}{Weak scaling, diagonal model: \texttt {synth\_overlap\_p}$NN$ on $NN$ cores}{figure.19}{}}
+\@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {IV-F}0b}Full model}{44}{paragraph.4.6.0.2}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {20}{\ignorespaces Weak scaling, full model: \texttt  {synth\_overlap\_p}$NN$ on $NN$ cores.}}{44}{figure.20}\protected@file@percent }
+\newlabel{fig:p5-full}{{20}{44}{Weak scaling, full model: \texttt {synth\_overlap\_p}$NN$ on $NN$ cores}{figure.20}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {V}Discussion}{45}{section.5}\protected@file@percent }
+\newlabel{sec:discussion}{{V}{45}{Discussion}{section.5}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {V-A}}When the Parallelization Pays Off}{45}{subsection.5.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {V-B}}Optimization 1: the Bottleneck Was the Computation}{45}{subsection.5.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {V-C}}Optimization 2: What the Saved Communication Is Worth}{45}{subsection.5.3}\protected@file@percent }
+\newlabel{sec:disc-opt2}{{\mbox  {V-C}}{45}{Optimization 2: What the Saved Communication Is Worth}{subsection.5.3}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {V-D}}Rank/Thread Split and Load Imbalance}{45}{subsection.5.4}\protected@file@percent }
+\newlabel{sec:disc-split}{{\mbox  {V-D}}{45}{Rank/Thread Split and Load Imbalance}{subsection.5.4}{}}
 \citation{sanderson}
 \citation{lee2016}
 \citation{lee2020}
@@ -211,12 +211,12 @@
 \citation{byu}
 \citation{yin}
 \citation{srivastava}
-\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {V-E}}Comparison with Related Work}{45}{subsection.5.5}\protected@file@percent }
-\newlabel{sec:related-cmp}{{\mbox  {V-E}}{45}{Comparison with Related Work}{subsection.5.5}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {V-F}}Limits of the Measurements}{46}{subsection.5.6}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {V-E}}Comparison with Related Work}{46}{subsection.5.5}\protected@file@percent }
+\newlabel{sec:related-cmp}{{\mbox  {V-E}}{46}{Comparison with Related Work}{subsection.5.5}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {V-F}}Limits of the Measurements}{47}{subsection.5.6}\protected@file@percent }
 \citation{machlica}
-\@writefile{toc}{\contentsline {section}{\numberline {VI}Conclusion}{47}{section.6}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {VI-}0a}Future work.}{47}{paragraph.6.0.0.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {VI}Conclusion}{48}{section.6}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {VI-}0a}Future work.}{48}{paragraph.6.0.0.1}\protected@file@percent }
 \bibcite{bishop}{1}
 \bibcite{sanderson}{2}
 \bibcite{kwedlo}{3}
@@ -232,5 +232,5 @@
 \bibcite{schwarz}{13}
 \bibcite{chandra}{14}
 \bibcite{akaike}{15}
-\@writefile{toc}{\contentsline {section}{References}{48}{section*.23}\protected@file@percent }
-\gdef \@abspage@last{48}
+\@writefile{toc}{\contentsline {section}{References}{49}{section*.23}\protected@file@percent }
+\gdef \@abspage@last{49}

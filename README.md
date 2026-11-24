@@ -107,12 +107,12 @@ Every dataset is converted to the same binary format (header `int32` N, D + `flo
 
 - **Code:** [`src/dataset-managed/`](src/dataset-managed/) (generate, download, convert, verify)
 - **How to run:** [exec-cluster.md, Phase 2: Datasets](doc/exec-cluster.md#phase-2-datasets)
-- **Docs:** [doc/datasets.md](doc/datasets.md) (profiles, sources, format)
+- **Docs:** [doc/datasets.md](doc/datasets.md) (profiles, sources)
 - **Output:** `data/` (not versioned, created on each machine)
 
 ### Synthetic datasets
 
-Three profiles generated from a known Gaussian mixture (true labels available, deterministic with seed 42). They are used for correctness checks and for the weak and strong scaling, because the real datasets carry too little work per iteration to show any scaling (even `brainweb`, 11.9 M rows, has $D = 1$) and their $N$ cannot grow with $p$. Weak scaling: one file per number of processes $p \in \{1,2,4,8,16\}$ with $N = 250\,000 \cdot p$ rows; strong scaling: the `_p16` file. About 5 GB in total.
+Three profiles generated from a known Gaussian mixture (true labels available, deterministic with seed 42). They are used for correctness checks and for the weak and strong scaling, because the real datasets are small (9 of 10 have at most 254 000 rows, their runs last milliseconds) and their $N$ cannot grow with $p$: only `brainweb` (11.9 M voxels) is large enough, and it is used for the strong scaling. Weak scaling: one file per number of cores $p \in \{1,2,4,8,16\}$ (MPI ranks × OpenMP threads) with $N = 250\,000 \cdot p$ rows; strong scaling: the same files on 1 to 32 cores (the figures use `_p08` and `_p16`). About 5 GB in total.
 
 | | `synth_clean` | `synth_overlap` | `synth_rare` |
 |---|---|---|---|
@@ -129,7 +129,7 @@ The sweeps check in practice the cost of an iteration, $O(NKD)$ for the diagonal
 | $K$ | `synth_clean_p01` (no new file) | $K \in \{2, 4, 8, 16, 32, 64\}$ | $D = 10$ |
 | $D$ | `synth_sweep_d005` … `synth_sweep_d050` (same parameters as `synth_clean`, about 240 MB) | $D \in \{5, 10, 20, 35, 50\}$ | $K = 4$ |
 
-Run with `src/script/pemc-submit.sh sweep` (16 jobs: 8 versions × 2 sweeps); the logs go to `results/logs/sweep/`. Details in [datasets.md, 3.7](doc/datasets.md#37-k-and-d-sweeps).
+Run with `src/script/pemc-submit.sh sweep` (16 jobs: 8 versions × 2 sweeps); the logs go to `results/logs/sweep/`. Details in [datasets.md, 2.4](doc/datasets.md#24-k-and-d-sweeps).
 
 ### Real datasets
 
@@ -137,16 +137,16 @@ Public datasets, mostly medical, used for the clustering quality (none has missi
 
 | Folder | Dataset | N x D | Source |
 |---|---|---|---|
-| `diabetes130` | Diabetes 130-US hospitals | 101,766 x 11 numeric (of 47) | [UCI 296](https://archive.ics.uci.edu/dataset/296) |
-| `cdc_diabetes` | CDC Diabetes Health Indicators | 253,680 x 21 | [UCI 891](https://archive.ics.uci.edu/dataset/891) |
-| `cardiovascular` | Cardiovascular Disease | 70,000 x 11 | [OpenML 45547](https://www.openml.org/d/45547) |
-| `parkinson` | Parkinsons Telemonitoring | 5,875 x 19 | [UCI 189](https://archive.ics.uci.edu/dataset/189) |
-| `eeg_eye_state` | EEG Eye State | 14,980 x 14 | [UCI 264](https://archive.ics.uci.edu/dataset/264) |
-| `gene_rnaseq` | Gene expression cancer RNA-Seq (TCGA) | 801 x 20,264 (of 20,531: constant columns dropped) | [UCI 401](https://archive.ics.uci.edu/dataset/401) |
+| `diabetes130` | Diabetes 130-US hospitals | 101 766 x 11 numeric (of 47) | [UCI 296](https://archive.ics.uci.edu/dataset/296) |
+| `cdc_diabetes` | CDC Diabetes Health Indicators | 253 680 x 21 | [UCI 891](https://archive.ics.uci.edu/dataset/891) |
+| `cardiovascular` | Cardiovascular Disease | 70 000 x 11 | [OpenML 45547](https://www.openml.org/d/45547) |
+| `parkinson` | Parkinsons Telemonitoring | 5 875 x 19 | [UCI 189](https://archive.ics.uci.edu/dataset/189) |
+| `eeg_eye_state` | EEG Eye State | 14 980 x 14 | [UCI 264](https://archive.ics.uci.edu/dataset/264) |
+| `gene_rnaseq` | Gene expression cancer RNA-Seq (TCGA) | 801 x 20 264 (of 20 531: constant columns dropped) | [UCI 401](https://archive.ics.uci.edu/dataset/401) |
 | `heart_failure` | Heart Failure Clinical Records | 299 x 12 | [UCI 519](https://archive.ics.uci.edu/dataset/519) |
-| `cardiotocography` | Cardiotocography | 2,126 x 21 | [UCI 193](https://archive.ics.uci.edu/dataset/193) |
+| `cardiotocography` | Cardiotocography | 2 126 x 21 | [UCI 193](https://archive.ics.uci.edu/dataset/193) |
 | `statlog_heart` | Statlog (Heart) | 270 x 13 | [UCI 145](https://archive.ics.uci.edu/dataset/145) |
-| `brainweb` | BrainWeb simulated brain MRI, subject 44 (T1 + ground-truth labels) | 11,862,016 voxels x 1 | [BrainWeb](https://brainweb.bic.mni.mcgill.ca/) |
+| `brainweb` | BrainWeb simulated brain MRI, subject 44 (T1 + ground-truth labels) | 11 862 016 voxels x 1 | [BrainWeb](https://brainweb.bic.mni.mcgill.ca/) |
 
 ## Running the experiments
 
@@ -193,7 +193,7 @@ Everything is regenerable from the logs. The performance plots P1-P12 (sweeps, s
 
 Up to 4 nodes (32 cores) of HPC3; only the datasets whose runs all last at least 1 s are used (shorter runs are mostly noise). Full analysis in the [report](doc/latex/Group6-Report.pdf), Sections IV-VI.
 
-- **Correct:** all the parallel versions reach the same iterations and log-likelihood as the sequential one (relative difference < 1e-8 over 9,849 runs).
+- **Correct:** all the parallel versions reach the same iterations and log-likelihood as the sequential one (relative difference < 1e-8 over 9 849 runs).
 - **Opt1 (computation) wins:** speedup over the sequential version on 32 cores 27-29x (diagonal) and about 50x (full); faster than the baseline 1.5-2.1x (diagonal) and up to 8x (full) on 32 cores, 2.3-2.5x (full) on one node of 8 cores; its ranks stay balanced. The one-node gain of the blocked full model agrees with Kwedlo 2023 (1.75-2.75x on 24 cores).
 - **Opt2 (communication) works but barely matters:** the cost of the collectives drops from 0.6 to 0.08 ms (diagonal) and from 6.5 to 0.5 ms (full) per iteration, at most 2% of an iteration.
 - **The bottleneck is the computation and its balance:** in the baseline and opt2 almost all the MPI time is waiting for the slowest rank (up to 19% imbalance); it depends on the code, not on the memory of the nodes ([results/tables/node-memory.md](results/tables/node-memory.md)).

@@ -54,4 +54,4 @@ Bibliography keys of [Group6-Report.tex](latex/Group6-Report.tex) (`\cite{key}`)
 | — | `hubert` | *Dataset*, labels used only for the adjusted Rand index (formula of [eval.c](../src/common/eval.c)) |
 | — | `schwarz`, `akaike` | *Validation*, *Choice of $K$* (BIC and AIC of [clustering-summary.py](../src/tables/clustering-summary.py)) |
 
-Not in the bibliography, by choice (as in the SpMV report): Foster's methodology is only named in *Foster's Design Strategy*; the datasets (UCI, OpenML, BrainWeb) are only linked in the table of the real datasets, with their DOIs and citations in [datasets.md](datasets.md), section 4.
+Not in the bibliography, by choice (as in the SpMV report): Foster's methodology is only named in *Foster's Design Strategy*; the datasets (UCI, OpenML, BrainWeb) are only linked in the table of the real datasets, with their DOIs and citations in [datasets.md](datasets.md), section 3.

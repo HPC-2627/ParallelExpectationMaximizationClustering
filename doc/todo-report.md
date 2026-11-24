@@ -1,7 +1,9 @@
 # TODO report: final reading
 ## Mike
 ### Report
-- [ ] Read AI Statement, Abstract and Index Terms
+- [ ] Read AI Statement, 
+- [ ] Read Abstract 
+- [ ] Read Index Terms
 - [ ] Read Contents (table of contents)
 - [ ] Read I. Introduction
 - [ ] Read II. Parallel Design Methodology
@@ -13,7 +15,7 @@
 
 ### Markdown files
 - [X] Read [`README.md`](../README.md)
-- [ ] Read [`doc/datasets.md`](../doc/datasets.md)
+- [X] Read [`doc/datasets.md`](../doc/datasets.md)
 - [X] Read [`doc/em-explained.md`](../doc/em-explained.md)
 - [ ] Read [`doc/exec-cluster.md`](../doc/exec-cluster.md)
 - [X] Read [`doc/exec-visual.md`](../doc/exec-visual.md)
@@ -27,7 +29,9 @@
 
 ## Gabri
 ### Report
-- [ ] Read AI Statement, Abstract and Index Terms
+- [ ] Read AI Statement, 
+- [ ] Read Abstract 
+- [ ] Read Index Terms
 - [ ] Read Contents (table of contents)
 - [ ] Read I. Introduction
 - [ ] Read II. Parallel Design Methodology

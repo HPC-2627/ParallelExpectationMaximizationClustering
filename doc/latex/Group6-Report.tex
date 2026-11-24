@@ -858,7 +858,7 @@ Std.\ per variable & 1.0 & 1.0 (before correlation) & in $[0.6, 1.4]$ \\
 Outliers & 0\,\% & 0\,\% & 2\,\% (label $-1$) \\
 Skewed (log-normal) variables & no & yes (7 of 20) & no \\
 Physiological clipping & no & yes & yes (clinical variables) \\
-What it tests & correctness, scaling reference & slow convergence, choice of $K$, model mismatch & numerical stability \\
+What it tests & correctness & slow convergence, choice of $K$, model mismatch & numerical stability \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -905,13 +905,14 @@ What it tests & correctness, scaling reference & slow convergence, choice of $K$
 
 \paragraph{Weak scaling files} (Table~\ref{tab:weak}).
 \begin{itemize}
-\item One file per number of processes $p\in\{1,2,4,8,16\}$, with $N=250\,000\,p$ rows (constant work per process).
+\item $p$ is the number of cores (MPI ranks $\times$ OpenMP threads): every rank reads a contiguous block of $N/\text{ranks}$ rows, split again among its threads, so every core works on $N/p$ rows.
+\item One file per number of cores $p\in\{1,2,4,8,16\}$, with $N=250\,000\,p$ rows, run on $p$ cores (constant work per core). The weak scaling therefore stops at 16 cores, the largest file.
 \item The files of a profile are nested, so they are not independent samples.
 \end{itemize}
 
 \begin{table}[H]
 \centering
-\caption{Weak scaling: rows and data file size for each profile ($N_0 = 250\,000$ rows per process; labels file of $4N$ bytes for every profile). MB $= 10^6$ bytes.}
+\caption{Weak scaling: rows and data file size for each profile ($N_0 = 250\,000$ rows per core; labels file of $4N$ bytes for every profile). MB $= 10^6$ bytes.}
 \label{tab:weak}
 \footnotesize
 \setlength{\tabcolsep}{3pt}
@@ -932,27 +933,28 @@ What it tests & correctness, scaling reference & slow convergence, choice of $K$
 
 \paragraph{Strong scaling} (Table~\ref{tab:strong}).
 \begin{itemize}
-\item Fixed file, $N=4\,000\,000$ rows, run with an increasing number of processes.
-\item The work per rank $NKD/p$ is an operation count, not a measured time.
+\item Fixed file run on 1 to 32 cores (up to 4 nodes $\times$ 8 cores); the figures use the files with $N=2\,000\,000$ (\texttt{\_p08}) and $N=4\,000\,000$ (\texttt{\_p16}) rows, plus \texttt{brainweb}. Table~\ref{tab:strong} shows \texttt{\_p16}.
+\item The work per core $NKD/p$ is an operation count, not a measured time.
 \end{itemize}
 
 \begin{table}[H]
 \centering
-\caption{Strong scaling (fixed $N = 4\,000\,000$): data per rank and work per rank $N \cdot K \cdot D / p$. The work is an operation count proportional to the cost of an iteration, not a measured time.}
+\caption{Strong scaling on the \texttt{\_p16} files (fixed $N = 4\,000\,000$): data per core and work per core $N \cdot K \cdot D / p$ on $p$ cores. The work is an operation count proportional to the cost of an iteration, not a measured time.}
 \label{tab:strong}
 \footnotesize
 \setlength{\tabcolsep}{3pt}
 \begin{tabular}{rrrrrrrr}
 \toprule
- & & \multicolumn{3}{c}{\textbf{Data per rank}} & \multicolumn{3}{c}{\textbf{Work per rank ($N K D / p$)}} \\
+ & & \multicolumn{3}{c}{\textbf{Data per core}} & \multicolumn{3}{c}{\textbf{Work per core ($N K D / p$)}} \\
 \cmidrule(lr){3-5} \cmidrule(lr){6-8}
-\textbf{$p$} & \textbf{Rows/rank} & \texttt{clean} & \texttt{overlap} & \texttt{rare} & \texttt{clean} & \texttt{overlap} & \texttt{rare} \\
+\textbf{$p$} & \textbf{Rows/core} & \texttt{clean} & \texttt{overlap} & \texttt{rare} & \texttt{clean} & \texttt{overlap} & \texttt{rare} \\
 \midrule
 1  & 4\,000\,000 & 320 MB & 640 MB & 1\,600 MB & $1.6 \cdot 10^8$ & $4.0 \cdot 10^8$ & $1.2 \cdot 10^9$ \\
 2  & 2\,000\,000 & 160 MB & 320 MB & 800 MB    & $8.0 \cdot 10^7$ & $2.0 \cdot 10^8$ & $6.0 \cdot 10^8$ \\
 4  & 1\,000\,000 & 80 MB  & 160 MB & 400 MB    & $4.0 \cdot 10^7$ & $1.0 \cdot 10^8$ & $3.0 \cdot 10^8$ \\
 8  & 500\,000    & 40 MB  & 80 MB  & 200 MB    & $2.0 \cdot 10^7$ & $5.0 \cdot 10^7$ & $1.5 \cdot 10^8$ \\
 16 & 250\,000    & 20 MB  & 40 MB  & 100 MB    & $1.0 \cdot 10^7$ & $2.5 \cdot 10^7$ & $7.5 \cdot 10^7$ \\
+32 & 125\,000    & 10 MB  & 20 MB  & 50 MB     & $5.0 \cdot 10^6$ & $1.25 \cdot 10^7$ & $3.75 \cdot 10^7$ \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -960,7 +962,7 @@ What it tests & correctness, scaling reference & slow convergence, choice of $K$
 \paragraph{Sweeps over $K$ and $D$}\label{sec:sweeps} (Table~\ref{tab:sweeps}).
 \begin{itemize}
 \item \emph{Purpose.} They check in practice the cost per iteration of Table~\ref{tab:models}, $O(NKD)$ for the diagonal model and $O(NKD^2)$ for the full model. Across the three profiles $K$, $D$ and the data all change together. In a sweep only one parameter changes, while $N$ and the layout stay fixed. On a log-log plot of the time per iteration the expected slopes are 1 in $K$ for both models, and 1 (diagonal) or 2 (full) in $D$.
-\item \emph{Sweep over $K$.} The same file \texttt{synth\_clean\_p01} ($N=250\,000$, $D=10$, 4 true clusters) is run with $K\in\{2,4,8,16,32,64\}$. The number of iterations changes with $K$, but the time per iteration does not depend on it.
+\item \emph{Sweep over $K$.} The same file \texttt{synth\_clean\_p01} ($N=250\,000$, $D=10$, 4 true clusters) is run with $K\in\{2,4,8,16,32,64\}$. The number of iterations changes with $K$, so the time \emph{per iteration} is measured: it does not depend on how many iterations a run makes.
 \item \emph{Sweep over $D$.} Five files \texttt{synth\_sweep\_d}$D$ have the parameters of \texttt{synth\_clean} (4 balanced clusters, $\delta=6.0$, diagonal covariance, no outliers, skewness or clipping) and $D\in\{5,10,20,35,50\}$. Columns beyond 20 are the generic biomarkers. They are run with $K=4$ and $N=250\,000$, and are generated deterministically (seed 42).
 \item \emph{Runs.} All the eight versions are run: sequential, baseline, Optimization~1 and Optimization~2, diagonal and full. The MPI+OpenMP versions use one fixed layout (1 node, 1 rank $\times$ 8 threads, \texttt{pack:excl}). Every point is repeated 3 times. Only time is measured; memory use is not logged.
 \end{itemize}
@@ -1101,7 +1103,7 @@ In the full model the baseline and Optimization~2 reach 20--21~GFLOP/s on \textt
 
 \subsection{Strong Scaling: Speedup and Efficiency}
 \begin{figblock}
-\paragraph{Diagonal model} (Figures~\ref{fig:p2-diag} and~\ref{fig:p3-diag}). On one node the three versions follow the ideal line up to 8 cores (speedup 6.0--7.9). On 32 cores (4 nodes) Optimization~1 reaches a speedup of 27--29 (29.2 on \texttt{brainweb}, 27.2 and 27.5 on \texttt{synth\_overlap\_p08} and \texttt{p16}, 29.4 on \texttt{synth\_rare\_p16}), an efficiency of 0.85--0.92. The baseline and Optimization~2 stop at 14--21 (efficiency 0.43--0.67), and gain almost nothing from 8 to 16 cores.
+\paragraph{Diagonal model} (Figures~\ref{fig:p2-diag} and~\ref{fig:p3-diag}). On one node the three versions follow the ideal line up to 8 cores (speedup 6.0--7.9). On 32 cores (4 nodes) Optimization~1 reaches a speedup of 27--29 (29.2 on \texttt{brainweb}, 27.2 and 27.5 on \texttt{synth\_overlap\_p08} and \texttt{p16}; 29.4 on \texttt{synth\_rare\_p16}, a long dataset not shown in the figure), an efficiency of 0.85--0.92. The baseline and Optimization~2 stop at 14--21 (efficiency 0.43--0.67), and gain almost nothing from 8 to 16 cores.
 
 {\centering
 \includegraphics[width=0.82\textwidth]{../../results/plots/performance/P2-speedup-diagonal.pdf}
