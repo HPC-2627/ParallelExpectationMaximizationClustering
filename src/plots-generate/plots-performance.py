@@ -34,7 +34,7 @@ Rules (doc/plots.md)
       dataset and placement; ONE legend above the panels with names in plain words ("pack,
       exclusive node", "MPI communication + waiting for the other ranks"); axes with their unit.
     - Size: FIG_W = 7 in, HALF_W = 4.4 in for the single-panel plots P5, P6, P7, P10; the report
-      includes them at width=0.82\textwidth (P5 at 0.52\textwidth), see doc/plots.md.
+      includes them at width=0.82\textwidth (P5 at 0.52\textwidth).
     - Only LONG datasets (--min-run, default 1 s): a dataset is drawn only if EVERY one of its
       runs (all versions, all core counts) spends at least min-run seconds in the measured
       iterations (t_estep + t_mstep + t_comm). Shorter runs are dominated by noise (spread of the
@@ -453,10 +453,10 @@ def need(cond, why):
 
 # ---------------------------------------------------------------------------------------------
 # Plots. Every figure: bold title in plain words + one line with model / dataset / placement,
-# ONE legend above the panels, axes named with their unit (doc/plots.md, section 5)
+# ONE legend above the panels, axes named with their unit (doc/plots.md, section 4)
 # ---------------------------------------------------------------------------------------------
 def p2_speedup(ctx, model):
-    """P2 speedup against baseline-sequential, 3 x 2 grid of datasets (dataset_grid)."""
+    """P2 speedup against baseline-sequential, one row of dataset panels (dataset_grid)."""
     fig, cells = dataset_grid(ctx, model, 2.4)
     for c in cells:
         seq = c.d[c.d.label == "sequential"]
@@ -1006,8 +1006,8 @@ def main():
     print(f"{len(df)} runs, versions: {sorted(set(df.label))}, placement: {args.placement} on 1 node, "
           f"{args.multi_placement} on 2-4 nodes")
 
-    # ---- draw: every requested plot, for every model. P2 and P3 are the same function (one
-    # figure with two rows), so "done" avoids drawing it twice if both IDs are requested ----
+    # ---- draw: every requested plot, for every model ("done": an ID requested twice is drawn
+    # once) ----
     done = set()
     for pid in args.plots:
         fn = PLOTS.get(pid)
