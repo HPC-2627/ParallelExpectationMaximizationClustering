@@ -33,9 +33,8 @@ Rules (doc/plots.md)
     - Clarity (same rules as plots-cluster.py): bold title in plain words + one line with model,
       dataset and placement; ONE legend above the panels with names in plain words ("pack,
       exclusive node", "MPI communication + waiting for the other ranks"); axes with their unit.
-    - Size: drawn at the final size of the report, FIG_W = 7 in (include with width=\textwidth)
-      or HALF_W = 4.4 in for the single-panel plots P5, P6, P7, P10 (width=0.62\textwidth),
-      so the labels stay 7-8 pt in the PDF.
+    - Size: FIG_W = 7 in, HALF_W = 4.4 in for the single-panel plots P5, P6, P7, P10; the report
+      includes them at width=0.82\textwidth (P5 at 0.52\textwidth), see doc/plots.md.
     - Only LONG datasets (--min-run, default 1 s): a dataset is drawn only if EVERY one of its
       runs (all versions, all core counts) spends at least min-run seconds in the measured
       iterations (t_estep + t_mstep + t_comm). Shorter runs are dominated by noise (spread of the
@@ -324,9 +323,8 @@ STEP_LABEL = {"E-step": "E-step (computation)", "M-step": "M-step (computation)"
               "t_comm": "MPI communication + waiting for the other ranks", "I/O": "reading the dataset"}
 MODEL_TXT = {"diagonal": "diagonal covariance", "full": "full covariance"}
 
-# Figures are drawn at their FINAL size, so LaTeX does not shrink them and the 7-8 pt labels stay
-# 7-8 pt in the PDF: FIG_W = width of the text of the report (IEEEtran, one column), to include
-# with width=\textwidth; HALF_W = single-panel plots (P5, P6, P7, P10), width=0.62\textwidth
+# Figure sizes: FIG_W = full figures, HALF_W = single-panel plots (P5, P6, P7, P10). The report
+# includes them at width=0.82\textwidth (P5 at 0.52\textwidth), see doc/plots.md.
 FIG_W, HALF_W = 7.0, 4.4
 
 
@@ -581,7 +579,7 @@ def p5_weak(ctx, model):
 
 
 def p6_placement(ctx, model):
-    """Grouped bars: nodes x 4 placements. Best version, large dataset."""
+    """Grouped bars: nodes x 4 placements. Most optimized version (opt2), large dataset."""
     a = ctx.agg
     v = ctx.args.version or best_version(a)
     need(v, "no parallel version")
@@ -614,7 +612,7 @@ def p6_placement(ctx, model):
 
 
 def p7_heatmap(ctx, model):
-    """P7: the ranks x threads splits of the cores of ONE node (best version, large dataset), one
+    """P7: the ranks x threads splits of the cores of ONE node (most optimized version, opt2, large dataset), one
     bar each: time per iteration (median, whiskers min-max), the fastest one marked. With 8 cores
     the splits are 8x1, 4x2, 2x4, 1x8 (a ranks x threads table would be mostly empty)."""
     a = ctx.agg
@@ -897,7 +895,7 @@ def p12_size(ctx, model):
 
 def p11_imbalance(ctx, model):
     """P11 load imbalance: mean compute time per rank (bar) with min-max (whisker) for every
-    ranks x threads layout of the best version. The % above a bar is (max / mean - 1): the time
+    ranks x threads layout of the most optimized version (opt2). The % above a bar is (max / mean - 1): the time
     the other ranks wait for the slowest one (it is hidden inside t_comm in the other plots)."""
     df = ctx.df
     v = ctx.args.version or best_version(ctx.agg)

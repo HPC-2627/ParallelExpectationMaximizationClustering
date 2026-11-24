@@ -63,15 +63,15 @@ What we do instead (compromise):
 | P3 | How efficient? | lines | cores | efficiency | versions | same grid as P2, own file `P3-efficiency-<model>` |
 | P4 | Strong scaling | lines + ideal | cores | time (or speedup) | versions | N fixed; same grid as P2 |
 | P5 | Weak scaling | lines | cores | efficiency = time of the SAME version on 1 core / time on p cores | versions | N / core fixed (`synth_overlap_pNN` on NN cores, `--family`); reference = each version on 1 core, not the sequential |
-| P6 | Does PBS placement matter? | grouped bars | nodes (1, 2, 4) | time / iteration | 4 placements | best version, 1 model, 1 large dataset |
-| P7 | Best ranks x threads at fixed cores? | bars (one per split, fastest framed in red) | ranks x threads | time / iteration | none | 1 node, best version (with 8 cores only 4 splits exist: a ranks x threads table would be mostly empty) |
+| P6 | Does PBS placement matter? | grouped bars | nodes (1, 2, 4) | time / iteration | 4 placements | most optimized version (opt2), 1 model, 1 large dataset |
+| P7 | Best ranks x threads at fixed cores? | bars (one per split, fastest framed in red) | ranks x threads | time / iteration | none | 1 node, most optimized version (opt2) (with 8 cores only 4 splits exist: a ranks x threads table would be mostly empty) |
 | P8 | Where does the time go? | stacked bars, each bar = 100% of one run, total time written above it | 1, 8, 32 cores x version | share of the run (%) | E-step, M-step, `t_comm`, I/O | same grid as P2 |
 | P9 | What do opt1 and opt2 gain over the baseline? | bars normalized (**parallel baseline MPI-OpenMP = 1**, not the sequential), ratio written above every bar | dataset | time / baseline | opt1, opt2 | one panel per model, 32 cores; ALL the long datasets, real first, a dotted line before the synthetic ones |
 | P10 | Is it compute or memory bound? | roofline | FLOP/byte | GFLOP/s | one point per version | model per file, 1 node. FLOP and bytes are an analytic count (`include/perfmodel.h`, keys `flops`, `bytes` of the log); roofs from `--peak-gflops` and `--peak-bw` (measure the node with STREAM) |
+| P11 | Load imbalance between ranks | bars mean + min-max whisker, % = max/mean - 1 | nodes / ranks x threads | compute time per rank | none | most optimized version (opt2). Key `rank_compute` of the log (E-step + M-step of every rank). `t_comm` includes the imbalance, here it is separated |
 | P12 | Does the speedup depend on the size of the dataset? | scatter, filled = real, empty = synthetic | rows N (log) | speedup over sequential | versions | ALL the datasets, two panels: 8 cores (1 node) and 32 cores (4 nodes) |
-| P11 | Load imbalance between ranks | bars mean + min-max whisker, % = max/mean - 1 | nodes / ranks x threads | compute time per rank | none | best version. Key `rank_compute` of the log (E-step + M-step of every rank). `t_comm` includes the imbalance, here it is separated |
 
-Clarity of every figure (P and C): bold title in plain words plus one line with model / dataset / placement, ONE legend above the panels with names in plain words, axes with their unit, drawn at the final size of the report (7 in wide, `width=\textwidth`; the single-panel P5, P6, P7, P10 are 4.4 in, `width=0.62\textwidth`). Axis limits never cut a point (an efficiency above 1 stays visible). In the performance figures the real datasets come first (left), every panel title says "real" or "synthetic"; the x ticks of the scaling plots read `8` over `1n` (8 cores, 1 node). In the clustering figures (C1-C5) the real datasets are on top, the synthetic ones below, each block with its own header.
+Clarity of every figure (P and C): bold title in plain words plus one line with model / dataset / placement, ONE legend above the panels with names in plain words, axes with their unit, drawn 7 in wide (4.4 in for the single-panel P5, P6, P7, P10); the report includes them at `width=0.82\textwidth`, P5 at `0.52\textwidth`, the clustering plots C1, C2, C6 at `0.85\textwidth`. Axis limits never cut a point (an efficiency above 1 stays visible). In the performance figures the real datasets come first (left), every panel title says "real" or "synthetic"; the x ticks of the scaling plots read `8` over `1n` (8 cores, 1 node). In the clustering figures (C1-C5) the real datasets are on top, the synthetic ones below, each block with its own header.
 
 ### 2.1 Which plots and which datasets go in the report
 
@@ -106,7 +106,7 @@ Notes: C3 draws a random sample of at most 5000 rows (PCA on the sample), and a 
 | Plots | Runs needed |
 |---|---|
 | P6 | 4 placements x {2, 4 nodes} x 1 dataset x 1 version x 1 model (x repetitions) |
-| P7 | all ranks x threads splits on 1 node x 1 dataset x best version |
+| P7 | all ranks x threads splits on 1 node x 1 dataset x most optimized version (opt2) |
 | P2, P3, P4, P8, P9 | 4 versions x 2 models x cores {1, 2, 4, ..., max} x 3 datasets, with the fixed placement and split |
 | P5 | 4 versions x 2 models x cores {...} with N proportional to cores |
 | P1 | `src/script/pemc-submit.sh sweep` (K sweep on `synth_clean_p01`, D sweep on the files made by `generate-synthetic-dataset.py --sweep`), versions, one fixed layout. Logs go in `results/logs/sweep/` |

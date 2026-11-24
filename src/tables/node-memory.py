@@ -16,7 +16,7 @@ Usage (from the root of the repository):
 Input
     results/hwinfo/<node>.txt       one file per node, written by src/script/pemc-hwprobe.sh: the
                                     lines "MemTotal: ..." and "DIMM: <label> <size> <type>"
-                                    (NOT versioned, see .gitignore: copy it from the cluster)
+                                    (versioned; new nodes: copy them from the cluster)
     results/logs/pbs/*-scx-*.err    stderr of the multi-node jobs (scatter:excl): Open MPI writes
                                     "[<node>:<pid>] MCW rank <r> bound to ..." for every rank of
                                     every run (option --report-bindings of src/script/pemc-job.sh),

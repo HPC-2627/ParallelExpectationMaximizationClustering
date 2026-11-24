@@ -15,7 +15,7 @@
 #
 # The nodes are the 40 of the list NODES below: all the nodes used by the runs of both team members,
 # taken from their PBS outputs (results/logs/pbs/*.out). NODES_FILE=<file> uses another list.
-# The raw outputs in results/hwinfo/ are not versioned: the summary is results/tables/hardware.md.
+# The raw outputs go to results/hwinfo/ (versioned); the summary is results/tables/hardware.md.
 # A node is "done" when results/hwinfo/<node>.txt contains the line MemTotal (job completed). A node
 # can stay in the queue for a long time if other users' jobs fill it ("Insufficient amount of
 # resource: host"): PBS gives no estimate, the job starts when the node is free.

@@ -90,7 +90,7 @@ USAGE
   python3 src/dataset-managed/generate-synthetic-dataset.py                       # the 3 profiles, default parameters
   python3 src/dataset-managed/generate-synthetic-dataset.py --n-per-rank 100000 --procs 1 2 4 8
   python3 src/dataset-managed/generate-synthetic-dataset.py --profiles synth_clean
-  python3 src/dataset-managed/generate-synthetic-dataset.py --profiles synth_sweep_d040     # one sweep file
+  python3 src/dataset-managed/generate-synthetic-dataset.py --profiles synth_sweep_d035     # one sweep file
   python3 src/dataset-managed/generate-synthetic-dataset.py --sweep              # base profiles + D sweep
 
 D SWEEP (plot P1)

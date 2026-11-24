@@ -51,7 +51,7 @@ The model is different, so the results are compared only with runs of the same m
 
 ### Versions
 
-Each model has four versions, for a total of eight programs: `sequential` (single process, no parallelism: correctness reference and serial time for the speedup), `baseline-MPI-OpenMP` (first hybrid parallelization: rows split among MPI ranks, OpenMP threads inside each rank; the reference of the parallel tests) and two optimizations of the baseline, `opt1-MPI-OpenMP` and `opt2-MPI-OpenMP`. In both models `opt1` optimizes the **computation** and `opt2` the **communication** between the MPI processes. The details can differ because each model has its own bottleneck (the diagonal one is memory-bound, $O(NKD)$; the full one is compute-bound for large $D$, $O(NKD^2)$): `opt1` full contains, besides the fused pass of `opt1` diagonal, the blocking of the rows. Both `opt2` start from the baseline of their model and change only the communication, so each is compared with that baseline. Every optimization is compared only with versions of its own model.
+Each model has four versions, eight programs in total: `sequential` (the correctness reference and the serial time), `baseline-MPI-OpenMP` (rows split among the MPI ranks, OpenMP threads inside each rank) and two optimizations of the baseline: `opt1` changes the **computation**, `opt2` the **communication**. Each optimization starts from the baseline of its own model and is compared with it. In the full model, which is compute-bound for large $D$, `opt1` also processes the rows in blocks.
 
 #### Diagonal covariance ([`src/diagonal/`](src/diagonal/))
 
@@ -68,32 +68,34 @@ Each model has four versions, for a total of eight programs: `sequential` (singl
 |---|---|
 | [`sequential`](src/full/PEMC-baseline-sequential-full.c) | correctness reference and serial time |
 | [`baseline-MPI-OpenMP`](src/full/PEMC-baseline-MPI-OpenMP-full.c) | hybrid MPI + OpenMP parallelization (Cholesky), two `MPI_Allreduce` per iteration |
-| [`opt1-MPI-OpenMP`](src/full/PEMC-opt1-MPI-OpenMP-full.c) | **computation, all the optimizations**: E-step and M-step fused in one pass (no responsibility matrix), one parallel region per iteration (the K Cholesky factorizations are also split among the threads), per-thread buffers without false sharing, and **blocks of B rows** (option `-b`, default 64) copied transposed into a per-thread buffer: the forward substitution runs 8 rows at a time (independent chains in one SIMD register, each element of `L_k` loaded once for 8 rows) and the sums `sxx` are accumulated in registers over the block and written once per block (matrix-vector -> matrix-matrix operations, Kwedlo 2023). Communication as in the baseline |
+| [`opt1-MPI-OpenMP`](src/full/PEMC-opt1-MPI-OpenMP-full.c) | **computation**: as the diagonal `opt1` (fused pass, one parallel region per iteration with the K Cholesky factorizations split among the threads, no false sharing), plus blocks of B rows (`-b`, default 64) with the forward substitution in SIMD over 8 rows at a time (Kwedlo 2023); communication as in the baseline |
 | [`opt2-MPI-OpenMP`](src/full/PEMC-opt2-MPI-OpenMP-full.c) | **communication** (same idea as the diagonal `opt2`): ONE `MPI_Allreduce` per iteration instead of two (the log-likelihood in the same buffer as the sums) and `sxx` sent as its lower triangle only (K·D(D+1)/2 values instead of K·D²); computation identical to the full baseline |
 
-All the versions of the same model must end with the same log-likelihood and the same number of iterations (same dataset, `-k` and `-s`).
+With the same dataset and options, all the versions of a model reach the same number of iterations and the same log-likelihood (relative difference below 1e-8).
 
 ## Repository structure
 
 ```
 .
 ├── src/
-│   ├── diagonal/          # Diagonal covariance: PEMC-<version>-diagonal.c (sequential, baseline, opt1, opt2)
-│   ├── full/              # Full covariance (Cholesky): PEMC-<version>-full.c (sequential, baseline, opt1, opt2)
+│   ├── diagonal/          # Diagonal covariance: PEMC-<version>-diagonal.c (baseline-sequential, baseline-MPI-OpenMP, opt1-MPI-OpenMP, opt2-MPI-OpenMP)
+│   ├── full/              # Full covariance (Cholesky): PEMC-<version>-full.c (same four versions)
 │   ├── common/            # Shared code (no MPI): dataset I/O, GMM core, CLI options, logging, perf model, evaluation, timing
-│   ├── script/            # PBS launchers for the cluster + UCX wrapper for multi-node mpiexec + hardware of the nodes
+│   ├── script/            # PBS launchers for the cluster + UCX wrapper for multi-node mpiexec + hardware of the nodes + STREAM (roofline roofs)
 │   ├── dataset-managed/   # Python scripts that generate, download, verify and convert the datasets -> data/
 │   ├── plots-generate/    # Python scripts that generate the performance and clustering plots -> results/plots/performance/ and results/plots/cluster/ (EM steps figure -> doc/img/)
+│   ├── tables/            # Python scripts that generate the clustering summary and the node-memory table -> results/tables/
 │   └── visual-sequential/ # Local web visualization of the EM algorithm, step by step (see below)
 ├── include/               # Headers of the shared code, plus MPI-only helpers and timer macros (compile with -Iinclude -lm)
 ├── data/                  # NOT versioned: filled locally by src/dataset-managed/
-│   ├── real/              #   real datasets, one folder each (raw files + converted .bin)
+│   ├── real/              #   real datasets, one folder each (raw files + converted .bin; brainweb also nifti/)
 │   └── synthetic/         #   synthetic datasets, one folder per profile (see Data)
 ├── results/
-│   ├── logs/              # Raw execution logs: <model>/<stage>/ for the scaling runs, plus sweep/, cluster/ and pbs/ (PBS output)
+│   ├── logs/              # Raw execution logs: <model>/<stage>/ for the scaling runs, plus sweep/, cluster/, stream/ and pbs/ (PBS output)
 │   ├── clusters/          # Clustering results saved with --save, used by the clustering plots
 │   ├── tables/            # Summary tables (clustering, hardware, node memory vs speed)
-│   └── plots/             # Generated plots (PDF)
+│   ├── plots/             # Generated plots (PDF): performance/ and cluster/
+│   └── hwinfo/            # Raw hardware outputs of the nodes (summary in results/tables/hardware.md)
 ├── doc/                   # Documentation: how to run, EM study notes, dataset docs, papers, task list, LaTeX report (see Documentation below)
 ├── makefile               # Build rules (make builds bin/, which is not versioned)
 └── README.md
@@ -110,7 +112,7 @@ Every dataset is converted to the same binary format (header `int32` N, D + `flo
 
 ### Synthetic datasets
 
-Three profiles generated from a known Gaussian mixture (true labels available, deterministic with seed 42). They are used for correctness checks and for the weak and strong scaling, because the real datasets are too small to show any scaling. Weak scaling: one file per number of processes $p \in \{1,2,4,8,16\}$ with $N = 250\,000 \cdot p$ rows; strong scaling: the `_p16` file. About 5 GB in total.
+Three profiles generated from a known Gaussian mixture (true labels available, deterministic with seed 42). They are used for correctness checks and for the weak and strong scaling, because the real datasets carry too little work per iteration to show any scaling (even `brainweb`, 11.9 M rows, has $D = 1$) and their $N$ cannot grow with $p$. Weak scaling: one file per number of processes $p \in \{1,2,4,8,16\}$ with $N = 250\,000 \cdot p$ rows; strong scaling: the `_p16` file. About 5 GB in total.
 
 | | `synth_clean` | `synth_overlap` | `synth_rare` |
 |---|---|---|---|
@@ -120,14 +122,14 @@ Three profiles generated from a known Gaussian mixture (true labels available, d
 
 ### Sweep datasets
 
-The sweeps check in practice the cost of an iteration, $O(NKD)$ for the diagonal model and $O(NKD^2)$ for the full model, by changing **one parameter at a time** with $N = 250\,000$ and the layout fixed (1 node, 1 rank × 8 threads, `pack:excl`). Only the four baselines are run. On a log-log plot the expected slope is 1 in $K$ for both models, and 1 (diagonal) or 2 (full) in $D$. Only time is measured, not memory.
+The sweeps check in practice the cost of an iteration, $O(NKD)$ for the diagonal model and $O(NKD^2)$ for the full model, by changing **one parameter at a time** with $N = 250\,000$ and the layout fixed (1 node, 1 rank × 8 threads, `pack:excl`; the sequential versions on 1 core). All eight versions are run. On a log-log plot the expected slope is 1 in $K$ for both models, and 1 (diagonal) or 2 (full) in $D$. Only time is measured, not memory.
 
 | Sweep | Dataset | Varies | Fixed |
 |---|---|---|---|
 | $K$ | `synth_clean_p01` (no new file) | $K \in \{2, 4, 8, 16, 32, 64\}$ | $D = 10$ |
 | $D$ | `synth_sweep_d005` … `synth_sweep_d050` (same parameters as `synth_clean`, about 240 MB) | $D \in \{5, 10, 20, 35, 50\}$ | $K = 4$ |
 
-Run with `src/script/pemc-submit.sh sweep` (8 jobs); the logs go to `results/logs/sweep/`. Details in [datasets.md, 3.7](doc/datasets.md#37-k-and-d-sweeps).
+Run with `src/script/pemc-submit.sh sweep` (16 jobs: 8 versions × 2 sweeps); the logs go to `results/logs/sweep/`. Details in [datasets.md, 3.7](doc/datasets.md#37-k-and-d-sweeps).
 
 ### Real datasets
 
@@ -140,7 +142,7 @@ Public datasets, mostly medical, used for the clustering quality (none has missi
 | `cardiovascular` | Cardiovascular Disease | 70,000 x 11 | [OpenML 45547](https://www.openml.org/d/45547) |
 | `parkinson` | Parkinsons Telemonitoring | 5,875 x 19 | [UCI 189](https://archive.ics.uci.edu/dataset/189) |
 | `eeg_eye_state` | EEG Eye State | 14,980 x 14 | [UCI 264](https://archive.ics.uci.edu/dataset/264) |
-| `gene_rnaseq` | Gene expression cancer RNA-Seq (TCGA) | 801 x 20,531 | [UCI 401](https://archive.ics.uci.edu/dataset/401) |
+| `gene_rnaseq` | Gene expression cancer RNA-Seq (TCGA) | 801 x 20,264 (of 20,531: constant columns dropped) | [UCI 401](https://archive.ics.uci.edu/dataset/401) |
 | `heart_failure` | Heart Failure Clinical Records | 299 x 12 | [UCI 519](https://archive.ics.uci.edu/dataset/519) |
 | `cardiotocography` | Cardiotocography | 2,126 x 21 | [UCI 193](https://archive.ics.uci.edu/dataset/193) |
 | `statlog_heart` | Statlog (Heart) | 270 x 13 | [UCI 145](https://archive.ics.uci.edu/dataset/145) |
@@ -151,7 +153,7 @@ Public datasets, mostly medical, used for the clustering quality (none has missi
 - **Code:** [`src/diagonal/`](src/diagonal/), [`src/full/`](src/full/), [`src/common/`](src/common/), [`include/`](include/) (shared code)
 - **Scripts:** [`src/script/`](src/script/) (PBS submit + job), explained in [doc/script.md](doc/script.md)
 - **How to run:** [doc/exec-cluster.md](doc/exec-cluster.md) (VPN, build, PBS jobs)
-- **Output:** [`results/logs/`](results/logs/) (one folder per model and version)
+- **Output:** [`results/logs/`](results/logs/): `diagonal/` and `full/` (one folder per version), `sweep/` (P1), `cluster/` (clustering runs), `pbs/` (PBS stdout/stderr), `stream/` (STREAM bandwidth)
 
 ### Cluster hardware
 
@@ -169,7 +171,7 @@ All the runs use the HPC3 cluster of the University of Trento (PBS Pro, queue `s
 
 Collected with [`src/script/pemc-hwinfo.sh`](src/script/pemc-hwinfo.sh); details in [results/tables/hardware.md](results/tables/hardware.md).
 
-Do the memory channels change the times? No: [results/tables/node-memory.md](results/tables/node-memory.md) puts the memory configuration of every node next to the speed of the MPI ranks that ran on it (ranks of the same run on 4- and 6-channel nodes within 1% on average; the imbalance between ranks depends on the code, not on the node type). Generated by [`src/tables/node-memory.py`](src/tables/node-memory.py) from `results/hwinfo/` (copied from the cluster, not versioned), the PBS outputs and the logs.
+The number of memory channels does not change the times. [results/tables/node-memory.md](results/tables/node-memory.md) puts the memory configuration of every node next to the speed of the MPI ranks that ran on it: in the same run, ranks on 4-channel and on 6-channel nodes are within 1% on average, and the imbalance between ranks depends on the code, not on the node type. Generated by [`src/tables/node-memory.py`](src/tables/node-memory.py) from the raw hardware outputs in [`results/hwinfo/`](results/hwinfo/), the PBS outputs in [`results/logs/pbs/`](results/logs/pbs/) and the run logs.
 
 ## Visualization of the algorithm
 
@@ -180,12 +182,12 @@ A small local web page shows how EM works step by step on any dataset of `data/`
 
 ## Plots
 
-Everything is regenerable from the logs. The performance plots P1-P11 (sweeps, speedup, strong and weak scaling, placement, ranks vs threads, time breakdown, optimization gain, roofline, load imbalance) come from the cluster runs; the clustering plots C1-C6 (convergence, choice of K with BIC/AIC, PCA, centroids, cluster sizes, full vs diagonal) come from the sequential runs on a range of K.
+Everything is regenerable from the logs. The performance plots P1-P12 (sweeps, speedup, efficiency, strong and weak scaling, placement, ranks vs threads, time breakdown, optimization gain, roofline, load imbalance, speedup vs dataset size) come from the cluster runs; the clustering plots C1-C6 (convergence, choice of K with BIC/AIC, PCA, centroids, cluster sizes, full vs diagonal) come from the sequential runs on a range of K.
 
-- **Code:** [`src/plots-generate/`](src/plots-generate/) (performance P1-P11, clustering C1-C6)
+- **Code:** [`src/plots-generate/`](src/plots-generate/) (performance P1-P12, clustering C1-C6)
 - **How to run:** [exec-cluster.md, Phase 5: Plots](doc/exec-cluster.md#phase-5-plots)
 - **Docs:** [doc/plots.md](doc/plots.md) (plot catalog)
-- **Figures:** [`results/plots/`](results/plots/) (generated PDFs: `performance/` P1-P11, `cluster/` C1-C6)
+- **Figures:** [`results/plots/`](results/plots/) (generated PDFs: `performance/` P1-P12, `cluster/` C1-C6)
 
 ## Results
 
@@ -208,13 +210,21 @@ Up to 4 nodes (32 cores) of HPC3; only the datasets whose runs all last at least
 
 ## Documentation
 
-- [doc/exec-visual.md](doc/exec-visual.md): run the step-by-step EM visualization
-- [doc/exec-cluster.md](doc/exec-cluster.md): run everything on the cluster, from VPN to plots
-- [doc/script.md](doc/script.md): the scripts in `src/script/` and their variables
-- [doc/todo.md](doc/todo.md): task list and workflow
-- [doc/todo-report.md](doc/todo-report.md): final reading of the report and of the Markdown files (Mike, Gabri)
-- [doc/em-explained.md](doc/em-explained.md): EM algorithm (formulas, notation, parallelism)
-- [doc/datasets.md](doc/datasets.md): synthetic, sweep and real datasets (sources, format)
-- [doc/papers_and_references.md](doc/papers_and_references.md): papers and references
-- [doc/latex/Group6-Report.pdf](doc/latex/Group6-Report.pdf): IEEE-style report
-- [Presentation](https://docs.google.com/presentation/d/1nnzwo61ZBHoQlmlYfGVbIb39rVTOexQlnH01uqBfev0/edit?slide=id.g4dfce81f19_0_45#slide=id.g4dfce81f19_0_45): slides (Google Slides)
+- **Deliverables**
+  - [Report (PDF)](doc/latex/Group6-Report.pdf)
+  - [Presentation](https://docs.google.com/presentation/d/1nnzwo61ZBHoQlmlYfGVbIb39rVTOexQlnH01uqBfev0/edit?slide=id.g4dfce81f19_0_45#slide=id.g4dfce81f19_0_45)
+- **How to run**
+  - [exec-cluster.md](doc/exec-cluster.md): everything on the cluster, from VPN to plots
+  - [script.md](doc/script.md): the scripts in `src/script/` and their variables
+  - [exec-visual.md](doc/exec-visual.md): the step-by-step EM visualization
+- **Algorithm, data, plots**
+  - [em-explained.md](doc/em-explained.md): EM formulas, notation, parallelism
+  - [datasets.md](doc/datasets.md): synthetic, sweep and real datasets
+  - [plots.md](doc/plots.md): plot catalog and experiment matrix
+- **Results**
+  - [hardware.md](results/tables/hardware.md): hardware and software of the nodes
+  - [node-memory.md](results/tables/node-memory.md): memory of every node vs speed of its ranks
+  - [clustering-summary.csv](results/tables/clustering-summary.csv): clustering of the real datasets
+  - [`results/plots/`](results/plots/): all the figures (PDF)
+- **References**
+  - [papers_and_references.md](doc/papers_and_references.md): papers linked to the code

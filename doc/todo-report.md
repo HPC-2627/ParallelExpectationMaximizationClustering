@@ -12,7 +12,7 @@
 - [ ] Read References
 
 ### Markdown files
-- [ ] Read [`README.md`](../README.md)
+- [X] Read [`README.md`](../README.md)
 - [ ] Read [`doc/datasets.md`](../doc/datasets.md)
 - [ ] Read [`doc/em-explained.md`](../doc/em-explained.md)
 - [ ] Read [`doc/exec-cluster.md`](../doc/exec-cluster.md)

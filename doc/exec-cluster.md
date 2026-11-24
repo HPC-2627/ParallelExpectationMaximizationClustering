@@ -59,7 +59,7 @@ python3 src/dataset-managed/generate-synthetic-dataset.py --sweep    # D sweep f
 
 The generation is deterministic (seed 42): the files are identical to the ones generated locally. Details in [datasets.md](datasets.md#3-synthetic-datasets).
 
-### Real datasets (about 250 MB)
+### Real datasets (about 250 MB to download, about 650 MB after the conversion)
 
 ```bash
 python3 src/dataset-managed/generate-real-datasets.py     # download into data/real/<name>/raw/
@@ -332,7 +332,7 @@ watch -n 30 'qstat -u $USER | tail -n +6; echo; grep -c "^==== run" results/logs
 ### Output
 
 - logs: `results/logs/<model>/<stage>/<version>_<placement>_<nodes>n<ranks>r<threads>t.log` (`<version>_seq.log` for the sequential ones), with model = `diagonal` | `full` and stage = `sequential` | `baseline` | `opt1` | `opt2` (folders already in the repository); sweeps in `results/logs/sweep/`; sweep over the block size of `opt1` full (`BLOCK=64 src/script/pemc-submit.sh full opt1`) in `results/logs/block/<version>_<layout>_b<B>.log`; clustering in `results/logs/cluster/` and `results/clusters/`;
-- standard output/error of the jobs: `results/logs/pbs/<job>.out|.err` (not versioned).
+- standard output/error of the jobs: `results/logs/pbs/<job>.out|.err`.
 
 ---
 
@@ -348,7 +348,7 @@ src/script/pemc-hwinfo.sh software    # compiler, MPI, UCX
 src/script/pemc-hwinfo.sh summary     # same on all the nodes vs different (RAM, DIMMs, NIC, kernel)
 ```
 
-Raw outputs in `results/hwinfo/` (not versioned); to read them on the local machine:
+Raw outputs in `results/hwinfo/` (versioned); to copy new ones from the cluster to the local machine:
 
 ```bash
 scp -r username@hpc3-login1.unitn.it:ParallelExpectationMaximizationClustering/results/hwinfo results/
@@ -368,7 +368,8 @@ scp -r username@hpc3-login1.unitn.it:ParallelExpectationMaximizationClustering/r
 Then, from the root of the repository:
 
 ```bash
-python3 src/plots-generate/plots-performance.py     # P1-P11 -> results/plots/performance/
+python3 src/plots-generate/plots-performance.py     # report plots P2-P5, P8-P11 -> results/plots/performance/
+python3 src/plots-generate/plots-performance.py --plots P1 P6 P7 P12   # the other ones (only in the repository)
 python3 src/plots-generate/plots-cluster.py         # C1-C6 -> results/plots/cluster/ (+ results/tables/clustering-summary.csv)
 python3 src/tables/clustering-summary.py            # only the table results/tables/clustering-summary.csv
 ```

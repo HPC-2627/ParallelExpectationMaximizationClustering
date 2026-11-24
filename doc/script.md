@@ -112,7 +112,7 @@ src/script/pemc-hwinfo.sh summary     # same on all the nodes vs different: RAM,
 ```
 
 - **Nodes:** the list `NODES` in the script: the nodes of all the runs (groups `c10`, `c11`, `c12`), taken from the PBS outputs of both team members; `NODES_FILE=<file>` uses another list.
-- **Output:** raw files in `results/hwinfo/` (not versioned); the summary used by the report is [`results/tables/hardware.md`](../results/tables/hardware.md).
+- **Output:** raw files in `results/hwinfo/`; the summary used by the report is [`results/tables/hardware.md`](../results/tables/hardware.md).
 - **Jobs:** `hw-<node>`, 1 core, 1 GB, 2 minutes, `-l select=...:host=<node>`, body `pemc-hwprobe.sh`; output in `results/hwinfo/<node>.txt`. A node is done when its file contains the line `MemTotal`.
 - **Re-runs:** `submit` skips the nodes already done or still in the queue, so it can be run again at any time; when the per-user limit of the queue is reached it waits 30 s and tries again.
 - **Long waits:** a job stays in the queue (`Insufficient amount of resource: host`) while other users' jobs fill its node; PBS gives no estimate (`qstat -T`). Leave it there or remove it with `qdel`.
