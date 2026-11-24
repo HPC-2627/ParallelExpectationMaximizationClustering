@@ -164,7 +164,7 @@ All the runs use the HPC3 cluster of the University of Trento (PBS Pro, queue `s
 | Caches | L1d 32 KB and L2 1 MB per core, L3 35.75 MB per socket |
 | Memory | 256 GB to 2 TB DDR4 per node, 6 channels per socket (2, 4 or 6 populated) |
 | Network | Ethernet 10 Gb/s |
-| Nodes used | 49 (groups `c10`, `c11`, `c12`) |
+| Nodes used | groups `c10`, `c11`, `c12` |
 | Software | Rocky Linux 9.8, GCC 12.3.0 (`-O3 -fopenmp`, no `-march`), Open MPI 4.1.5 + UCX 1.14.1 over TCP |
 
 Collected with [`src/script/pemc-hwinfo.sh`](src/script/pemc-hwinfo.sh); details in [results/tables/hardware.md](results/tables/hardware.md).
@@ -212,6 +212,7 @@ Up to 4 nodes (32 cores) of HPC3; only the datasets whose runs all last at least
 - [doc/exec-cluster.md](doc/exec-cluster.md): run everything on the cluster, from VPN to plots
 - [doc/script.md](doc/script.md): the scripts in `src/script/` and their variables
 - [doc/todo.md](doc/todo.md): task list and workflow
+- [doc/todo-report.md](doc/todo-report.md): final reading of the report and of the Markdown files (Mike, Gabri)
 - [doc/em-explained.md](doc/em-explained.md): EM algorithm (formulas, notation, parallelism)
 - [doc/datasets.md](doc/datasets.md): synthetic, sweep and real datasets (sources, format)
 - [doc/papers_and_references.md](doc/papers_and_references.md): papers and references

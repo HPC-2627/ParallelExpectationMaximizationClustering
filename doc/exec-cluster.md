@@ -338,7 +338,7 @@ watch -n 30 'qstat -u $USER | tail -n +6; echo; grep -c "^==== run" results/logs
 
 ## Hardware of the nodes (report table)
 
-One small PBS job on each of the 49 nodes used by the runs reads CPU, RAM and DIMMs, NUMA, caches, network and OS.
+One small PBS job on each of the nodes used by the runs (groups `c10`, `c11`, `c12`) reads CPU, RAM and DIMMs, NUMA, caches, network and OS.
 It fills the table "Hardware Infrastructure" of the report, because the nodes are not all the same (RAM and memory channels differ); summary in [results/tables/hardware.md](../results/tables/hardware.md).
 
 ```bash

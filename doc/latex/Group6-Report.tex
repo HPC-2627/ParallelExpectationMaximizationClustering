@@ -50,23 +50,24 @@
 \maketitle
 \thispagestyle{plain} % IEEEtran removes the number from the first page: put it back
 
+% First pages, without page breaks: title, authors, AI Statement, abstract, keywords, table of contents
+\section*{AI Statement}
+In this project we used an AI assistant (Claude, by Anthropic) for three purposes: (i) support in writing and debugging the code; (ii) searching for sources and papers for the state of the art and for the datasets; (iii) mathematical and grammatical correction of the report. The design choices, the experiments and the analysis of the results are our own, and we reviewed the output of the assistant.
+
+\section*{Abstract}
+\begin{sloppypar}
+We parallelize the Expectation--Maximization (EM) algorithm for Gaussian mixture models with a hybrid MPI+OpenMP design, for two covariance models: diagonal and full (Cholesky). For each model we implement a sequential version, a baseline that splits the rows among the MPI ranks and the OpenMP threads and reduces the sums with two \texttt{MPI\_Allreduce} per iteration, and two optimizations of the baseline: Optimization~1 changes the computation (fused E- and M-step in one parallel region, and in the full model blocks of rows vectorized with SIMD), Optimization~2 the communication (one collective per iteration, and in the full model only the lower triangle of the covariance sums). A data dependence analysis of every OpenMP loop shows that all the dependences are handled, and in 9\,849 runs every parallel version reaches the same iterations and the same log-likelihood as the sequential one (relative difference below $10^{-8}$). We measure strong and weak scaling up to 4 nodes (32 cores) of the HPC3 cluster of the University of Trento. The public medical datasets we found are small: their runs last milliseconds and measure mostly noise, so we generated synthetic datasets with a clinical structure of up to 4 million rows, and we show only the datasets whose runs all last at least one second (all the logs are in the repository). On these datasets Optimization~1 reaches a speedup of 27--29$\times$ over the sequential version in the diagonal model and about 50$\times$ in the full model, where the blocked computation is 3--8$\times$ faster than the baseline on 32 cores (2.3--2.5$\times$ on one node), and its ranks stay balanced. Optimization~2 removes almost all the cost of the collectives that is not waiting (on 32 cores from 0.6 to 0.08~ms per iteration in the diagonal model and from 6.5 to 0.5~ms in the full one), but this is at most 2\% of an iteration: on this cluster the time is decided by the computation and by the wait for the slowest rank, not by the communication.
+\end{sloppypar}
+
+\section*{Index Terms}
+Expectation--Maximization, Gaussian Mixture Models, Diagonal and Full Covariance, Hybrid MPI+OpenMP, Data Dependence Analysis, Row-Block Data Partitioning, Allreduce Collective, E-Step/M-Step Fusion, Message Aggregation, Process Placement, Roofline Model, Strong Scaling, Weak Scaling.
+
 % Table of contents (sections, subsections, subsubsections)
 \setcounter{tocdepth}{3}
 \tableofcontents
 
-% From here on every section (AI Statement, I, II, ..., References) starts on a new page
+% From here on every section (I, II, ..., References) starts on a new page
 \pretocmd{\section}{\clearpage}{}{}
-
-\section*{AI Statement}
-In this project we used an AI assistant (Claude, by Anthropic) for three purposes: (i) support in writing and debugging the code; (ii) searching for sources and papers for the state of the art and for the datasets; (iii) mathematical and grammatical correction of the report. The design choices, the experiments and the analysis of the results are our own, and we reviewed the output of the assistant.
-
-\begin{abstract}
-\sloppy We parallelize the Expectation--Maximization (EM) algorithm for Gaussian mixture models with a hybrid MPI+OpenMP design, for two covariance models: diagonal and full (Cholesky). For each model we implement a sequential version, a baseline that splits the rows among the MPI ranks and the OpenMP threads and reduces the sums with two \texttt{MPI\_Allreduce} per iteration, and two optimizations of the baseline: Optimization~1 changes the computation (fused E- and M-step in one parallel region, and in the full model blocks of rows vectorized with SIMD), Optimization~2 the communication (one collective per iteration, and in the full model only the lower triangle of the covariance sums). A data dependence analysis of every OpenMP loop shows that all the dependences are handled, and in 9\,849 runs every parallel version reaches the same iterations and the same log-likelihood as the sequential one (relative difference below $10^{-8}$). We measure strong and weak scaling up to 4 nodes (32 cores) of the HPC3 cluster of the University of Trento. The public medical datasets we found are small: their runs last milliseconds and measure mostly noise, so we generated synthetic datasets with a clinical structure of up to 4 million rows, and we show only the datasets whose runs all last at least one second (all the logs are in the repository). On these datasets Optimization~1 reaches a speedup of 27--29$\times$ over the sequential version in the diagonal model and about 50$\times$ in the full model, where the blocked computation is 3--8$\times$ faster than the baseline on 32 cores (2.3--2.5$\times$ on one node), and its ranks stay balanced. Optimization~2 removes almost all the cost of the collectives that is not waiting (on 32 cores from 0.6 to 0.08~ms per iteration in the diagonal model and from 6.5 to 0.5~ms in the full one), but this is at most 2\% of an iteration: on this cluster the time is decided by the computation and by the wait for the slowest rank, not by the communication.
-\end{abstract}
-
-\begin{IEEEkeywords}
-Expectation--Maximization, Gaussian Mixture Models, Diagonal and Full Covariance, Hybrid MPI+OpenMP, Data Dependence Analysis, Row-Block Data Partitioning, Allreduce Collective, E-Step/M-Step Fusion, Message Aggregation, Process Placement, Roofline Model, Strong Scaling, Weak Scaling.
-\end{IEEEkeywords}
 
 \section{Introduction}
 Clustering groups the points of a dataset so that points in the same group are similar. Here we assume that the data come from a mixture of Gaussian distributions and that the group of each point is unknown; the parameters of the mixture are estimated with the Expectation--Maximization (EM) algorithm. EM is iterative and every iteration scans the whole dataset: its cost grows with the data, which makes it a good candidate for parallelization. The goal of the project is to implement EM in C with a hybrid MPI+OpenMP design, to evaluate optimizations of computation and communication, and to measure their scalability on multiple nodes (strong and weak scaling) on real and synthetic datasets.
@@ -750,7 +751,7 @@ Cores & 96 per node (4 sockets $\times$ 24), no hyper-threading, 4 NUMA nodes (o
 Caches & L1d 32~KB and L2 1~MB per core, L3 35.75~MB per socket \\
 Memory & 256~GB to 2~TB DDR4 per node, 6 channels per socket (2, 4 or 6 populated) \\
 Network & Ethernet 10~Gb/s \\
-Nodes used & 49 (groups \texttt{c10}, \texttt{c11}, \texttt{c12}) \\
+Nodes used & groups \texttt{c10}, \texttt{c11}, \texttt{c12} \\
 Software & Rocky Linux 9.8, GCC 12.3.0 (\texttt{-O3 -fopenmp}, no \texttt{-march}), Open MPI 4.1.5 + UCX 1.14.1 over TCP \\
 \bottomrule
 \end{tabular}
@@ -1051,7 +1052,7 @@ On such short runs the differences between the versions are of the same order as
 They are called the \emph{long datasets} below. The other real datasets (shortest run at most 0.07~s in the diagonal model and 0.09~s in the full one), all the \texttt{synth\_clean} files and the smaller \texttt{synth\_overlap} and \texttt{synth\_rare} files are not shown. The scaling figures use \texttt{brainweb} and two sizes of the synthetic profile with the most work for the model (\texttt{synth\_overlap} for the diagonal model, \texttt{synth\_rare} for the full one); the gain of the optimizations (Figures~\ref{fig:p9-diag} and~\ref{fig:p9-full}) uses all the long datasets. The weak scaling (Figures~\ref{fig:p5-diag} and~\ref{fig:p5-full}) uses the files \texttt{synth\_overlap\_p}$NN$ on $NN$ cores: every one of these runs lasts at least 6~s, also for the small files, because the data per core is constant.
 
 
-\paragraph{All the results are kept.} The datasets not shown were measured with exactly the same procedure, and nothing was deleted: the logs of every run of every dataset (9\,849 runs) are in the repository, in \repolink{results/logs/diagonal} and \repolink{results/logs/full} (one folder per version), the datasets are described in Tables~\ref{tab:real}--\ref{tab:sweeps}, and the same script draws the figures with all the datasets (option \texttt{--min-run 0}). Every figure below also links the logs it comes from.
+\paragraph{All the results are kept.} The datasets not shown were measured with exactly the same procedure, and nothing was deleted: the logs of every run of every dataset (9\,849 runs) are in the repository, in \repolink{results/logs/diagonal} and \repolink{results/logs/full} (one folder per version), the datasets are described in Tables~\ref{tab:real}--\ref{tab:sweeps}, and the same script draws the figures with all the datasets (option \texttt{--min-run 0}). All the figures below are drawn from these logs.
 
 \paragraph{Figures not included.} Four more figures, drawn by the same script from the same logs, are only in the repository; they include short runs, so they are a qualitative support:
 \begin{itemize}
@@ -1067,7 +1068,7 @@ They are called the \emph{long datasets} below. The other real datasets (shortes
 
 {\centering
 \includegraphics[width=0.82\textwidth]{../../results/plots/performance/P4-strong-diagonal.pdf}
-\captionof{figure}{Strong scaling, diagonal model: time per iteration against the number of cores, dataset fixed. Logs: \repolink{results/logs/diagonal}.}\label{fig:p4-diag}
+\captionof{figure}{Strong scaling, diagonal model: time per iteration against the number of cores, dataset fixed.}\label{fig:p4-diag}
 \par}
 \end{figblock}
 
@@ -1076,7 +1077,7 @@ They are called the \emph{long datasets} below. The other real datasets (shortes
 
 {\centering
 \includegraphics[width=0.82\textwidth]{../../results/plots/performance/P4-strong-full.pdf}
-\captionof{figure}{Strong scaling, full model: time per iteration against the number of cores, dataset fixed. Logs: \repolink{results/logs/full}.}\label{fig:p4-full}
+\captionof{figure}{Strong scaling, full model: time per iteration against the number of cores, dataset fixed.}\label{fig:p4-full}
 \par}
 \end{figblock}
 
@@ -1085,7 +1086,7 @@ They are called the \emph{long datasets} below. The other real datasets (shortes
 
 {\centering
 \includegraphics[width=0.82\textwidth]{../../results/plots/performance/P10-roofline-diagonal.pdf}
-\captionof{figure}{Roofline of one node (8 cores), diagonal model. Logs: \repolink{results/logs/diagonal}.}\label{fig:p10-diag}
+\captionof{figure}{Roofline of one node (8 cores), diagonal model.}\label{fig:p10-diag}
 \par}
 \end{figblock}
 
@@ -1094,7 +1095,7 @@ In the full model the baseline and Optimization~2 reach 20--21~GFLOP/s on \textt
 
 {\centering
 \includegraphics[width=0.82\textwidth]{../../results/plots/performance/P10-roofline-full.pdf}
-\captionof{figure}{Roofline of one node (8 cores), full model. Logs: \repolink{results/logs/full}.}\label{fig:p10-full}
+\captionof{figure}{Roofline of one node (8 cores), full model.}\label{fig:p10-full}
 \par}
 \end{figblock}
 
@@ -1104,14 +1105,14 @@ In the full model the baseline and Optimization~2 reach 20--21~GFLOP/s on \textt
 
 {\centering
 \includegraphics[width=0.82\textwidth]{../../results/plots/performance/P2-speedup-diagonal.pdf}
-\captionof{figure}{Speedup over the sequential version, diagonal model. Logs: \repolink{results/logs/diagonal}.}\label{fig:p2-diag}
+\captionof{figure}{Speedup over the sequential version, diagonal model.}\label{fig:p2-diag}
 \par}
 \end{figblock}
 
 \begin{figblock}
 {\centering
 \includegraphics[width=0.82\textwidth]{../../results/plots/performance/P3-efficiency-diagonal.pdf}
-\captionof{figure}{Parallel efficiency (speedup / cores), diagonal model. Logs: \repolink{results/logs/diagonal}.}\label{fig:p3-diag}
+\captionof{figure}{Parallel efficiency (speedup / cores), diagonal model.}\label{fig:p3-diag}
 \par}
 \end{figblock}
 
@@ -1120,14 +1121,14 @@ In the full model the baseline and Optimization~2 reach 20--21~GFLOP/s on \textt
 
 {\centering
 \includegraphics[width=0.82\textwidth]{../../results/plots/performance/P2-speedup-full.pdf}
-\captionof{figure}{Speedup over the sequential version, full model. Logs: \repolink{results/logs/full}.}\label{fig:p2-full}
+\captionof{figure}{Speedup over the sequential version, full model.}\label{fig:p2-full}
 \par}
 \end{figblock}
 
 \begin{figblock}
 {\centering
 \includegraphics[width=0.82\textwidth]{../../results/plots/performance/P3-efficiency-full.pdf}
-\captionof{figure}{Parallel efficiency (speedup / cores), full model. Above 1 the optimization also makes the computation faster. Logs: \repolink{results/logs/full}.}\label{fig:p3-full}
+\captionof{figure}{Parallel efficiency (speedup / cores), full model. Above 1 the optimization also makes the computation faster.}\label{fig:p3-full}
 \par}
 \end{figblock}
 
@@ -1137,7 +1138,7 @@ In the full model the baseline and Optimization~2 reach 20--21~GFLOP/s on \textt
 
 {\centering
 \includegraphics[width=0.82\textwidth]{../../results/plots/performance/P9-opt-gain-diagonal.pdf}
-\captionof{figure}{Time of Optimization~1 and~2 divided by the time of the parallel baseline on 32 cores (below 1 = faster), every long dataset. Logs: \repolink{results/logs/diagonal}.}\label{fig:p9-diag}
+\captionof{figure}{Time of Optimization~1 and~2 divided by the time of the parallel baseline on 32 cores (below 1 = faster), every long dataset.}\label{fig:p9-diag}
 \par}
 \end{figblock}
 
@@ -1146,7 +1147,7 @@ In the full model the baseline and Optimization~2 reach 20--21~GFLOP/s on \textt
 
 {\centering
 \includegraphics[width=0.82\textwidth]{../../results/plots/performance/P9-opt-gain-full.pdf}
-\captionof{figure}{Time of Optimization~1 and~2 divided by the time of the parallel baseline on 32 cores (below 1 = faster), every long dataset. Logs: \repolink{results/logs/full}.}\label{fig:p9-full}
+\captionof{figure}{Time of Optimization~1 and~2 divided by the time of the parallel baseline on 32 cores (below 1 = faster), every long dataset.}\label{fig:p9-full}
 \par}
 \end{figblock}
 
@@ -1156,14 +1157,14 @@ In the full model the baseline and Optimization~2 reach 20--21~GFLOP/s on \textt
 
 {\centering
 \includegraphics[width=0.82\textwidth]{../../results/plots/performance/P8-breakdown-diagonal.pdf}
-\captionof{figure}{Where the time goes, diagonal model: every bar is 100\% of one run on 1, 8 or 32 cores; the number above the bar is its total time. Logs: \repolink{results/logs/diagonal}.}\label{fig:p8-diag}
+\captionof{figure}{Where the time goes, diagonal model: every bar is 100\% of one run on 1, 8 or 32 cores; the number above the bar is its total time.}\label{fig:p8-diag}
 \par}
 \end{figblock}
 
 \begin{figblock}
 {\centering
 \includegraphics[width=0.82\textwidth]{../../results/plots/performance/P8-breakdown-full.pdf}
-\captionof{figure}{Where the time goes, full model (same layout as Figure~\ref{fig:p8-diag}). Logs: \repolink{results/logs/full}.}\label{fig:p8-full}
+\captionof{figure}{Where the time goes, full model (same layout as Figure~\ref{fig:p8-diag}).}\label{fig:p8-full}
 \par}
 \end{figblock}
 
@@ -1179,14 +1180,14 @@ In the full model the baseline and Optimization~2 reach 20--21~GFLOP/s on \textt
 
 {\centering
 \includegraphics[width=0.82\textwidth]{../../results/plots/performance/P11-imbalance-diagonal.pdf}
-\captionof{figure}{Load imbalance between the MPI ranks, Optimization~2, diagonal model, \texttt{synth\_overlap\_p16}. Logs: \repolink{results/logs/diagonal/opt2}.}\label{fig:p11-diag}
+\captionof{figure}{Load imbalance between the MPI ranks, Optimization~2, diagonal model, \texttt{synth\_overlap\_p16}.}\label{fig:p11-diag}
 \par}
 \end{figblock}
 
 \begin{figblock}
 {\centering
 \includegraphics[width=0.82\textwidth]{../../results/plots/performance/P11-imbalance-full.pdf}
-\captionof{figure}{Load imbalance between the MPI ranks, Optimization~2, full model, \texttt{synth\_rare\_p16}. Logs: \repolink{results/logs/full/opt2}.}\label{fig:p11-full}
+\captionof{figure}{Load imbalance between the MPI ranks, Optimization~2, full model, \texttt{synth\_rare\_p16}.}\label{fig:p11-full}
 \par}
 \end{figblock}
 
@@ -1196,7 +1197,7 @@ In the full model the baseline and Optimization~2 reach 20--21~GFLOP/s on \textt
 
 {\centering
 \includegraphics[width=0.52\textwidth]{../../results/plots/performance/P5-weak-diagonal.pdf}
-\captionof{figure}{Weak scaling, diagonal model: \texttt{synth\_overlap\_p}$NN$ on $NN$ cores. Logs: \repolink{results/logs/diagonal}.}\label{fig:p5-diag}
+\captionof{figure}{Weak scaling, diagonal model: \texttt{synth\_overlap\_p}$NN$ on $NN$ cores.}\label{fig:p5-diag}
 \par}
 \end{figblock}
 
@@ -1205,7 +1206,7 @@ In the full model the baseline and Optimization~2 reach 20--21~GFLOP/s on \textt
 
 {\centering
 \includegraphics[width=0.52\textwidth]{../../results/plots/performance/P5-weak-full.pdf}
-\captionof{figure}{Weak scaling, full model: \texttt{synth\_overlap\_p}$NN$ on $NN$ cores. Logs: \repolink{results/logs/full}.}\label{fig:p5-full}
+\captionof{figure}{Weak scaling, full model: \texttt{synth\_overlap\_p}$NN$ on $NN$ cores.}\label{fig:p5-full}
 \par}
 \end{figblock}
 
