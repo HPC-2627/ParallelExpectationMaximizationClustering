@@ -24,7 +24,8 @@ Inputs
 Plots (diagonal and full in the SAME figure, colors in MODEL_COLOR; only C4 has one file per model)
     C1 convergence   log-likelihood per point vs iteration, one panel per dataset, one line per model
     C2 choice of K   BIC and AIC vs K for both models, best K of each curve marked, true K dotted
-    C3 PCA           2D projection: true classes, clusters of diagonal, clusters of full (3 rows);
+    C3 PCA           2D projection: true classes, clusters of diagonal, clusters of full (3 columns,
+                     one row per dataset);
                      the found clusters are recolored after the class they overlap most, ARI shown
     C4 centroids     heatmap of the cluster means (standardized variables), C4-centroids-<model>
     C5 sizes         share of the points per class: truth, diagonal, full (3 bars per class)
@@ -181,7 +182,7 @@ def class_color(labels):
     return np.where(labels < 0, MISSING, np.array(CLASS_COLOR)[labels % 12])
 
 
-# ---- common layout: the same look in every figure (doc/plots.md, section 5) ----
+# ---- common layout: the same look in every figure (doc/plots.md, section 4) ----
 def title(fig, text):
     """Bold title in plain words: what the figure shows. If the figure has a top_legend, the
     title goes just ABOVE it (call top_legend first): title, legend, panels, from the top."""
