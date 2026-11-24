@@ -196,6 +196,14 @@ src/script/pemc-submit.sh sweep                         # 8 jobs, a few minutes 
 
 `SWEEP_PLACE` changes the placement (default `pack:excl`, the same as the first sweeps; `pack` starts sooner but the new curves would then be on a shared node). P1 draws every version found in `results/logs/sweep/`, no change to the plot script.
 
+After opt2 full was rewritten on the baseline (2026-11-22), only its sweep was run again (2026-11-23, 2 jobs `o2f-swK`, `o2f-swD`, `pack:excl`). The old log was moved away first, because the logs are appended:
+
+```bash
+mv results/logs/sweep/opt2-MPI-OpenMP-full_pack_excl_1n1r8t.log old-logs/
+SWEEP_VERSIONS="opt2-MPI-OpenMP-full" src/script/pemc-submit.sh sweep
+grep -c '==== run' results/logs/sweep/opt2-MPI-OpenMP-full_pack_excl_1n1r8t.log   # 33 when done
+```
+
 #### Runs on 1, 2 and 4 cores of one node (speedup curves below 8 cores)
 
 The default layouts start at 8 cores, and 8 -> 16 -> 32 cores also changes 1 -> 2 -> 4 nodes: without these runs P2/P3, P4 and P5 jump from 1 to 8 cores. They give:
@@ -330,7 +338,7 @@ watch -n 30 'qstat -u $USER | tail -n +6; echo; grep -c "^==== run" results/logs
 
 ## Hardware of the nodes (report table)
 
-One small PBS job on each of the 40 nodes used by the runs reads CPU, RAM and DIMMs, NUMA, caches, network and OS.
+One small PBS job on each of the 49 nodes used by the runs reads CPU, RAM and DIMMs, NUMA, caches, network and OS.
 It fills the table "Hardware Infrastructure" of the report, because the nodes are not all the same (RAM and memory channels differ); summary in [results/tables/hardware.md](../results/tables/hardware.md).
 
 ```bash
