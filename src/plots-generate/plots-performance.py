@@ -15,14 +15,14 @@ Usage (from the root of the repository):
 
 Where the data comes from
     One log file per PBS job: results/logs/<model>/<stage>/<VERSION>_<TAG>.log
-    (model = diagonal | full, stage = sequential | baseline | opt1 | opt2), TAG = "seq" (sequential) or
+    (model = diagonal | full, stage = sequential | baseline | opt1 | opt2), TAG = "seq" (baseline-sequential) or
     "<placement>_<N>n<R>r<T>t" (e.g. pack_excl_2n2r4t = pack:excl, 2 nodes, 2 ranks/node,
     4 threads/rank). The placement is NOT in the log block, so it is read from the file name.
     Block format: see include/logger.h.
 
 Rules (doc/plots.md)
     - Time = t_iteration (time per iteration), median over the repetitions, error bar = min-max.
-    - Speedup is always against the SEQUENTIAL version of the same model and dataset.
+    - Speedup is always against baseline-sequential of the same model and dataset.
     - For every number of cores the best ranks x threads split is used (P7 shows the splits).
     - Placement: runs on 1 node with --placement (default pack), runs on 2-4 nodes with
       --multi-placement (default scatter:excl). PBS puts every pack request on ONE node (the
@@ -46,9 +46,9 @@ Rules (doc/plots.md)
       splits, balance), not the data.
 
 Reference of the optimizations
-    opt1 / opt2 are always compared with the PARALLEL BASELINE (baseline-MPI-OpenMP-<model>) on
-    the same cores, dataset and placement (P9), NOT with the sequential version. The sequential
-    version is only the reference of the speedup (P2/P3). The weak-scaling efficiency (P5) of
+    opt1 / opt2 are always compared with baseline-MPI-OpenMP-<model> on
+    the same cores, dataset and placement (P9), NOT with baseline-sequential. baseline-sequential
+    is only the reference of the speedup (P2/P3). The weak-scaling efficiency (P5) of
     every version uses the SAME version on 1 core as reference, so it shows the scaling only.
 
 Extra data in the logs (see include/logger.h and include/perfmodel.h)
@@ -159,7 +159,7 @@ def load_logs(logdir, required=True, pattern="*/*/*.log"):
             if m:
                 b["placement"] = m.group(1) + (":excl" if m.group(2) else "")
                 b["nodes"] = int(m.group(3))
-            else:  # "seq" or a log without tag: assume a sequential/single-node run
+            else:  # "seq" or a log without tag: assume a baseline-sequential/single-node run
                 b["placement"], b["nodes"] = "seq", 1
             rows.append(b)
     if not rows:
@@ -175,7 +175,8 @@ def load_logs(logdir, required=True, pattern="*/*/*.log"):
     # "baseline-MPI-OpenMP-full" -> model "full"; base = "baseline-MPI-OpenMP"
     df["model"] = df["version"].str.rsplit("-", n=1).str[1]
     base = df["version"].str.rsplit("-", n=1).str[0]
-    # label = the version as shown in the plots: sequential | baseline | opt1 | opt2
+    # label = short key of the version (= stage folder): sequential | baseline | opt1 | opt2
+    # (baseline-sequential, baseline-MPI-OpenMP, opt1, opt2; plain names in VERSION_LABEL)
     df["label"] = np.where(base.str.contains("sequential"), "sequential", base.str.split("-").str[0])
     df["dataset"] = df["dataset"].map(lambda p: Path(p).stem)  # path -> file name without ".bin"
     # total cores of the run (ranks is the TOTAL number of MPI processes, threads is per rank)
@@ -208,7 +209,7 @@ def long_datasets(best, min_run):
 
 
 def best_split(agg, placement, multi="scatter:excl"):
-    """For every core count the best ranks x threads split (the sequential runs always kept).
+    """For every core count the best ranks x threads split (the baseline-sequential runs always kept).
     Runs on ONE node use `placement` (default pack); runs on several nodes use `multi` (default
     scatter:excl). The reason: PBS puts all the chunks of a pack (or pack:excl) request on ONE
     node when it has enough cores (the nodes have 96), so the "2 / 4 node" pack runs are really
@@ -227,7 +228,7 @@ def best_split(agg, placement, multi="scatter:excl"):
 # Helpers
 # ---------------------------------------------------------------------------------------------
 def versions_in(d):
-    """Versions present in the table d, in the fixed plotting order (sequential first)."""
+    """Versions present in the table d, in the fixed plotting order (baseline-sequential first)."""
     return [v for v in VERSION_ORDER if v in set(d.label)]
 
 
@@ -307,7 +308,7 @@ def pick_datasets(best, model, large, small):
 
 
 def best_version(agg):
-    """The most optimized version present in the data (opt2 > opt1 > baseline), or None."""
+    """The most optimized version present in the data (opt2 > opt1 > baseline-MPI-OpenMP), or None."""
     for v in ("opt2", "opt1", "baseline"):
         if v in set(agg.label):
             return v
@@ -315,7 +316,7 @@ def best_version(agg):
 
 
 # ---- names in plain words, for legends and titles (the logs keep the short ones) ----
-VERSION_LABEL = {"sequential": "sequential (1 core)", "baseline": "baseline MPI + OpenMP",
+VERSION_LABEL = {"sequential": "baseline-sequential (1 core)", "baseline": "baseline-MPI-OpenMP",
                  "opt1": "opt1 (faster computation)", "opt2": "opt2 (less communication)"}
 PLACE_LABEL = {"pack": "pack, shared node", "pack:excl": "pack, exclusive node",
                "scatter": "scatter, shared nodes", "scatter:excl": "scatter, exclusive nodes"}
@@ -373,8 +374,8 @@ def legend_from(fig, axs, ncol=None):
         for h, l in zip(*ax.get_legend_handles_labels()):
             seen.setdefault(l, h)
     # matplotlib lists plain lines before error bars: the reference lines (ideal, reference,
-    # baseline = 1) would come first, so they are moved to the end
-    ref = ("ideal", "reference", "baseline MPI + OpenMP (=")
+    # baseline-MPI-OpenMP = 1) would come first, so they are moved to the end
+    ref = ("ideal", "reference", "baseline-MPI-OpenMP (=")
     labels = sorted(seen, key=lambda l: l.startswith(ref))  # stable: the rest keeps its order
     top_legend(fig, [seen[l] for l in labels], labels, ncol)
 
@@ -455,12 +456,12 @@ def need(cond, why):
 # ONE legend above the panels, axes named with their unit (doc/plots.md, section 5)
 # ---------------------------------------------------------------------------------------------
 def p2_speedup(ctx, model):
-    """P2 speedup against the sequential version, 3 x 2 grid of datasets (dataset_grid)."""
+    """P2 speedup against baseline-sequential, 3 x 2 grid of datasets (dataset_grid)."""
     fig, cells = dataset_grid(ctx, model, 2.4)
     for c in cells:
         seq = c.d[c.d.label == "sequential"]
-        need(not seq.empty, f"no sequential run for {model}/{c.ds}")
-        t_seq = seq.t.iloc[0]  # time per iteration of the sequential run: reference of the speedup
+        need(not seq.empty, f"no baseline-sequential run for {model}/{c.ds}")
+        t_seq = seq.t.iloc[0]  # time per iteration of the baseline-sequential run: reference of the speedup
         allc = []
         for v in versions_in(c.d):
             s = c.d[c.d.label == v].sort_values("cores")
@@ -474,9 +475,9 @@ def p2_speedup(ctx, model):
         ideal(c.ax, cc, cc)  # ideal speedup = number of cores
         c.ax.set_yscale("log", base=2)
         c.ax.yaxis.set_major_formatter(ScalarFormatter())
-        grid_axes(c, allc, "speedup over sequential\n(log scale)")
+        grid_axes(c, allc, "speedup over baseline-sequential\n(log scale)")
     legend_from(fig, [c.ax for c in cells], ncol=3)
-    title(fig, "Speedup against the sequential version",
+    title(fig, "Speedup against baseline-sequential",
           f"{MODEL_TXT[model]}, {scale_txt(ctx.args)}; for every core count the fastest "
           f"ranks × threads split")
     save(fig, ctx.out, f"P2-speedup-{model}", ctx.fmts)
@@ -487,7 +488,7 @@ def p3_efficiency(ctx, model):
     fig, cells = dataset_grid(ctx, model, 2.4)
     for c in cells:
         seq = c.d[c.d.label == "sequential"]
-        need(not seq.empty, f"no sequential run for {model}/{c.ds}")
+        need(not seq.empty, f"no baseline-sequential run for {model}/{c.ds}")
         t_seq = seq.t.iloc[0]
         allc, eff_max = [], 1.0  # never cut a point: an efficiency above 1 must stay visible
         for v in versions_in(c.d):
@@ -504,7 +505,7 @@ def p3_efficiency(ctx, model):
         c.ax.set_ylim(0, eff_max * 1.1 + 0.05)
         grid_axes(c, allc, "parallel efficiency\n(speedup / cores)")
     legend_from(fig, [c.ax for c in cells], ncol=3)
-    title(fig, "Parallel efficiency against the sequential version",
+    title(fig, "Parallel efficiency against baseline-sequential",
           f"{MODEL_TXT[model]}, {scale_txt(ctx.args)}; efficiency = speedup / cores "
           f"(above 1: the optimization also makes the computation faster)")
     save(fig, ctx.out, f"P3-efficiency-{model}", ctx.fmts)
@@ -523,7 +524,7 @@ def p4_strong(ctx, model):
         seq = c.d[c.d.label == "sequential"]
         if not seq.empty:
             cc = np.array(sorted(set(allc)))
-            ideal(c.ax, cc, seq.t.iloc[0] / cc, label="ideal (sequential time / cores)")
+            ideal(c.ax, cc, seq.t.iloc[0] / cc, label="ideal (baseline-sequential time / cores)")
         c.ax.set_yscale("log")
         grid_axes(c, allc, "time per iteration (s)\n(log scale)")
     legend_from(fig, [c.ax for c in cells], ncol=3)
@@ -552,9 +553,9 @@ def p5_weak(ctx, model):
     for v in versions_in(d):
         # Weak-scaling efficiency of a version = its OWN time on 1 core (smallest problem, p01)
         # / its time on p cores with p x the data. The reference is the same version, NOT the
-        # sequential one: otherwise a faster algorithm (opt1 full, ~2x the sequential) would
+        # baseline-sequential: otherwise a faster algorithm (opt1 full, ~2x baseline-sequential) would
         # start above 1 and the plot would mix "faster algorithm" with "scales well" (that gain
-        # is in P2 and P9). The sequential version has no curve here (it never runs on p > 1).
+        # is in P2 and P9). baseline-sequential has no curve here (it never runs on p > 1).
         if v == "sequential":
             continue
         ref = d[(d.label == v) & (d.p == 1) & (d.cores == 1)]
@@ -691,21 +692,21 @@ def p8_breakdown(ctx, model):
     legend_from(fig, [c.ax for c in cells], ncol=2)
     title(fig, "Where the time goes: the whole run split by phase",
           f"{MODEL_TXT[model]}, {scale_txt(ctx.args)}; every bar = 100% of one run, "
-          f"the number above it = its total time; seq = sequential, base = baseline")
+          f"the number above it = its total time; seq = baseline-sequential, base = baseline-MPI-OpenMP")
     save(fig, ctx.out, f"P8-breakdown-{model}", ctx.fmts)
 
 
 def p9_opt_gain(ctx, model):
-    """P9: opt1/opt2 time divided by the time of the PARALLEL BASELINE (baseline-MPI-OpenMP, = 1),
-    at the largest core count shared by the versions, same dataset and placement. The sequential
-    version is NOT the reference here. Below 1 = faster than the baseline."""
+    """P9: opt1/opt2 time divided by the time of baseline-MPI-OpenMP (= 1),
+    at the largest core count shared by the versions, same dataset and placement. baseline-sequential
+    is NOT the reference here. Below 1 = faster than baseline-MPI-OpenMP."""
     best = ctx.best
     d = best[best.model == model]
-    need("baseline" in set(d.label), "no baseline")
+    need("baseline" in set(d.label), "no baseline-MPI-OpenMP run")
     opts = [v for v in ("opt1", "opt2") if v in set(d.label)]
     need(opts, "no opt1/opt2 data yet")
     base = d[d.label == "baseline"]
-    # compare at the largest core count that has both the baseline and at least one optimization
+    # compare at the largest core count that has both baseline-MPI-OpenMP and at least one optimization
     cores = max(set(base.cores) & set(d[d.label.isin(opts)].cores))
     d = d[d.cores == cores]
     every = sorted(set(d[d.label == "baseline"].dataset))
@@ -716,7 +717,7 @@ def p9_opt_gain(ctx, model):
     fig, ax = plt.subplots(figsize=(FIG_W, 3.0), layout="constrained")
     w = 0.8 / len(opts)
     for i, v in enumerate(opts):
-        y = []  # time / baseline time for every dataset (NaN if one of the two runs is missing)
+        y = []  # time / baseline-MPI-OpenMP time for every dataset (NaN if one of the two runs is missing)
         for ds in dss:
             tb = d[(d.label == "baseline") & (d.dataset == ds)].t
             tv = d[(d.label == v) & (d.dataset == ds)].t
@@ -726,16 +727,16 @@ def p9_opt_gain(ctx, model):
         for xi, yi in zip(x, y):  # the ratio above every bar (opt1 full is a very short bar)
             if not np.isnan(yi):
                 ax.text(xi, yi, f"{yi:.2f}", ha="center", va="bottom", fontsize=5.8, color=TEXT)
-    ax.axhline(1, ls="--", color=IDEAL, lw=1, label="baseline MPI + OpenMP (= 1)")
+    ax.axhline(1, ls="--", color=IDEAL, lw=1, label="baseline-MPI-OpenMP (= 1)")
     if real and len(real) < len(dss):
         ax.axvline(len(real) - 0.5, ls=":", color=IDEAL, lw=1)
     ax.set_xticks(range(len(dss)), [f"{x} (real)" if not is_synth(x) else x for x in dss],
                   rotation=30, ha="right", fontsize=7)
     ax.set_xlim(-0.6, len(dss) - 0.4)
     ax.set_xlabel("dataset")
-    ax.set_ylabel("time / baseline time\n(below 1 = faster)")
+    ax.set_ylabel("time / baseline-MPI-OpenMP time\n(below 1 = faster)")
     legend_from(fig, [ax])
-    title(fig, "Gain of the optimizations over the parallel baseline, per dataset",
+    title(fig, "Gain of the optimizations over baseline-MPI-OpenMP, per dataset",
           f"{MODEL_TXT[model]}, {cores} cores, {scale_txt(ctx.args)}")
     save(fig, ctx.out, f"P9-opt-gain-{model}", ctx.fmts)
 
@@ -758,8 +759,8 @@ def p1_sweeps(ctx, model):
             s_ = s_.loc[s_.groupby(col)["t"].idxmin()].sort_values(col)  # one layout: 1 row per x
             if s_.empty:
                 continue
-            # opt2 does the same computation as the baseline (both models), so their lines
-            # coincide: the baseline is drawn thicker and below, opt2 thinner on top (as the
+            # opt2 does the same computation as baseline-MPI-OpenMP (both models), so their lines
+            # coincide: baseline-MPI-OpenMP is drawn thicker and below, opt2 thinner on top (as the
             # markers of P10)
             big = v == "baseline"
             line(ax, s_[col].to_numpy(), s_.t.to_numpy(), s_.lo.to_numpy(), s_.hi.to_numpy(), v,
@@ -853,7 +854,7 @@ def p12_size(ctx, model):
     empty = synthetic. It shows that the speedup depends on the size, real or synthetic."""
     best = ctx.best[ctx.best.model == model]
     seq = best[best.label == "sequential"].set_index("dataset").t
-    need(not seq.empty, "no sequential run")
+    need(not seq.empty, "no baseline-sequential run")
     fig, axs = plt.subplots(1, 2, figsize=(FIG_W, 3.0), layout="constrained", sharey=True)
     for ax, cores in zip(axs, (8, 32)):
         drawn = False
@@ -878,7 +879,7 @@ def p12_size(ctx, model):
         ax.set_xlabel("rows of the dataset N (log scale)")
         n = {8: 1, 32: 4}[cores]
         panel_name(ax, f"{cores} cores ({n} node{'s' if n > 1 else ''})")
-    axs[0].set_ylabel("speedup over sequential\n(log scale)")
+    axs[0].set_ylabel("speedup over baseline-sequential\n(log scale)")
     seen = {}
     for ax in axs:
         for h, l in zip(*ax.get_legend_handles_labels()):

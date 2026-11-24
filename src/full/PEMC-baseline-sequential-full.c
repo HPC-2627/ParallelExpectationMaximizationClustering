@@ -1,7 +1,7 @@
 /*
  * PEMC-baseline-sequential-full.c
  *
- * Sequential EM for a mixture of Gaussians with FULL covariance. Same structure as
+ * baseline-sequential: sequential EM for a mixture of Gaussians with FULL covariance. Same structure as
  * PEMC-baseline-sequential-diagonal.c (read that one for the general description of EM, the
  * memory layout and the stopping rule); only what changes because of the covariance is
  * described here.
@@ -480,7 +480,7 @@ int main(int argc, char **argv)
     memset(&st, 0, sizeof st);
     st.version = a.name;
     st.dataset = a.dataset;
-    st.ranks = 1;   /* sequential version: one process, one thread */
+    st.ranks = 1;   /* baseline-sequential: one process, one thread */
     st.threads = 1;
     st.N = N;
     st.D = D;
@@ -500,7 +500,7 @@ int main(int argc, char **argv)
     /* Analytic work for the roofline (P10): E-step runs iterations + 1 times per restart */
     st.flops = pem_flops(PEM_FULL, N, D, K, total_iterations + a.restarts, total_iterations);
     st.bytes = pem_bytes(0, N, D, K, total_iterations + a.restarts, total_iterations);
-    st.t_comm = 0.0; /* no communication in the sequential version */
+    st.t_comm = 0.0; /* no communication in baseline-sequential */
 
     if (a.log_path != NULL && log_run(a.log_path, &st) != 0)
         fprintf(stderr, "warning: the log line was not written\n");

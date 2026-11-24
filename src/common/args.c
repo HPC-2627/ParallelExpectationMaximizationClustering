@@ -54,7 +54,7 @@ void args_usage(const char *prog)
             "      --no-log         do not write the log\n"
             "      --name NAME      name of the version written in the log\n"
             "      --save DIR       save the clustering result (labels, means, log-likelihood curve)\n"
-            "                       in DIR, see include/cluster-out.h (sequential versions only)\n"
+            "                       in DIR, see include/cluster-out.h (baseline-sequential only)\n"
             "  -v, --verbose        print the log-likelihood of every iteration\n"
             "  -h, --help           this message\n"
             "\n"

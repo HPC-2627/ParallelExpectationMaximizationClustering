@@ -12,10 +12,10 @@ fewer channels would be above 1.
 ## 1. Every node
 
 `multi-node ranks`: ranks of the runs on 2 and 4 nodes (`scatter:excl`) that ran on the node.
-`single-node runs`: runs on 8 cores of one node, baseline and Optimization 2 (same computation),
+`single-node runs`: runs on 8 cores of one node, baseline-MPI-OpenMP and Optimization 2 (same computation),
 relative to the median of the same dataset and layout.
 
-| node | group | RAM (GiB) | channels / socket | DIMMs / channel | multi-node ranks | rel. time, baseline/opt2 | rel. time, opt1 | single-node runs | rel. time, single node |
+| node | group | RAM (GiB) | channels / socket | DIMMs / channel | multi-node ranks | rel. time, baseline-MPI-OpenMP/opt2 | rel. time, opt1 | single-node runs | rel. time, single node |
 |---|---|---|---|---|---|---|---|---|---|
 | hpc3-c10-n01 | c10 | 503 | 4 | 1 | 0 |  |  | 48 | 0.944 |
 | hpc3-c11-n01 | c11 | 503 | 4 | 1 | 48 | 1.011 | 0.997 | 60 | 1.026 |

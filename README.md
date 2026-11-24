@@ -47,29 +47,29 @@ Two Gaussian mixture models, with the same importance:
 - **diagonal** covariance: one variance per variable. An iteration costs $O(NKD)$.
 - **full** covariance: each cluster has a complete $D \times D$ matrix, so correlated variables are modelled. An iteration costs $O(NKD^2)$.
 
-The model is different, so the results are compared only with runs of the same model (`-full` with `-full`, `-diagonal` with `-diagonal`), and every optimization is evaluated against the baseline of its own model.
+The model is different, so the results are compared only with runs of the same model (`-full` with `-full`, `-diagonal` with `-diagonal`), and every optimization is evaluated against `baseline-MPI-OpenMP` of its own model.
 
 ### Versions
 
-Each model has four versions, eight programs in total: `sequential` (the correctness reference and the serial time), `baseline-MPI-OpenMP` (rows split among the MPI ranks, OpenMP threads inside each rank) and two optimizations of the baseline: `opt1` changes the **computation**, `opt2` the **communication**. Each optimization starts from the baseline of its own model and is compared with it. In the full model, which is compute-bound for large $D$, `opt1` also processes the rows in blocks.
+Each model has four versions, eight programs in total: `baseline-sequential` (the correctness reference and the serial time), `baseline-MPI-OpenMP` (rows split among the MPI ranks, OpenMP threads inside each rank) and two optimizations of `baseline-MPI-OpenMP`: `opt1` changes the **computation**, `opt2` the **communication**. Each optimization starts from `baseline-MPI-OpenMP` of its own model and is compared with it. In the full model, which is compute-bound for large $D$, `opt1` also processes the rows in blocks.
 
 #### Diagonal covariance ([`src/diagonal/`](src/diagonal/))
 
 | Version | What it is |
 |---|---|
-| [`sequential`](src/diagonal/PEMC-baseline-sequential-diagonal.c) | correctness reference and serial time |
+| [`baseline-sequential`](src/diagonal/PEMC-baseline-sequential-diagonal.c) | correctness reference and serial time |
 | [`baseline-MPI-OpenMP`](src/diagonal/PEMC-baseline-MPI-OpenMP-diagonal.c) | hybrid MPI + OpenMP parallelization, two `MPI_Allreduce` per iteration |
-| [`opt1-MPI-OpenMP`](src/diagonal/PEMC-opt1-MPI-OpenMP-diagonal.c) | **computation**: E-step and M-step fused in one pass (no responsibility matrix), one parallel region per iteration, a thread-local buffer per thread (no false sharing); communication as in the baseline |
-| [`opt2-MPI-OpenMP`](src/diagonal/PEMC-opt2-MPI-OpenMP-diagonal.c) | **communication**: ONE `MPI_Allreduce` per iteration instead of two (the log-likelihood travels in the same buffer as the M-step sums); computation identical to the baseline |
+| [`opt1-MPI-OpenMP`](src/diagonal/PEMC-opt1-MPI-OpenMP-diagonal.c) | **computation**: E-step and M-step fused in one pass (no responsibility matrix), one parallel region per iteration, a thread-local buffer per thread (no false sharing); communication as in `baseline-MPI-OpenMP` |
+| [`opt2-MPI-OpenMP`](src/diagonal/PEMC-opt2-MPI-OpenMP-diagonal.c) | **communication**: ONE `MPI_Allreduce` per iteration instead of two (the log-likelihood travels in the same buffer as the M-step sums); computation identical to `baseline-MPI-OpenMP` |
 
 #### Full covariance ([`src/full/`](src/full/))
 
 | Version | What it is |
 |---|---|
-| [`sequential`](src/full/PEMC-baseline-sequential-full.c) | correctness reference and serial time |
+| [`baseline-sequential`](src/full/PEMC-baseline-sequential-full.c) | correctness reference and serial time |
 | [`baseline-MPI-OpenMP`](src/full/PEMC-baseline-MPI-OpenMP-full.c) | hybrid MPI + OpenMP parallelization (Cholesky), two `MPI_Allreduce` per iteration |
-| [`opt1-MPI-OpenMP`](src/full/PEMC-opt1-MPI-OpenMP-full.c) | **computation**: as the diagonal `opt1` (fused pass, one parallel region per iteration with the K Cholesky factorizations split among the threads, no false sharing), plus blocks of B rows (`-b`, default 64) with the forward substitution in SIMD over 8 rows at a time (Kwedlo 2023); communication as in the baseline |
-| [`opt2-MPI-OpenMP`](src/full/PEMC-opt2-MPI-OpenMP-full.c) | **communication** (same idea as the diagonal `opt2`): ONE `MPI_Allreduce` per iteration instead of two (the log-likelihood in the same buffer as the sums) and `sxx` sent as its lower triangle only (K·D(D+1)/2 values instead of K·D²); computation identical to the full baseline |
+| [`opt1-MPI-OpenMP`](src/full/PEMC-opt1-MPI-OpenMP-full.c) | **computation**: as the diagonal `opt1` (fused pass, one parallel region per iteration with the K Cholesky factorizations split among the threads, no false sharing), plus blocks of B rows (`-b`, default 64) with the forward substitution in SIMD over 8 rows at a time (Kwedlo 2023); communication as in `baseline-MPI-OpenMP` |
+| [`opt2-MPI-OpenMP`](src/full/PEMC-opt2-MPI-OpenMP-full.c) | **communication** (same idea as the diagonal `opt2`): ONE `MPI_Allreduce` per iteration instead of two (the log-likelihood in the same buffer as the sums) and `sxx` sent as its lower triangle only (K·D(D+1)/2 values instead of K·D²); computation identical to `baseline-MPI-OpenMP` full |
 
 With the same dataset and options, all the versions of a model reach the same number of iterations and the same log-likelihood (relative difference below 1e-8).
 
@@ -122,7 +122,7 @@ Three profiles generated from a known Gaussian mixture (true labels available, d
 
 ### Sweep datasets
 
-The sweeps check in practice the cost of an iteration, $O(NKD)$ for the diagonal model and $O(NKD^2)$ for the full model, by changing **one parameter at a time** with $N = 250\,000$ and the layout fixed (1 node, 1 rank × 8 threads, `pack:excl`; the sequential versions on 1 core). All eight versions are run. On a log-log plot the expected slope is 1 in $K$ for both models, and 1 (diagonal) or 2 (full) in $D$. Only time is measured, not memory.
+The sweeps check in practice the cost of an iteration, $O(NKD)$ for the diagonal model and $O(NKD^2)$ for the full model, by changing **one parameter at a time** with $N = 250\,000$ and the layout fixed (1 node, 1 rank × 8 threads, `pack:excl`; `baseline-sequential` on 1 core). All eight versions are run. On a log-log plot the expected slope is 1 in $K$ for both models, and 1 (diagonal) or 2 (full) in $D$. Only time is measured, not memory.
 
 | Sweep | Dataset | Varies | Fixed |
 |---|---|---|---|
@@ -182,7 +182,7 @@ A small local web page shows how EM works step by step on any dataset of `data/`
 
 ## Plots
 
-Everything is regenerable from the logs. The performance plots P1-P12 (sweeps, speedup, efficiency, strong and weak scaling, placement, ranks vs threads, time breakdown, optimization gain, roofline, load imbalance, speedup vs dataset size) come from the cluster runs; the clustering plots C1-C6 (convergence, choice of K with BIC/AIC, PCA, centroids, cluster sizes, full vs diagonal) come from the sequential runs on a range of K.
+Everything is regenerable from the logs. The performance plots P1-P12 (sweeps, speedup, efficiency, strong and weak scaling, placement, ranks vs threads, time breakdown, optimization gain, roofline, load imbalance, speedup vs dataset size) come from the cluster runs; the clustering plots C1-C6 (convergence, choice of K with BIC/AIC, PCA, centroids, cluster sizes, full vs diagonal) come from the `baseline-sequential` runs on a range of K.
 
 - **Code:** [`src/plots-generate/`](src/plots-generate/) (performance P1-P12, clustering C1-C6)
 - **How to run:** [exec-cluster.md, Phase 5: Plots](doc/exec-cluster.md#phase-5-plots)
@@ -193,17 +193,17 @@ Everything is regenerable from the logs. The performance plots P1-P12 (sweeps, s
 
 Up to 4 nodes (32 cores) of HPC3; only the datasets whose runs all last at least 1 s are used (shorter runs are mostly noise). Full analysis in the [report](doc/latex/Group6-Report.pdf), Sections IV-VI.
 
-- **Correct:** all the parallel versions reach the same iterations and log-likelihood as the sequential one (relative difference < 1e-8 over 9 849 runs).
-- **Opt1 (computation) wins:** speedup over the sequential version on 32 cores 27-29x (diagonal) and about 50x (full); faster than the baseline 1.5-2.1x (diagonal) and up to 8x (full) on 32 cores, 2.3-2.5x (full) on one node of 8 cores; its ranks stay balanced. The one-node gain of the blocked full model agrees with Kwedlo 2023 (1.75-2.75x on 24 cores).
+- **Correct:** all the parallel versions reach the same iterations and log-likelihood as `baseline-sequential` (relative difference < 1e-8 over 9 849 runs).
+- **Opt1 (computation) wins:** speedup over `baseline-sequential` on 32 cores 27-29x (diagonal) and about 50x (full); faster than `baseline-MPI-OpenMP` 1.5-2.1x (diagonal) and up to 8x (full) on 32 cores, 2.3-2.5x (full) on one node of 8 cores; its ranks stay balanced. The one-node gain of the blocked full model agrees with Kwedlo 2023 (1.75-2.75x on 24 cores).
 - **Opt2 (communication) works but barely matters:** the cost of the collectives drops from 0.6 to 0.08 ms (diagonal) and from 6.5 to 0.5 ms (full) per iteration, at most 2% of an iteration.
-- **The bottleneck is the computation and its balance:** in the baseline and opt2 almost all the MPI time is waiting for the slowest rank (up to 19% imbalance); it depends on the code, not on the memory of the nodes ([results/tables/node-memory.md](results/tables/node-memory.md)).
-- **Size decides:** the public medical tables are too small (runs of milliseconds, the sequential version is enough); the parallel versions pay off from 1-2 million rows (synthetic data, `brainweb` MRI).
-- **Figures:** speedup [diagonal](results/plots/performance/P2-speedup-diagonal.pdf) / [full](results/plots/performance/P2-speedup-full.pdf), gain over the baseline [diagonal](results/plots/performance/P9-opt-gain-diagonal.pdf) / [full](results/plots/performance/P9-opt-gain-full.pdf); all the others in [`results/plots/`](results/plots/).
+- **The bottleneck is the computation and its balance:** in `baseline-MPI-OpenMP` and opt2 almost all the MPI time is waiting for the slowest rank (up to 19% imbalance); it depends on the code, not on the memory of the nodes ([results/tables/node-memory.md](results/tables/node-memory.md)).
+- **Size decides:** the public medical tables are too small (runs of milliseconds, `baseline-sequential` is enough); the parallel versions pay off from 1-2 million rows (synthetic data, `brainweb` MRI).
+- **Figures:** speedup [diagonal](results/plots/performance/P2-speedup-diagonal.pdf) / [full](results/plots/performance/P2-speedup-full.pdf), gain over `baseline-MPI-OpenMP` [diagonal](results/plots/performance/P9-opt-gain-diagonal.pdf) / [full](results/plots/performance/P9-opt-gain-full.pdf); all the others in [`results/plots/`](results/plots/).
 
 ### Future work
 
 - Combine opt1 and opt2 in one program.
-- Find the cause of the imbalance of the baseline computation (aligned per-thread buffers, fixed CPU frequency) and try other ranks x threads splits on several nodes.
+- Find the cause of the imbalance of the computation of `baseline-MPI-OpenMP` (aligned per-thread buffers, fixed CPU frequency) and try other ranks x threads splits on several nodes.
 - A script that reads a dataset (size, correlations, memory needed) and picks diagonal or full covariance (confirmed with the BIC on a sample) and the right version and layout.
 - Lift the memory limit of the full model for large D (shared sums, covariances split among the ranks); distribute the rows by the measured speed of every rank.
 - Move the blocked full-model computation to GPUs; scale to more nodes and larger real data (full MRI volumes).

@@ -4,7 +4,7 @@ plots-cluster.py
 
 Clustering plots of the report (catalog C1-C6 of doc/plots.md) and the
 summary table. The clustering result is the same in every version (the final log-likelihood is
-checked), so everything here comes from the SEQUENTIAL BASELINE, diagonal and full.
+checked), so everything here comes from baseline-sequential (bin/PEMC-baseline-sequential-<model>), diagonal and full.
 
 Usage (from the root of the repository):
     qsub src/script/pemc-cluster.sh                     # 1. the runs, on the cluster (see that file)
@@ -32,7 +32,7 @@ Plots (diagonal and full in the SAME figure, colors in MODEL_COLOR; only C4 has 
 Every figure: bold title in plain words, one legend above the panels, dataset name on every panel.
 Real and synthetic datasets: two blocks, the REAL ones on top and the SYNTHETIC ones below, each
 with its own header (C1, C2, C3, C5: two datasets per block; C4: one real, one synthetic).
-Table: results/tables/clustering-summary.csv (N, D, K, loglik, BIC, AIC, iterations, ARI).
+Table: results/tables/clustering-summary.csv (version, N, D, K, loglik, BIC, AIC, iterations, ARI).
 
 Number of free parameters (for BIC = -2 loglik + p ln N, AIC = -2 loglik + 2 p):
     diagonal  (K - 1) + K D + K D            weights, means, variances
@@ -740,7 +740,7 @@ def summary_table(ctx):
             g = ctx.logs[(ctx.logs.dataset == ds) & (ctx.logs.model == model) & (ctx.logs.K == K)]
             if len(g):
                 r = g.iloc[0]
-                rows.append(dict(dataset=ds, model=model, N=int(r.N), D=int(r.D), K=int(r.K),
+                rows.append(dict(dataset=ds, model=model, version=r.version.rsplit("-", 1)[0], N=int(r.N), D=int(r.D), K=int(r.K),
                                  loglik=r.loglik, BIC=r.bic, AIC=r.aic,
                                  iterations=int(r.iterations), converged=int(r.converged), ARI=r.ari))
     need(rows, "no run at the true K")

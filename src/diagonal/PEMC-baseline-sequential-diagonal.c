@@ -1,7 +1,7 @@
 /*
  * PEMC-baseline-sequential-diagonal.c
  *
- * Sequential EM for a mixture of Gaussians with DIAGONAL covariance.
+ * baseline-sequential: sequential EM for a mixture of Gaussians with DIAGONAL covariance.
  * It is the CORRECTNESS REFERENCE (all the other versions must reach the same final
  * log-likelihood starting from the same initialization) and the SERIAL TIME used to compute
  * speedup and efficiency.
@@ -504,7 +504,7 @@ int main(int argc, char **argv)
     memset(&st, 0, sizeof st);
     st.version = a.name;
     st.dataset = a.dataset;
-    st.ranks = 1;   /* sequential version: one process, one thread */
+    st.ranks = 1;   /* baseline-sequential: one process, one thread */
     st.threads = 1;
     st.N = N;
     st.D = D;
@@ -524,7 +524,7 @@ int main(int argc, char **argv)
     /* Analytic work for the roofline (P10): E-step runs iterations + 1 times per restart */
     st.flops = pem_flops(PEM_DIAGONAL, N, D, K, total_iterations + a.restarts, total_iterations);
     st.bytes = pem_bytes(0, N, D, K, total_iterations + a.restarts, total_iterations);
-    st.t_comm = 0.0; /* no communication in the sequential version */
+    st.t_comm = 0.0; /* no communication in baseline-sequential */
 
     if (a.log_path != NULL && log_run(a.log_path, &st) != 0)
         fprintf(stderr, "warning: the log line was not written\n");

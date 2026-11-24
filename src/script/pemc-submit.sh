@@ -1,8 +1,8 @@
 #!/bin/bash
-# Submits to PBS the experiments of the 4 versions: baseline-sequential and baseline-MPI-OpenMP,
+# Submits to PBS the experiments of the 4 versions: baseline-sequential, baseline-MPI-OpenMP, opt1-MPI-OpenMP, opt2-MPI-OpenMP,
 # diagonal and full. Run from the root of the repository, after "make all mpi-omp":
 #   src/script/pemc-submit.sh [sequential | parallel | all]        (default: all)
-#   src/script/pemc-submit.sh MODEL [STAGE]    MODEL = diagonal | full, STAGE = sequential | baseline | opt1 | opt2.
+#   src/script/pemc-submit.sh MODEL [STAGE]    MODEL = diagonal | full, STAGE = sequential (baseline-sequential) | baseline (baseline-MPI-OpenMP) | opt1 | opt2.
 #                                           With a STAGE: only that version of that model, on ALL the datasets
 #                                           (one stage at a time keeps the number of jobs under the per-user
 #                                           limit of the queue). Without STAGE: every written stage of the model.

@@ -5,7 +5,7 @@
  * common.h
  *
  * Numerical constants and utility macros shared by all the versions of the program
- * (sequential, MPI + OpenMP baseline, optimizations).
+ * (baseline-sequential, baseline-MPI-OpenMP, opt1, opt2).
  *
  * The constants below are "numerical safeguards": they prevent EM from producing infinity (inf)
  * or "not a number" (NaN) in edge cases. They are defined in a single place because ALL the

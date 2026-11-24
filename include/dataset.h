@@ -25,7 +25,7 @@
  * Only a block of rows [first_row, first_row + n_rows) can be loaded. In the MPI version every
  * rank will read only its own rows (rank r reads rows r*N0 to (r+1)*N0 - 1, where N0 = rows
  * per rank), so no process keeps the whole dataset in memory.
- * The functions of this file do not use MPI, so the sequential version uses them too.
+ * The functions of this file do not use MPI, so baseline-sequential uses them too.
  */
 
 #include <stddef.h>

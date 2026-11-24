@@ -10,14 +10,14 @@ Bash scripts for the HPC3 cluster (PBS queue `shortCPUQ`), in two groups: the on
 
 ## 1. Experiments
 
-Performance runs (sequential, baseline, opt1, opt2, sweeps) and clustering runs. They need the binaries: `make all mpi-omp` first.
+Performance runs (`baseline-sequential`, `baseline-MPI-OpenMP`, opt1, opt2, sweeps) and clustering runs. They need the binaries: `make all mpi-omp` first.
 
 | Script | What it does | Run by |
 |---|---|---|
 | [`pemc-submit.sh`](../src/script/pemc-submit.sh) | submits the PBS jobs: one job per version × layout | you |
 | [`pemc-job.sh`](../src/script/pemc-job.sh) | body of one job: runs one version on all the datasets with one layout | `qsub`, called by `pemc-submit.sh` |
 | [`mpi_wrapper.sh`](../src/script/mpi_wrapper.sh) | forces UCX (OpenMPI transport) onto the cluster Ethernet interface, then starts the binary | `mpiexec`, on every rank |
-| [`pemc-cluster.sh`](../src/script/pemc-cluster.sh) | sequential runs over a range of K for the clustering plots C1-C6, in parallel on 24 cores of one node | you, with `qsub` |
+| [`pemc-cluster.sh`](../src/script/pemc-cluster.sh) | `baseline-sequential` runs over a range of K for the clustering plots C1-C6, in parallel on 24 cores of one node | you, with `qsub` |
 
 Chain of a parallel run:
 
@@ -28,13 +28,13 @@ pemc-submit.sh ──qsub──> pemc-job.sh ──mpiexec──> mpi_wrapper.sh
 ### `pemc-submit.sh`
 
 ```bash
-src/script/pemc-submit.sh <diagonal|full> [sequential|baseline|opt1|opt2]   # one model, one stage (or all written stages)
-src/script/pemc-submit.sh [sequential|parallel|all]                        # baselines of both models
+src/script/pemc-submit.sh <diagonal|full> [sequential|baseline|opt1|opt2]   # one model, one stage (or all written stages); sequential = baseline-sequential, baseline = baseline-MPI-OpenMP
+src/script/pemc-submit.sh [sequential|parallel|all]                        # baseline-sequential and/or baseline-MPI-OpenMP of both models
 src/script/pemc-submit.sh sweep                                            # K and D sweeps for plot P1
 ```
 
 - **Layouts** (`CONFIGS`, `NODES:RANKS_PER_NODE:THREADS`): `1:1:8 1:2:4 1:4:2 1:8:1` (one node, 8 cores) and `2:2:4 4:2:4` (16 and 32 cores).
-- **Placements** (`PLACES`): `pack`, `scatter`, `pack:excl`, `scatter:excl`. With 1 node only `pack` and `pack:excl` are submitted. The sequential version always runs on 1 core with `pack:excl`.
+- **Placements** (`PLACES`): `pack`, `scatter`, `pack:excl`, `scatter:excl`. With 1 node only `pack` and `pack:excl` are submitted. The `baseline-sequential` always runs on 1 core with `pack:excl`.
 - **Same CPU for every job:** `NODE_FILTER=cpu_type=Xeon6252N` in the `select`, so the times can be compared.
 - **Only written versions** (`WRITTEN` list): a new version must be added there and to `MPI_BINS` in the makefile.
 - PBS output (`.out`/`.err`) goes to `results/logs/pbs/`.
@@ -58,7 +58,7 @@ Not submitted by hand: it receives the layout from `qsub` and the variables with
 1. **CPU check:** every node must have `REQUIRE_CPU` (default `6252N`), otherwise the job stops **before** writing any log.
 2. **Datasets:** all the real ones + `synth_*_p01..p16`, each with K = number of true classes. With `SWEEP=K` / `SWEEP=D` the list is replaced by the sweep. `gene_rnaseq` is skipped for the full model (does not fit in memory).
 3. **Launch:** MPI versions with `mpiexec --hostfile $PBS_NODEFILE --map-by slot:PE=THREADS --bind-to core` through `mpi_wrapper.sh`; `OMP_PROC_BIND=close`, `OMP_PLACES=cores`.
-4. **Logs:** `results/logs/<model>/<stage>/<version>_<place>_<N>n<R>r<T>t.log` (sequential: `_seq`); sweeps in `results/logs/sweep/`, block sweeps in `results/logs/block/`.
+4. **Logs:** `results/logs/<model>/<stage>/<version>_<place>_<N>n<R>r<T>t.log` (`baseline-sequential`: `_seq`); sweeps in `results/logs/sweep/`, block sweeps in `results/logs/block/`.
 
 ### `mpi_wrapper.sh`
 

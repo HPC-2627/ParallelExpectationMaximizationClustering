@@ -1,6 +1,6 @@
 # Build rules.
 #
-#   make              builds the sequential versions  (bin/PEMC-baseline-sequential-{diagonal,full})
+#   make              builds baseline-sequential  (bin/PEMC-baseline-sequential-{diagonal,full})
 #   make sequential   same as above
 #   make mpi-omp      builds the MPI + OpenMP versions (needs mpicc)
 #   make clean        removes bin/
@@ -30,7 +30,7 @@ vpath %.c src/diagonal src/full
 SEQ_BINS = $(BIN_DIR)/PEMC-baseline-sequential-diagonal \
            $(BIN_DIR)/PEMC-baseline-sequential-full
 
-# MPI + OpenMP versions (baseline, opt1, opt2 of both models).
+# MPI + OpenMP versions (baseline-MPI-OpenMP, opt1, opt2 of both models).
 MPI_BINS = $(BIN_DIR)/PEMC-baseline-MPI-OpenMP-diagonal \
            $(BIN_DIR)/PEMC-opt1-MPI-OpenMP-diagonal \
            $(BIN_DIR)/PEMC-opt2-MPI-OpenMP-diagonal \

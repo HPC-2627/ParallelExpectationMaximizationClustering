@@ -31,7 +31,7 @@
  *   - the parameters (means, variances/covariances, Cholesky factors: K*D or K*D^2 doubles)
  *     are assumed to stay in the cache: their traffic is ignored. For the full model with
  *     large K*D^2 this is optimistic.
- *   - baseline: E-step reads X and WRITES r; M-step reads X and r again  => 2 passes.
+ *   - baseline-MPI-OpenMP: E-step reads X and WRITES r; M-step reads X and r again  => 2 passes.
  *   - fused (an optimization that does E-step and M-step sums in one pass and never stores r):
  *     X is read once per iteration and r is never written.
  *
@@ -47,7 +47,7 @@
 double pem_flops(int model, long N, int D, int K, long n_estep, long n_mstep);
 
 /* Bytes moved from/to the main memory by the whole run (see the convention above).
- * fused = 0 for the baseline (two passes, responsibilities stored), 1 for a fused version. */
+ * fused = 0 for baseline-MPI-OpenMP (two passes, responsibilities stored), 1 for a fused version. */
 double pem_bytes(int fused, long N, int D, int K, long n_estep, long n_mstep);
 
 #endif

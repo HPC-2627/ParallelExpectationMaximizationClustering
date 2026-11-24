@@ -59,6 +59,6 @@ double pem_bytes(int fused, long N, int D, int K, long n_estep, long n_mstep)
     if (fused)
         return (double)n_estep * x_pass; /* a single pass over X, r never stored; the M-step
                                           * sums are made inside the same pass */
-    /* baseline: E-step reads X and writes r, M-step reads X and r */
+    /* baseline-MPI-OpenMP: E-step reads X and writes r, M-step reads X and r */
     return (double)n_estep * (x_pass + r_pass) + (double)n_mstep * (x_pass + r_pass);
 }

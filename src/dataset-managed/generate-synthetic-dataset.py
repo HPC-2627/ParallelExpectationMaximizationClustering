@@ -19,8 +19,8 @@ WHY SYNTHETIC DATA AND WHY THESE THREE PROFILES
   observed. Only brainweb (11.9 M voxels) is large enough, but its N is fixed: for the weak
   scaling N must be able to grow at will, which is possible only with generated data.
 - Generating the data means knowing the TRUTH: the true subgroup of every patient and the true
-  parameters. It is therefore possible to check that all the versions (sequential, baseline,
-  optimizations) give the same result and to measure how well the EM finds the groups.
+  parameters. It is therefore possible to check that all the versions (baseline-sequential,
+  baseline-MPI-OpenMP, opt1, opt2) give the same result and to measure how well the EM finds the groups.
 - The three profiles are chosen to cover different situations (see PROFILES): the "easy" case
   that satisfies the model, the "realistic" case (overlapping and correlated) and the "hard"
   case (rare group, outliers, high D). K and D also change, because the cost of an iteration is

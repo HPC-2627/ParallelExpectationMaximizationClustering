@@ -41,11 +41,11 @@ rule of src/plots-generate/plots-performance.py --min-run)
            relative time = its compute time / mean compute time of the ranks of its run
        1.00 = as fast as the average rank of its run, 1.10 = 10% slower. If the number of memory
        channels mattered, the ranks on nodes with fewer channels would be above 1.
-    2. Runs on one node, 8 cores: the baseline and Optimization 2 have the same computation (only
+    2. Runs on one node, 8 cores: baseline-MPI-OpenMP and Optimization 2 have the same computation (only
        the communication differs), so their compute time per iteration on the same dataset and
        layout can be compared between the nodes that ran them:
            relative time = compute time per iteration / median of the same (model, dataset,
-                           ranks, threads, placement) over the baseline and Optimization 2 jobs
+                           ranks, threads, placement) over baseline-MPI-OpenMP and Optimization 2 jobs
        Every job runs on ONE node and every version ran on a few nodes only: here the node is
        mixed with the version, so this part is only an indication.
 """
@@ -161,7 +161,7 @@ def rank_rows(logs, pbsdir, nodes, keep):
 
 
 def single_node_rows(df, nodes, keep):
-    """Runs on one node, 8 cores, baseline and Optimization 2 (same computation): relative compute
+    """Runs on one node, 8 cores, baseline-MPI-OpenMP and Optimization 2 (same computation): relative compute
     time per iteration of every run (see the docstring)."""
     d = df[(df.nodes == 1) & (df.cores == 8) & df.label.isin(["baseline", "opt2"])].copy()
     d = d[[(m, ds) in keep for m, ds in zip(d.model, d.dataset)]]
@@ -214,7 +214,7 @@ def main():
             "node": n, "group": n.split("-")[1], "RAM (GiB)": f"{hw['ram']:.0f}",
             "channels / socket": hw["channels"], "DIMMs / channel": hw["dimms_per_channel"],
             "multi-node ranks": len(r),
-            "rel. time, baseline/opt2": fmt(r[r.family == "baseline/opt2"].rel.mean()),
+            "rel. time, baseline-MPI-OpenMP/opt2": fmt(r[r.family == "baseline/opt2"].rel.mean()),
             "rel. time, opt1": fmt(r[r.family == "opt1"].rel.mean()),
             "single-node runs": len(s), "rel. time, single node": fmt(s.rel.mean())})
     per_node = pd.DataFrame(per_node)
@@ -256,7 +256,7 @@ fewer channels would be above 1.
 ## 1. Every node
 
 `multi-node ranks`: ranks of the runs on 2 and 4 nodes (`scatter:excl`) that ran on the node.
-`single-node runs`: runs on 8 cores of one node, baseline and Optimization 2 (same computation),
+`single-node runs`: runs on 8 cores of one node, baseline-MPI-OpenMP and Optimization 2 (same computation),
 relative to the median of the same dataset and layout.
 
 {md_table(per_node)}

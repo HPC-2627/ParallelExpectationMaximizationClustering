@@ -4,16 +4,16 @@
  * Hybrid MPI + OpenMP EM for a mixture of Gaussians with DIAGONAL covariance.
  * OPTIMIZATION 2: COMMUNICATION. It starts from PEMC-baseline-MPI-OpenMP-diagonal.c and changes
  * ONLY how the ranks communicate: the computation (E-step and M-step loops, OpenMP parallelization,
- * workspace, stored responsibilities, two passes over the data) is the one of the baseline, line
- * by line. So "opt2 vs baseline" measures the effect of the communication alone (opt1 is a
+ * workspace, stored responsibilities, two passes over the data) is the one of baseline-MPI-OpenMP, line
+ * by line. So "opt2 vs baseline-MPI-OpenMP" measures the effect of the communication alone (opt1 is a
  * separate optimization of the computation and is not included here).
  * It must reach the same final log-likelihood, the same number of iterations and the same ARI as
- * the baseline starting from the same seed.
+ * baseline-MPI-OpenMP starting from the same seed.
  *
  * ========================================================================================
- * WHAT CHANGES WITH RESPECT TO THE BASELINE
+ * WHAT CHANGES WITH RESPECT TO baseline-MPI-OpenMP
  * ========================================================================================
- * Baseline, per iteration: TWO MPI_Allreduce(SUM), i.e. two synchronization points.
+ * baseline-MPI-OpenMP, per iteration: TWO MPI_Allreduce(SUM), i.e. two synchronization points.
  *     E-step (local) -> Allreduce of 1 double (log-likelihood) -> convergence test
  *     M-step (local) -> Allreduce of K + 2*K*D doubles (Nk, sx, sx2)       -> new parameters
  *
@@ -31,25 +31,25 @@
  *       D = 20 264: ~1.6 MB), where the bandwidth dominates and the relative saving is small.
  *       Cost model: Thakur et al. 2005 (doc/papers_and_references.md #T).
  *   (2) WAITING. Every Allreduce is a synchronization point: a rank that finishes early waits for
- *       the slowest one. The baseline waits twice per iteration (after the E-step and after the
+ *       the slowest one. baseline-MPI-OpenMP waits twice per iteration (after the E-step and after the
  *       M-step), opt2 once, after both: the waits of the two phases are not added any more.
  *   The gain is expected where the communication matters: several nodes, many ranks, small
  *   datasets (short iterations). With one rank (or one node and big data) it should be ~1.0x.
  *
  * Why the result does not change:
- *   - the global log-likelihood of iteration t is computed from the SAME parameters as in the
- *     baseline (the ones before the M-step of iteration t), so the convergence test makes the
+ *   - the global log-likelihood of iteration t is computed from the SAME parameters as in
+ *     baseline-MPI-OpenMP (the ones before the M-step of iteration t), so the convergence test makes the
  *     same decision at the same iteration;
  *   - the M-step sums are the same numbers reduced in the same buffer layout, so the new
  *     parameters are the same;
  *   - when the test says "converged", the M-step sums already computed in that iteration are
- *     simply NOT applied: the parameters stay those of the last E-step, as in the baseline.
+ *     simply NOT applied: the parameters stay those of the last E-step, as in baseline-MPI-OpenMP.
  *   Cost of this: on the LAST iteration of a converged run the local M-step sums are computed and
  *   then thrown away (one extra M-step loop per run, out of tens or hundreds of iterations).
  *   That is the price of sending the log-likelihood together with the sums.
  *
  * Everything else (MPI only outside the parallel regions, MPI_THREAD_FUNNELED, rows split in
- * contiguous blocks, parameters replicated, no Bcast) is as in the baseline: read the baseline
+ * contiguous blocks, parameters replicated, no Bcast) is as in baseline-MPI-OpenMP: read baseline-MPI-OpenMP
  * header for the parallel design.
  *
  * ========================================================================================
@@ -58,8 +58,8 @@
  *   t_estep, t_mstep   computation only (the loops, without the MPI calls). t_mstep includes the
  *                      extra M-step loop of the converged iteration (it is real work of opt2)
  *   t_comm             the MPI_Allreduce calls of the iterations, including the waiting for the
- *                      slowest rank (load imbalance), as in the baseline
- *   Barrier only before the global timers (start of read / init / EM), as in the baseline.
+ *                      slowest rank (load imbalance), as in baseline-MPI-OpenMP
+ *   Barrier only before the global timers (start of read / init / EM), as in baseline-MPI-OpenMP.
  *
  * Usage: see args_usage() (or run with -h).  Example:
  *   OMP_NUM_THREADS=4 mpiexec -n 2 bin/PEMC-opt2-MPI-OpenMP-diagonal -d FILE.bin -k 4
@@ -100,7 +100,7 @@ typedef struct
     int logp_stride; /* distance (in doubles) between the slices of two threads: K rounded up to
                         a multiple of 8 doubles = 64 bytes. malloc aligns only to 16 bytes, so a
                         slice can still share a cache line with the slice of its neighbour (false
-                        sharing): kept as in the baseline on purpose, opt2 changes only the
+                        sharing): kept as in baseline-MPI-OpenMP on purpose, opt2 changes only the
                         communication */
     double *acc;     /* K + 2*K*D + 1: the M-step sums AND the log-likelihood, in one contiguous
                         buffer so that a single MPI_Allreduce per iteration is enough (OPT2).
@@ -148,7 +148,7 @@ static double e_step(const Dataset *ds /* in */, const GMMParams *p /* in */,
     const int n = ds->N, D = ds->D, K = p->K;
 
     /* Part 1: terms that depend only on the cluster (K*D operations: every rank repeats them,
-     * it is cheaper than communicating them). See the sequential version for the formula. */
+     * it is cheaper than communicating them). See baseline-sequential for the formula. */
     for (int k = 0; k < K; k++)
     {
         double sum_log_var = 0.0;
@@ -185,7 +185,7 @@ static double e_step(const Dataset *ds /* in */, const GMMParams *p /* in */,
             logp[k] = w->c[k] - 0.5 * s; /* log(pi_k N(x_i | mu_k, var_k)) */
         }
 
-        /* Normalization with log-sum-exp (see the sequential version for why) */
+        /* Normalization with log-sum-exp (see baseline-sequential for why) */
         double lse = log_sum_exp(logp, K);
         ll += lse;
         double *ri = w->r + (size_t)i * K;
@@ -242,7 +242,7 @@ static void m_step_local_sums(const Dataset *ds /* in */, int K /* in */,
  *
  * Every rank runs it on the same data (the result of the Allreduce), so all the ranks obtain
  * the same parameters without communicating them. N_total is the number of rows of ALL the
- * ranks. Returns the number of clusters found empty. Same rules as the sequential version.
+ * ranks. Returns the number of clusters found empty. Same rules as baseline-sequential.
  * ---------------------------------------------------------------------------------------- */
 static int m_step_update(GMMParams *p /* in/out */, const Workspace *w /* in */,
                          long N_total /* in */)
@@ -296,7 +296,7 @@ typedef struct
 } EMResult;
 
 /* E-step + global sum of the log-likelihood (1 double). OPT2: used ONLY after the loop, when the
- * run stops at max_iter (one call per run, as in the baseline); inside the loop the log-likelihood
+ * run stops at max_iter (one call per run, as in baseline-MPI-OpenMP); inside the loop the log-likelihood
  * travels with the M-step sums (see iteration_global). Adds the times to res. */
 static double e_step_global(const Dataset *ds /* in */, const GMMParams *p /* in */,
                             Workspace *w /* in/out */, EMResult *res /* in/out */)
@@ -315,10 +315,10 @@ static double e_step_global(const Dataset *ds /* in */, const GMMParams *p /* in
 }
 
 /* OPT2: one iteration with ONE collective call.
- * E-step and local M-step sums (the same two loops of the baseline), then the local log-likelihood
+ * E-step and local M-step sums (the same two loops of baseline-MPI-OpenMP), then the local log-likelihood
  * is written in the last slot of w->acc and the WHOLE buffer [Nk | sx | sx2 | ll] is summed over
  * the ranks with a single MPI_Allreduce. Returns the GLOBAL log-likelihood of the CURRENT
- * parameters (the same value the baseline gets from its first Allreduce); w->acc then holds the
+ * parameters (the same value baseline-MPI-OpenMP gets from its first Allreduce); w->acc then holds the
  * global M-step sums, ready for m_step_update. Adds the times to res. */
 static double iteration_global(const Dataset *ds /* in */, const GMMParams *p /* in */,
                                Workspace *w /* in/out */, EMResult *res /* in/out */)
@@ -350,7 +350,7 @@ static EMResult run_em(const Dataset *ds /* in */, GMMParams *p /* in/out */,
     memset(&res, 0, sizeof res);
     double ll = -INFINITY, ll_prev = -INFINITY;
 
-    /* Same decisions as the baseline (E-step, convergence test, M-step), but the log-likelihood
+    /* Same decisions as baseline-MPI-OpenMP (E-step, convergence test, M-step), but the log-likelihood
      * and the M-step sums arrive together from ONE Allreduce (OPT2) */
     for (int it = 0; it < a->max_iter; it++)
     {
@@ -365,7 +365,7 @@ static EMResult run_em(const Dataset *ds /* in */, GMMParams *p /* in/out */,
             res.converged = 1;
             break; /* ll is the same on all the ranks: they all leave here. The M-step sums of
                     * this iteration are NOT applied: the parameters stay those of the E-step,
-                    * as in the baseline */
+                    * as in baseline-MPI-OpenMP */
         }
 
         /* M-step: the global sums are already in w->acc, every rank updates the parameters */
@@ -378,7 +378,7 @@ static EMResult run_em(const Dataset *ds /* in */, GMMParams *p /* in/out */,
     }
 
     /* If the loop ended because of max_iter, one more E-step makes ll and the responsibilities
-     * consistent with the final parameters (as in the sequential version) */
+     * consistent with the final parameters (as in baseline-sequential) */
     if (!res.converged)
         ll = e_step_global(ds, p, w, &res);
     res.ll = ll;
@@ -415,7 +415,7 @@ static void warmup_em(const Dataset *ds, GMMParams *p, Workspace *w, int iters, 
 /* ----------------------------------------------------------------------------------------
  * main
  *
- * Phases, in order (as in the sequential version):
+ * Phases, in order (as in baseline-sequential):
  *   0. MPI initialization and reading of the arguments (every rank)
  *   1. every rank reads its block of rows
  *   2. EM (one or more initializations)
@@ -444,7 +444,7 @@ int main(int argc, char **argv)
 
     /* 1. Reading. Everybody reads the header (a few bytes) to know the number of rows; then
      *    every rank loads ITS block. If -n is given, only the first n_rows rows are used
-     *    (as in the sequential version): the blocks split those rows. */
+     *    (as in baseline-sequential): the blocks split those rows. */
     MPI_Barrier(MPI_COMM_WORLD);
     double t_start = MPI_Wtime();
 
@@ -486,7 +486,7 @@ int main(int argc, char **argv)
     CHECK_ALLOC(rows);
     CHECK_ALLOC(best_labels);
 
-    /* 2. EM with one or more initializations (restarts), as in the sequential version */
+    /* 2. EM with one or more initializations (restarts), as in baseline-sequential */
     double t_init_local = 0.0, t_estep = 0.0, t_mstep = 0.0, t_comm = 0.0;
     double t_warmup_local = 0.0; /* seconds of the warm-up pass on this rank, removed from t_total */
     int have_best = 0, total_iterations = 0;
@@ -504,7 +504,7 @@ int main(int argc, char **argv)
     {
         const int warm = (rs < 0);
         const double t_pass0 = MPI_Wtime(); /* start of this pass (used by the warm-up pass) */
-        /* Initialization, identical to the sequential one. Every rank computes the SAME K
+        /* Initialization, identical to baseline-sequential. Every rank computes the SAME K
          * indices (same seed, no communication). The rank that owns a chosen row copies it into
          * rows[], the others leave zeros; the Allreduce(SUM) then gives every rank all the K
          * rows (adding zeros is exact). */
@@ -634,8 +634,8 @@ int main(int argc, char **argv)
         st.t_mstep = t_mstep_max;
         st.t_comm = t_comm_max;
         /* Analytic work for the roofline (P10). The E-step runs iterations + 1 times per restart
-         * (the last one evaluates the log-likelihood). fused = 0: opt2 keeps the two passes of the
-         * baseline and the stored responsibilities. OPT2: the M-step loop runs total_mpasses times
+         * (the last one evaluates the log-likelihood). fused = 0: opt2 keeps the two passes of
+         * baseline-MPI-OpenMP and the stored responsibilities. OPT2: the M-step loop runs total_mpasses times
          * (one extra time in every converged run, see the header). */
         st.flops = pem_flops(PEM_DIAGONAL, N_total, D, K, total_iterations + a.restarts, total_mpasses);
         st.bytes = pem_bytes(0, N_total, D, K, total_iterations + a.restarts, total_mpasses);

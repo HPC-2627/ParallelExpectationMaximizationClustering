@@ -18,7 +18,7 @@ How to run the experiments: [exec-cluster.md](exec-cluster.md). Run everything f
 The page is [src/visual-sequential/index.html](../src/visual-sequential/index.html), served by a small Python server ([src/visual-sequential/server.py](../src/visual-sequential/server.py)) that runs the EM and the C binary:
 
 ```bash
-make                                       # builds the two sequential C binaries (diagonal and full)
+make                                       # builds baseline-sequential (diagonal and full)
 python3 src/visual-sequential/server.py    # then open http://127.0.0.1:8000
 ```
 

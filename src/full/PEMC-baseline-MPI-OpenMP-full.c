@@ -2,19 +2,19 @@
  * PEMC-baseline-MPI-OpenMP-full.c
  *
  * Hybrid MPI + OpenMP EM for a mixture of Gaussians with FULL covariance. It is the PARALLEL
- * BASELINE of the full model: the parallel design (row blocks, replicated parameters, OpenMP
+ * baseline-MPI-OpenMP of the full model: the parallel design (row blocks, replicated parameters, OpenMP
  * loops over the local rows, MPI_Allreduce of the sums) is exactly the one of
  * PEMC-baseline-MPI-OpenMP-diagonal.c, and the model, the formulas and the numerical rules are
  * exactly those of PEMC-baseline-sequential-full.c. Read those two files first: here only what
  * changes because of the covariance is described. It must reach the same final log-likelihood,
- * the same number of iterations and the same ARI as the sequential full version from the same
+ * the same number of iterations and the same ARI as baseline-sequential-full from the same
  * seed (up to rounding). The optimizations of the full model (PEMC-opt1/2-...-full) are
  * compared against this file, so it is deliberately the simple version: it stores the matrix
  * of responsibilities and makes two separate passes (E-step, M-step).
  *
  * WHAT CHANGES COMPARED TO THE DIAGONAL PARALLEL VERSION
  *   Parameters:  the covariances Sigma_k (K*D*D values, replicated on every rank) replace var
- *                (they are kept in the workspace, w->cov, as in the sequential full version).
+ *                (they are kept in the workspace, w->cov, as in baseline-sequential-full).
  *   E-step:      every rank factorizes the K matrices Sigma_k (Cholesky, K*D^3/6 operations:
  *                repeated on every rank, cheaper than communicating the factors); each row then
  *                needs a forward substitution per cluster (D^2/2 operations instead of D).
@@ -41,12 +41,12 @@
  *           threads (ll is a reduction(+); the three sums are an array reduction). MPI is called
  *           only OUTSIDE the parallel regions (MPI_THREAD_FUNNELED is enough).
  *
- * Number of threads: environment variable OMP_NUM_THREADS (same options as the sequential
- * version: see args_usage()).
+ * Number of threads: environment variable OMP_NUM_THREADS (same options as
+ * baseline-sequential: see args_usage()).
  *
- * NOTE ON THE RESULT: the sums are made in a different order than in the sequential version
+ * NOTE ON THE RESULT: the sums are made in a different order than in baseline-sequential
  * (blocks per rank, per thread), and floating-point addition is not associative. The final
- * log-likelihood therefore equals the sequential one up to rounding, not bit by bit.
+ * log-likelihood therefore equals baseline-sequential up to rounding, not bit by bit.
  *
  * ========================================================================================
  * TIMES (reported in the log, maximum over the ranks)
@@ -189,7 +189,7 @@ static double e_step(const Dataset *ds /* in */, const GMMParams *p /* in */,
             logp[k] = w->c[k] - 0.5 * s; /* log(pi_k N(x_i | mu_k, Sigma_k)) */
         }
 
-        /* Normalization with log-sum-exp (see the sequential version for why) */
+        /* Normalization with log-sum-exp (see baseline-sequential for why) */
         double lse = log_sum_exp(logp, K);
         ll += lse;
         double *ri = w->r + (size_t)i * K;
@@ -247,7 +247,7 @@ static void m_step_local_sums(const Dataset *ds /* in */, int K /* in */,
  *
  * Every rank runs it on the same data (the result of the Allreduce), so all the ranks obtain
  * the same parameters without communicating them. N_total is the number of rows of ALL the
- * ranks. Returns the number of clusters found empty. Same rules as the sequential full version
+ * ranks. Returns the number of clusters found empty. Same rules as baseline-sequential-full
  * (VAR_FLOOR added to the diagonal of Sigma_k).
  * ---------------------------------------------------------------------------------------- */
 static int m_step_update(GMMParams *p /* in/out */, Workspace *w /* in/out */,
@@ -333,7 +333,7 @@ static EMResult run_em(const Dataset *ds /* in */, GMMParams *p /* in/out */,
     const int K = p->K;
     const int len = K + K * p->D + K * p->D * p->D;
 
-    /* Same structure as the sequential version: E-step, convergence test, M-step */
+    /* Same structure as baseline-sequential: E-step, convergence test, M-step */
     for (int it = 0; it < a->max_iter; it++)
     {
         ll = e_step_global(ds, p, w, &res);
@@ -366,7 +366,7 @@ static EMResult run_em(const Dataset *ds /* in */, GMMParams *p /* in/out */,
     }
 
     /* If the loop ended because of max_iter, one more E-step makes ll and the responsibilities
-     * consistent with the final parameters (as in the sequential version) */
+     * consistent with the final parameters (as in baseline-sequential) */
     if (!res.converged)
         ll = e_step_global(ds, p, w, &res);
     res.ll = ll;
@@ -406,7 +406,7 @@ static void warmup_em(const Dataset *ds, GMMParams *p, Workspace *w, int iters, 
 /* ----------------------------------------------------------------------------------------
  * main
  *
- * Phases, in order (as in the sequential version):
+ * Phases, in order (as in baseline-sequential):
  *   0. MPI initialization and reading of the arguments (every rank)
  *   1. every rank reads its block of rows
  *   2. EM (one or more initializations)
@@ -435,7 +435,7 @@ int main(int argc, char **argv)
 
     /* 1. Reading. Everybody reads the header (a few bytes) to know the number of rows; then
      *    every rank loads ITS block. If -n is given, only the first n_rows rows are used
-     *    (as in the sequential version): the blocks split those rows. */
+     *    (as in baseline-sequential): the blocks split those rows. */
     MPI_Barrier(MPI_COMM_WORLD);
     double t_start = MPI_Wtime();
 
@@ -477,7 +477,7 @@ int main(int argc, char **argv)
     CHECK_ALLOC(rows);
     CHECK_ALLOC(best_labels);
 
-    /* 2. EM with one or more initializations (restarts), as in the sequential version */
+    /* 2. EM with one or more initializations (restarts), as in baseline-sequential */
     double t_init_local = 0.0, t_estep = 0.0, t_mstep = 0.0, t_comm = 0.0;
     double t_warmup_local = 0.0; /* seconds of the warm-up pass on this rank, removed from t_total */
     int have_best = 0, total_iterations = 0;
@@ -494,7 +494,7 @@ int main(int argc, char **argv)
     {
         const int warm = (rs < 0);
         const double t_pass0 = MPI_Wtime(); /* start of this pass (used by the warm-up pass) */
-        /* Initialization, identical to the sequential one. Every rank computes the SAME K
+        /* Initialization, identical to baseline-sequential. Every rank computes the SAME K
          * indices (same seed, no communication). The rank that owns a chosen row copies it into
          * rows[], the others leave zeros; the Allreduce(SUM) then gives every rank all the K
          * rows (adding zeros is exact). */
@@ -624,7 +624,7 @@ int main(int argc, char **argv)
         st.t_mstep = t_mstep_max;
         st.t_comm = t_comm_max;
         /* Analytic work for the roofline (P10). The E-step runs iterations + 1 times per restart
-         * (the last one evaluates the log-likelihood). fused = 0: the baseline makes two passes
+         * (the last one evaluates the log-likelihood). fused = 0: baseline-MPI-OpenMP makes two passes
          * over the data and stores the responsibilities. An optimization that fuses the passes
          * must pass fused = 1 here. */
         st.flops = pem_flops(PEM_FULL, N_total, D, K, total_iterations + a.restarts, total_iterations);

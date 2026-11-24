@@ -96,7 +96,7 @@ make clean
 make all mpi-omp
 ```
 
-This produces in `bin/` the executables of all the versions: the 2 sequential baselines (diagonal, full) and, for each model, the MPI + OpenMP baseline, `opt1` and `opt2`. `bin/` is not versioned. All the versions use the same flags (`-O3`, no `-march`); `make mpi-omp ARCH=-march=cascadelake` adds architecture flags to all of them, for a separate experiment only.
+This produces in `bin/` the executables of all the versions: `baseline-sequential` (diagonal and full) and, for each model, `baseline-MPI-OpenMP`, `opt1` and `opt2`. `bin/` is not versioned. All the versions use the same flags (`-O3`, no `-march`); `make mpi-omp ARCH=-march=cascadelake` adds architecture flags to all of them, for a separate experiment only.
 
 ---
 
@@ -106,11 +106,11 @@ Submit from the root of the repository. What every script does: [script.md](scri
 
 ### What the scripts guarantee (guidelines for comparable times)
 
-The cluster is **heterogeneous** (several Xeon generations, from 2014 to 2023) and the nodes are shared: without precautions every job lands on a different CPU and the times of baseline, opt1 and sequential cannot be compared. [pemc-submit.sh](../src/script/pemc-submit.sh) and [pemc-job.sh](../src/script/pemc-job.sh) take care of it:
+The cluster is **heterogeneous** (several Xeon generations, from 2014 to 2023) and the nodes are shared: without precautions every job lands on a different CPU and the times of `baseline-MPI-OpenMP`, opt1 and `baseline-sequential` cannot be compared. [pemc-submit.sh](../src/script/pemc-submit.sh) and [pemc-job.sh](../src/script/pemc-job.sh) take care of it:
 
 | Guideline | How | Variable (top of `pemc-submit.sh`) |
 |---|---|---|
-| **Same CPU for every job** (sequential included) | PBS gives only nodes with `cpu_type=Xeon6252N` (87 nodes, the most common type; `pbsnodes -a` lists the others) | `NODE_FILTER` (default `cpu_type=Xeon6252N`, empty = any node) |
+| **Same CPU for every job** (`baseline-sequential` included) | PBS gives only nodes with `cpu_type=Xeon6252N` (87 nodes, the most common type; `pbsnodes -a` lists the others) | `NODE_FILTER` (default `cpu_type=Xeon6252N`, empty = any node) |
 | **No log from a wrong CPU** | at start every job checks the CPU model of all its nodes; if one is different it stops **before** writing any log | `REQUIRE_CPU` (default `6252N`, empty = no check). Must name the same CPU as `NODE_FILTER` |
 | **One core per OpenMP thread** | `mpiexec --map-by slot:PE=THREADS --bind-to core`: every rank gets `THREADS` cores. Without it Open MPI binds each rank to ONE core and all its threads share it (no speedup from the threads) | - |
 | **Multi-node runs on all the nodes** | `--hostfile $PBS_NODEFILE`: Open MPI does not see the other nodes of the job by itself (same as Exercise 10) | - |
@@ -127,7 +127,7 @@ find results/logs -name '*.log' -delete                # old logs (other CPU / o
 rm -f results/logs/pbs/*.out results/logs/pbs/*.err
 git pull                                               # last version of scripts and code
 module load OpenMPI/4.1.5-GCC-12.3.0                   # needed by mpi-omp
-make clean && make all mpi-omp                         # plain "make" builds ONLY the sequential versions:
+make clean && make all mpi-omp                         # plain "make" builds ONLY baseline-sequential:
 ls bin/                                                # the MPI jobs then fail at once (exe not found)
 unset CONFIGS_LIST                                     # no leftover filter from a previous submission
 ```
@@ -149,7 +149,7 @@ Every stage is submitted in **two batches** (`PLACES_LIST`), at most 8 jobs each
 | **A** | `pack`, `scatter` | 8 | they start as soon as some cores are free: these are the runs that give the results |
 | **B** | `pack:excl`, `scatter:excl` | 8 | the nodes are reserved for the job (clean timing), but on a busy cluster they can stay queued for a long time (no Xeon6252N node is ever completely empty) |
 
-The sequential stage is one job, already on a node used only by itself: it is submitted once, in batch A. 
+The `sequential` stage (`baseline-sequential`) is one job, already on a node used only by itself: it is submitted once, in batch A. 
 
 Send **all of batch A first**, check `qstat -u $USER`, then batch B when there is room under the limit.
 
@@ -167,7 +167,7 @@ src/script/pemc-submit.sh full baseline              # 8 jobs
 src/script/pemc-submit.sh full opt1                  # 8 jobs
 src/script/pemc-submit.sh full opt2                  # 8 jobs
 
-# ---- batch B: pack:excl + scatter:excl (no sequential: it is already exclusive) -------------
+# ---- batch B: pack:excl + scatter:excl (no baseline-sequential: it is already exclusive) -------------
 export PLACES_LIST="pack:excl scatter:excl"
 src/script/pemc-submit.sh diagonal baseline          # 8 jobs
 src/script/pemc-submit.sh diagonal opt1              # 8 jobs
@@ -185,7 +185,7 @@ They need the D sweep files made in Phase 2 (`generate-synthetic-dataset.py --sw
 src/script/pemc-submit.sh sweep                       # all 8 versions: 16 jobs (K and D)
 ```
 
-The first campaign swept only the sequential and the baseline versions. The opt1/opt2 sweeps were added later, without re-running the others (the logs are appended: giving a version again would duplicate its runs):
+The first campaign swept only `baseline-sequential` and `baseline-MPI-OpenMP`. The opt1/opt2 sweeps were added later, without re-running the others (the logs are appended: giving a version again would duplicate its runs):
 
 ```bash
 SWEEP_VERSIONS="opt1-MPI-OpenMP-diagonal opt2-MPI-OpenMP-diagonal opt1-MPI-OpenMP-full opt2-MPI-OpenMP-full" \
@@ -196,7 +196,7 @@ src/script/pemc-submit.sh sweep                         # 8 jobs, a few minutes 
 
 `SWEEP_PLACE` changes the placement (default `pack:excl`, the same as the first sweeps; `pack` starts sooner but the new curves would then be on a shared node). P1 draws every version found in `results/logs/sweep/`, no change to the plot script.
 
-After opt2 full was rewritten on the baseline (2026-11-22), only its sweep was run again (2026-11-23, 2 jobs `o2f-swK`, `o2f-swD`, `pack:excl`). The old log was moved away first, because the logs are appended:
+After opt2 full was rewritten on `baseline-MPI-OpenMP` (2026-11-22), only its sweep was run again (2026-11-23, 2 jobs `o2f-swK`, `o2f-swD`, `pack:excl`). The old log was moved away first, because the logs are appended:
 
 ```bash
 mv results/logs/sweep/opt2-MPI-OpenMP-full_pack_excl_1n1r8t.log old-logs/
@@ -220,7 +220,7 @@ All the splits of 1, 2 and 4 cores, as for 8 cores:
 | 2 | `1:1:2`, `1:2:1` |
 | 4 | `1:1:4`, `1:2:2`, `1:4:1` |
 
-One node, so `scatter` = `pack`: 6 layouts = **6 jobs per version**, 36 in all (baseline, opt1, opt2 x 2 models). The logs are new files (`<version>_pack_1n1r1t.log`, ...): nothing is overwritten. The longest jobs are the 1-core ones of the full model: about 2.5-3.5 h on a shared node for all the datasets (the sequential full takes 148 min on an exclusive node): the 6 h walltime is enough.
+One node, so `scatter` = `pack`: 6 layouts = **6 jobs per version**, 36 in all (`baseline-MPI-OpenMP`, opt1, opt2 x 2 models). The logs are new files (`<version>_pack_1n1r1t.log`, ...): nothing is overwritten. The longest jobs are the 1-core ones of the full model: about 2.5-3.5 h on a shared node for all the datasets (`baseline-sequential` full takes 148 min on an exclusive node): the 6 h walltime is enough.
 
 ```bash
 export CONFIGS_LIST="1:1:1 1:1:2 1:2:1 1:1:4 1:2:2 1:4:1"
@@ -241,7 +241,7 @@ unset CONFIGS_LIST PLACES_LIST                       # back to the default layou
 
 Batch A is enough for the plots (`plots-performance.py` uses the placement `pack` by default); batch B only completes the set of placements. After "per-user limit" errors resume the same group with `SKIP=<jobs already submitted>`. When the jobs are done copy `results/logs/diagonal/` and `results/logs/full/` to the laptop and run `plots-performance.py` again: the new core counts are picked up from the logs, no change to the scripts (P7 keeps only the splits of the 8 cores of the node).
 
-One job = one version with one layout, and it runs **all the datasets** (10 real + 15 synthetic; `gene_rnaseq` is skipped with full covariance). The sequential jobs use 1 core on an exclusive node. For the MPI + OpenMP versions the layout is `NODES x RANKS_PER_NODE x THREADS` (`ncpus` per node = `RANKS_PER_NODE x THREADS`, `mpiprocs` = `RANKS_PER_NODE`) and is combined with the 4 PBS placements:
+One job = one version with one layout, and it runs **all the datasets** (10 real + 15 synthetic; `gene_rnaseq` is skipped with full covariance). The `baseline-sequential` jobs use 1 core on an exclusive node. For the MPI + OpenMP versions the layout is `NODES x RANKS_PER_NODE x THREADS` (`ncpus` per node = `RANKS_PER_NODE x THREADS`, `mpiprocs` = `RANKS_PER_NODE`) and is combined with the 4 PBS placements:
 
 | Placement | Meaning |
 |---|---|
@@ -282,7 +282,7 @@ grep -c "^==== run" results/logs/diagonal/*/*.log     # progress: runs written (
 
 If a rank shows only one `B`, the threads share one core: the times are wrong, cancel and check `pemc-job.sh`.
 
-Clustering runs (sequential baseline, K range per dataset, input of plots C1-C6):
+Clustering runs (`baseline-sequential`, K range per dataset, input of plots C1-C6):
 
 ```bash
 rm -rf results/logs/cluster results/clusters   # only before a new launch: the runs are appended, not skipped
@@ -331,7 +331,7 @@ watch -n 30 'qstat -u $USER | tail -n +6; echo; grep -c "^==== run" results/logs
 
 ### Output
 
-- logs: `results/logs/<model>/<stage>/<version>_<placement>_<nodes>n<ranks>r<threads>t.log` (`<version>_seq.log` for the sequential ones), with model = `diagonal` | `full` and stage = `sequential` | `baseline` | `opt1` | `opt2` (folders already in the repository); sweeps in `results/logs/sweep/`; sweep over the block size of `opt1` full (`BLOCK=64 src/script/pemc-submit.sh full opt1`) in `results/logs/block/<version>_<layout>_b<B>.log`; clustering in `results/logs/cluster/` and `results/clusters/`;
+- logs: `results/logs/<model>/<stage>/<version>_<placement>_<nodes>n<ranks>r<threads>t.log` (`<version>_seq.log` for `baseline-sequential`), with model = `diagonal` | `full` and stage = `sequential` | `baseline` | `opt1` | `opt2` (folders already in the repository); sweeps in `results/logs/sweep/`; sweep over the block size of `opt1` full (`BLOCK=64 src/script/pemc-submit.sh full opt1`) in `results/logs/block/<version>_<layout>_b<B>.log`; clustering in `results/logs/cluster/` and `results/clusters/`;
 - standard output/error of the jobs: `results/logs/pbs/<job>.out|.err`.
 
 ---
@@ -374,7 +374,7 @@ python3 src/plots-generate/plots-cluster.py         # C1-C6 -> results/plots/clu
 python3 src/tables/clustering-summary.py            # only the table results/tables/clustering-summary.csv
 ```
 
-Options, catalog and experiment matrix: [plots.md](plots.md).
+Options and catalog of the plots: [plots.md](plots.md).
 
 ---
 
@@ -383,7 +383,7 @@ Options, catalog and experiment matrix: [plots.md](plots.md).
 The PBS jobs ([pemc-job.sh](../src/script/pemc-job.sh)) call the executables in `bin/`; for a quick test they can also be run by hand from the repository root (login node or `qsub -I -l select=1:ncpus=8:mem=4gb:cpu_type=Xeon6252N -l walltime=00:20:00`). Times on the login node are not meaningful.
 
 ```bash
-# sequential
+# baseline-sequential
 ./bin/PEMC-baseline-sequential-diagonal -d data/synthetic/synth_clean/synth_clean_p01.bin -k 4
 
 # MPI + OpenMP: R ranks x T threads, each rank bound to T cores
@@ -409,7 +409,7 @@ Without `--map-by slot:PE=T --bind-to core` all threads of a rank share one core
 | `-w N` | untimed warm-up iterations (3), logged as `t_warmup` |
 | `-b B` | block rows for `opt1` full (64) |
 | `-l FILE` / `--no-log` | log file (`results/logs/<name>.log`) / no log |
-| `--save DIR` | save labels, weights, means, loglik curve (sequential only) |
+| `--save DIR` | save labels, weights, means, loglik curve (`baseline-sequential` only) |
 | `-v` | print loglik every iteration |
 
 **Log** (`.log`): each run appends a `==== run ====` block of `key : value` lines (parse by splitting on the first `:`). Main keys:

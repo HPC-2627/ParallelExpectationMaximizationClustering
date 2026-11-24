@@ -1,7 +1,7 @@
 #!/bin/bash
-# Runs the SEQUENTIAL BASELINE (diagonal and full) on the datasets of the clustering plots C1-C6
+# Runs baseline-sequential (bin/PEMC-baseline-sequential-<model>, diagonal and full) on the datasets of the clustering plots C1-C6
 # and saves what src/plots-generate/plots-cluster.py needs. Run from the root of the repository,
-# after "make" (sequential versions). Works both directly and with qsub (the PBS lines below):
+# after "make" (builds baseline-sequential). Works both directly and with qsub (the PBS lines below):
 #   qsub src/script/pemc-cluster.sh            everything, in parallel on one node, 24 cores (~30-60 min)
 #   src/script/pemc-cluster.sh                 the same, in this shell
 #   ONLY=heart src/script/pemc-cluster.sh      only the datasets whose name contains "heart", in ONE process

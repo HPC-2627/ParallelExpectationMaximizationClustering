@@ -20,7 +20,7 @@
  *   heart_failure_diagonal_k2.loglik.csv   header "iteration,loglik": log-likelihood after
  *                                          every E-step of the BEST run (convergence curve)
  *
- * Only the sequential baseline saves them: the result is the same in every version (the final
+ * Only baseline-sequential saves them: the result is the same in every version (the final
  * log-likelihood is checked), so one version is enough.
  */
 

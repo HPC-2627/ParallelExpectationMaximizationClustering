@@ -4,9 +4,9 @@
 /*
  * mpi-common.h
  *
- * Helpers shared by ALL the MPI + OpenMP versions (diagonal and full, baseline and
- * optimizations). Header-only (static inline) and NOT in src/common/, because src/common/ is
- * also compiled by the sequential versions, which are built without MPI. Include it only from
+ * Helpers shared by ALL the MPI + OpenMP versions (diagonal and full, baseline-MPI-OpenMP,
+ * opt1 and opt2). Header-only (static inline) and NOT in src/common/, because src/common/ is
+ * also compiled by baseline-sequential (diagonal and full), which is built without MPI. Include it only from
  * the MPI versions.
  */
 

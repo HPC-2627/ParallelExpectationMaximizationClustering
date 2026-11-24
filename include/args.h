@@ -6,7 +6,7 @@
  *
  * Command-line arguments, shared by all the versions.
  *
- * Why shared: if every version (sequential, MPI, optimized) accepts EXACTLY the same options,
+ * Why shared: if every version (baseline-sequential, baseline-MPI-OpenMP, opt1, opt2) accepts EXACTLY the same options,
  * the same script (for example a PBS script for the cluster) can launch any version by changing
  * only the name of the executable, and the results are comparable.
  *

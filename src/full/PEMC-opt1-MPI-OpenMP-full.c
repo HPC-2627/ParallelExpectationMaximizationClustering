@@ -4,37 +4,37 @@
  * OPTIMIZATION 1 of the hybrid MPI + OpenMP EM, FULL covariance: ALL THE OPTIMIZATIONS OF THE
  * COMPUTATION. Same model, same formulas and same results as PEMC-baseline-MPI-OpenMP-full.c (read
  * it first); what changes is HOW the work inside a rank is organized: algorithm, loop order and
- * memory access. The communication is the one of the baseline on purpose (two MPI_Allreduce per
+ * memory access. The communication is the one of baseline-MPI-OpenMP on purpose (two MPI_Allreduce per
  * iteration): optimizing it is the subject of Optimization 2 (PEMC-opt2-MPI-OpenMP-full.c).
  * Points (1)-(3) are the same idea as PEMC-opt1-MPI-OpenMP-diagonal.c; point (4), the blocking,
  * exists only in the full model, whose cost per row (O(K*D^2)) makes it compute-bound.
  *
  * ========================================================================================
- * WHAT CHANGES WITH RESPECT TO THE BASELINE
+ * WHAT CHANGES WITH RESPECT TO baseline-MPI-OpenMP
  * ========================================================================================
  * (1) FUSION OF E-STEP AND M-STEP
- *     baseline: E-step loop  : reads X, writes the responsibilities r (n_local*K doubles)
- *               M-step loop  : reads X and r again, accumulates Nk, sum r*x, sum r*x*x^T
- *     opt1    : ONE pass over the rows. The responsibilities of a row (of a block of rows, see (4))
- *               are used immediately to update Nk, sx, sxx while the rows are still in the cache.
- *               The matrix r does not exist any more and X is read ONCE per iteration instead of
- *               twice (pem_bytes(fused = 1)). The labels (argmax of the responsibilities) are stored
- *               during the same pass.
+ *     baseline-MPI-OpenMP: E-step loop  : reads X, writes the responsibilities r (n_local*K doubles)
+ *                          M-step loop  : reads X and r again, accumulates Nk, sum r*x, sum r*x*x^T
+ *     opt1               : ONE pass over the rows. The responsibilities of a row (of a block of rows, see (4))
+ *                          are used immediately to update Nk, sx, sxx while the rows are still in the cache.
+ *                          The matrix r does not exist any more and X is read ONCE per iteration instead of
+ *                          twice (pem_bytes(fused = 1)). The labels (argmax of the responsibilities) are stored
+ *                          during the same pass.
  *
  * (2) ONE PARALLEL REGION PER ITERATION
- *     baseline: two "parallel for" per iteration (E-step, M-step), and the K Cholesky
- *               factorizations (K*D^3/6 multiply-adds) done by the master thread alone while the
- *               other threads wait (a serial part, Amdahl).
- *     opt1    : a single "#pragma omp parallel" with the K factorizations (split among the threads,
- *               one cluster each: they are independent), the loop over the rows (E+M fused) and the
- *               reductions of ll and of the sums. One fork/join per iteration.
+ *     baseline-MPI-OpenMP: two "parallel for" per iteration (E-step, M-step), and the K Cholesky
+ *                          factorizations (K*D^3/6 multiply-adds) done by the master thread alone while the
+ *                          other threads wait (a serial part, Amdahl).
+ *     opt1               : a single "#pragma omp parallel" with the K factorizations (split among the threads,
+ *                          one cluster each: they are independent), the loop over the rows (E+M fused) and the
+ *                          reductions of ll and of the sums. One fork/join per iteration.
  *
  * (3) NO FALSE SHARING ON THE PER-THREAD BUFFERS
- *     baseline: the per-thread buffers are slices of one malloc'ed array, aligned only to 16 bytes:
- *               the slice of a thread can share a 64-byte cache line with the slice of its neighbour,
- *               and every write invalidates the line in the cache of the other.
- *     opt1    : the per-thread buffers are allocated ONCE, aligned to 64 bytes, and every slice is a
- *               multiple of 64 bytes: no cache line is shared by two threads.
+ *     baseline-MPI-OpenMP: the per-thread buffers are slices of one malloc'ed array, aligned only to 16 bytes:
+ *                          the slice of a thread can share a 64-byte cache line with the slice of its neighbour,
+ *                          and every write invalidates the line in the cache of the other.
+ *     opt1               : the per-thread buffers are allocated ONCE, aligned to 64 bytes, and every slice is a
+ *                          multiple of 64 bytes: no cache line is shared by two threads.
  *
  * (4) BLOCKS OF B ROWS, INNER LOOP OVER THE ROWS
  *     With (1)-(3) only, the fused pass reaches ~1.2 FLOP per cycle per core (synth_rare_p16,
@@ -85,21 +85,21 @@
  * ========================================================================================
  * WHY THE RESULT DOES NOT CHANGE
  * ========================================================================================
- *   - Mahalanobis distance: for every row the operations are the SAME as in the baseline and in the
+ *   - Mahalanobis distance: for every row the operations are the SAME as in baseline-MPI-OpenMP and in the
  *     same order (x - mu, the subtractions over b in increasing order, the DIVISION by L[a][a], not
  *     a multiplication by its inverse): the value is bitwise identical;
- *   - responsibilities and labels: same code as the baseline, row by row;
+ *   - responsibilities and labels: same code as baseline-MPI-OpenMP, row by row;
  *   - sums Nk, sx, sxx: the same products (r_ik * x_ia) * x_ib, added in a different order (within
  *     the block, then into the private copy of the thread): differences of rounding only (relative
  *     ~1e-12), as between two layouts of ranks x threads. The number of iterations and the final
- *     log-likelihood are the same as the baseline (|delta ll| / |ll| < 1e-8).
+ *     log-likelihood are the same as baseline-MPI-OpenMP (|delta ll| / |ll| < 1e-8).
  *
  * CONVERGENCE AND THE SUMS OF THE LAST ITERATION
  *   ll must be known (summed over the ranks) BEFORE deciding whether to do the M-step. With the
  *   fusion the local sums are already computed by then. The order is therefore:
  *       fused pass -> Allreduce(ll) -> converged?  yes: stop (sums discarded, no second Allreduce)
  *                                                  no : Allreduce(sums) -> update parameters
- *   The only extra work with respect to the baseline is the accumulation of the sums in the last
+ *   The only extra work with respect to baseline-MPI-OpenMP is the accumulation of the sums in the last
  *   pass (thrown away): one pass out of all those performed.
  *
  * The compiler flags are those of all the other versions (-O3, no -march): SSE2 vectors of 2
@@ -107,7 +107,7 @@
  * "make ARCH=-march=cascadelake" (all the versions) the vectors become wider: separate experiment.
  *
  * TIMES: the fused pass cannot be split in E and M, so it is reported in t_estep (Cholesky
- * included, as in the baseline); t_mstep is only the update of the parameters from the global sums
+ * included, as in baseline-MPI-OpenMP); t_mstep is only the update of the parameters from the global sums
  * (K*D^2 operations); t_comm the MPI_Allreduce calls.
  *
  * Usage: see args_usage() (or run with -h).  Example:
@@ -158,7 +158,7 @@ typedef struct
     double *L;    /* K*D*D: Cholesky factors of Sigma_k (lower triangle used), rebuilt every pass */
     double *c;    /* K: part of the log-density that depends only on the cluster */
     double *acc;  /* K + K*D + K*D*D: the M-step sums, contiguous (one MPI_Allreduce), same layout
-                     as the baseline:
+                     as baseline-MPI-OpenMP:
                        acc[0 .. K-1]              Nk  = sum_i r_ik
                        acc[K .. K+K*D-1]          sx  = sum_i r_ik x_id        (index k*D + d)
                        acc[K+K*D .. end]          sxx = sum_i r_ik x_ia x_ib   (index k*D*D + a*D + b,
@@ -232,7 +232,7 @@ static void Load_block_transposed(const double *restrict X /* in  */, int nb /* 
 
 /* Forward substitution L z = x - mu of vl <= TILE rows together (rows i0 .. i0+vl-1 of the
  * block), and squared Mahalanobis distance s[v] = |z|^2 of each. For every row the operations
- * are those of the baseline, in the same order; the loops over v are the vl INDEPENDENT rows, which go
+ * are those of baseline-MPI-OpenMP, in the same order; the loops over v are the vl INDEPENDENT rows, which go
  * in SIMD registers (4 SSE2 registers with the default flags, one with AVX-512). "static inline" with vl = TILE constant at the call: the compiler
  * specializes the full tiles (fixed length 8) and keeps a generic copy for the last one. */
 static inline void Solve_tile(const double *restrict Xt /* in  */, const double *restrict mu /* in */,
@@ -261,7 +261,7 @@ static inline void Solve_tile(const double *restrict Xt /* in  */, const double 
         const double d = La[a];
         for (int v = 0; v < vl; v++)
         {
-            t[v] /= d; /* division as in the baseline (not * 1/d): same rounding */
+            t[v] /= d; /* division as in baseline-MPI-OpenMP (not * 1/d): same rounding */
             za[v] = t[v];
             s[v] += t[v] * t[v];
         }
@@ -288,7 +288,7 @@ static void Mahalanobis_block(const double *restrict Xt /* in */, const double *
     }
 }
 
-/* Normalization of every row of the block (same code as the baseline, row by row): log-sum-exp,
+/* Normalization of every row of the block (same code as baseline-MPI-OpenMP, row by row): log-sum-exp,
  * responsibilities r_ik (overwriting LP), label = argmax_k, and the log-likelihood added to *ll.
  * The responsibilities are also written transposed in R[k*B + i] for Accumulate_block. */
 static void Responsibilities_block(double *restrict LP /* in/out */, int nb /* in */, int K /* in */,
@@ -317,7 +317,7 @@ static void Responsibilities_block(double *restrict LP /* in/out */, int nb /* i
  *   Nk += sum_i r_ik      sx_k[a] += sum_i r_ik x_ia      sxx_k[a][b] += sum_i (r_ik x_ia) x_ib
  * Every sum over the rows i is a contiguous SIMD reduction accumulated in a register, and each
  * element of acc is read and written ONCE per block (row by row: once per row). RX is scratch
- * (D*B): RX[a*B + i] = r_ik x_ia, the same product r_ik * x_ia of the baseline. */
+ * (D*B): RX[a*B + i] = r_ik x_ia, the same product r_ik * x_ia of baseline-MPI-OpenMP. */
 static void Accumulate_block(const double *restrict Xt /* in */, const double *restrict R /* in */,
                              int nb /* in */, int K /* in */, int D /* in */, int B /* in */,
                              double *restrict RX /* scratch */, double *restrict acc /* in/out */)
@@ -409,7 +409,7 @@ static double fused_pass(const Dataset *ds /* in */, const GMMParams *p /* in */
 
         /* Cluster terms: the K Cholesky factorizations, one cluster per thread (see (2)).
          * gmm_full_factorize is called on ONE cluster (K = 1) with the pointers moved to cluster k:
-         * same jitter rule, so the same factors as the serial call of the baseline. reduction(max)
+         * same jitter rule, so the same factors as the serial call of baseline-MPI-OpenMP. reduction(max)
          * collects a failure from any thread; the implicit barrier at the end of the "omp for"
          * makes L, c and bad visible to everybody before the main loop. */
 #pragma omp for schedule(static) reduction(max : bad)
@@ -452,7 +452,7 @@ static double fused_pass(const Dataset *ds /* in */, const GMMParams *p /* in */
 }
 
 /* ----------------------------------------------------------------------------------------
- * M-step, part 2: new parameters from the GLOBAL sums in w->acc (same as the baseline)
+ * M-step, part 2: new parameters from the GLOBAL sums in w->acc (same as baseline-MPI-OpenMP)
  *
  * Every rank runs it on the same data (the result of the Allreduce), so all the ranks obtain the
  * same parameters without communicating them. Returns the number of clusters found empty.
@@ -571,7 +571,7 @@ static EMResult run_em(const Dataset *ds /* in */, GMMParams *p /* in/out */,
     }
 
     /* If the loop ended because of max_iter, one more pass makes ll and the labels consistent
-     * with the final parameters (as in the baseline) */
+     * with the final parameters (as in baseline-MPI-OpenMP) */
     if (!res.converged)
         ll = pass_global(ds, p, w, &res);
     res.ll = ll;
@@ -579,7 +579,7 @@ static EMResult run_em(const Dataset *ds /* in */, GMMParams *p /* in/out */,
 }
 
 /* ----------------------------------------------------------------------------------------
- * WARM-UP: throwaway EM iterations (see the baseline for the reason), with the same fused pass
+ * WARM-UP: throwaway EM iterations (see baseline-MPI-OpenMP for the reason), with the same fused pass
  * and the same MPI calls as the real run.
  * ---------------------------------------------------------------------------------------- */
 static void warmup_em(const Dataset *ds /* in */, GMMParams *p /* in/out */,
@@ -600,7 +600,7 @@ static void warmup_em(const Dataset *ds /* in */, GMMParams *p /* in/out */,
 /* ----------------------------------------------------------------------------------------
  * main
  *
- * Phases, in order (as in the sequential version):
+ * Phases, in order (as in baseline-sequential):
  *   0. MPI initialization and reading of the arguments (every rank)
  *   1. every rank reads its block of rows
  *   2. EM (one or more initializations)
@@ -629,7 +629,7 @@ int main(int argc, char **argv)
 
     /* 1. Reading. Everybody reads the header (a few bytes) to know the number of rows; then
      *    every rank loads ITS block. If -n is given, only the first n_rows rows are used
-     *    (as in the sequential version): the blocks split those rows. */
+     *    (as in baseline-sequential): the blocks split those rows. */
     MPI_Barrier(MPI_COMM_WORLD);
     double t_start = MPI_Wtime();
 
@@ -673,7 +673,7 @@ int main(int argc, char **argv)
     CHECK_ALLOC(rows);
     CHECK_ALLOC(best_labels);
 
-    /* 2. EM with one or more initializations (restarts), as in the sequential version */
+    /* 2. EM with one or more initializations (restarts), as in baseline-sequential */
     double t_init_local = 0.0, t_estep = 0.0, t_mstep = 0.0, t_comm = 0.0;
     double t_warmup_local = 0.0; /* seconds of the warm-up pass on this rank, removed from t_total */
     int have_best = 0, total_iterations = 0;
@@ -690,7 +690,7 @@ int main(int argc, char **argv)
     {
         const int warm = (rs < 0);
         const double t_pass0 = MPI_Wtime(); /* start of this pass (used by the warm-up pass) */
-        /* Initialization, identical to the sequential one. Every rank computes the SAME K
+        /* Initialization, identical to baseline-sequential. Every rank computes the SAME K
          * indices (same seed, no communication). The rank that owns a chosen row copies it into
          * rows[], the others leave zeros; the Allreduce(SUM) then gives every rank all the K
          * rows (adding zeros is exact). */
@@ -707,7 +707,7 @@ int main(int argc, char **argv)
         }
         MPI_Allreduce(MPI_IN_PLACE, rows, K * D, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
         gmm_init_from_rows(&p, rows);
-        gmm_full_init_identity(w.cov, K, D); /* Sigma_k = I, as in the baseline */
+        gmm_full_init_identity(w.cov, K, D); /* Sigma_k = I, as in baseline-MPI-OpenMP */
         if (!warm)
             t_init_local += MPI_Wtime() - t0;
 

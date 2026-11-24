@@ -38,11 +38,11 @@
 \citation{sklearn}
 \@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {I-B}0a}Full model: Cholesky factorization.}{6}{paragraph.1.2.0.1}\protected@file@percent }
 \@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {I-B}0b}Cost of one iteration.}{6}{paragraph.1.2.0.2}\protected@file@percent }
-\@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {I-B}0c}Sequential versions.}{6}{paragraph.1.2.0.3}\protected@file@percent }
-\@writefile{loa}{\contentsline {algocf}{\numberline {1}{\ignorespaces Sequential EM, diagonal model}}{7}{algocf.1}\protected@file@percent }
-\newlabel{alg:seq-diag}{{1}{7}{Sequential versions}{algocf.1}{}}
-\@writefile{loa}{\contentsline {algocf}{\numberline {2}{\ignorespaces Sequential EM, full model}}{8}{algocf.2}\protected@file@percent }
-\newlabel{alg:seq-full}{{2}{8}{Sequential versions}{algocf.2}{}}
+\@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {I-B}0c}\texttt  {baseline-\allowbreak  sequential}{}.}{6}{paragraph.1.2.0.3}\protected@file@percent }
+\@writefile{loa}{\contentsline {algocf}{\numberline {1}{\ignorespaces \texttt  {baseline-\allowbreak  sequential}{}, diagonal model}}{7}{algocf.1}\protected@file@percent }
+\newlabel{alg:seq-diag}{{1}{7}{\vseq {}}{algocf.1}{}}
+\@writefile{loa}{\contentsline {algocf}{\numberline {2}{\ignorespaces \texttt  {baseline-\allowbreak  sequential}{}, full model}}{8}{algocf.2}\protected@file@percent }
+\newlabel{alg:seq-full}{{2}{8}{\vseq {}}{algocf.2}{}}
 \citation{sanderson,lee2020,kwedlo}
 \citation{sanderson}
 \citation{byu}
@@ -50,11 +50,11 @@
 \newlabel{sec:design}{{II}{9}{Parallel Design Methodology}{section.2}{}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {II-A}}Foster's Design Strategy}{9}{subsection.2.1}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {II-B}}Communication}{9}{subsection.2.2}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {II-C}}Baseline algorithms}{9}{subsection.2.3}\protected@file@percent }
-\@writefile{loa}{\contentsline {algocf}{\numberline {3}{\ignorespaces Baseline MPI+OpenMP, diagonal model (rank $p$)}}{10}{algocf.3}\protected@file@percent }
-\newlabel{alg:base-diag}{{3}{10}{Baseline algorithms}{algocf.3}{}}
-\@writefile{loa}{\contentsline {algocf}{\numberline {4}{\ignorespaces Baseline MPI+OpenMP, full model (rank $p$)}}{10}{algocf.4}\protected@file@percent }
-\newlabel{alg:base-full}{{4}{10}{Baseline algorithms}{algocf.4}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {II-C}}\texttt  {baseline-\allowbreak  MPI-\allowbreak  OpenMP} algorithms}{9}{subsection.2.3}\protected@file@percent }
+\@writefile{loa}{\contentsline {algocf}{\numberline {3}{\ignorespaces \texttt  {baseline-\allowbreak  MPI-\allowbreak  OpenMP}{}, diagonal model (rank $p$)}}{10}{algocf.3}\protected@file@percent }
+\newlabel{alg:base-diag}{{3}{10}{\texorpdfstring {\vbase }{baseline-MPI-OpenMP} algorithms}{algocf.3}{}}
+\@writefile{loa}{\contentsline {algocf}{\numberline {4}{\ignorespaces \texttt  {baseline-\allowbreak  MPI-\allowbreak  OpenMP}{}, full model (rank $p$)}}{10}{algocf.4}\protected@file@percent }
+\newlabel{alg:base-full}{{4}{10}{\texorpdfstring {\vbase }{baseline-MPI-OpenMP} algorithms}{algocf.4}{}}
 \citation{lee2016}
 \@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {II-D}}Optimization 1, diagonal model: computation}{11}{subsection.2.4}\protected@file@percent }
 \@writefile{loa}{\contentsline {algocf}{\numberline {5}{\ignorespaces Optimization 1 MPI+OpenMP, diagonal model (rank $p$)}}{11}{algocf.5}\protected@file@percent }
@@ -85,14 +85,14 @@
 \newlabel{tab:dep-base-diag}{{II}{18}{Data dependences of \texttt {src/diagonal/PEMC-baseline-MPI-OpenMP-diagonal.c}}{table.caption.7}{}}
 \@writefile{lot}{\contentsline {table}{\numberline {III}{\ignorespaces Data dependences of \texttt  {src/diagonal/PEMC-opt1-MPI-OpenMP-diagonal.c}.}}{18}{table.caption.8}\protected@file@percent }
 \newlabel{tab:dep-opt1-diag}{{III}{18}{Data dependences of \texttt {src/diagonal/PEMC-opt1-MPI-OpenMP-diagonal.c}}{table.caption.8}{}}
-\@writefile{lot}{\contentsline {table}{\numberline {IV}{\ignorespaces Data dependences of \texttt  {src/diagonal/PEMC-opt2-MPI-OpenMP-diagonal.c}. The loops are those of the baseline (Table~\ref {tab:dep-base-diag}); only the reduction between the ranks changes.}}{19}{table.caption.9}\protected@file@percent }
-\newlabel{tab:dep-opt2-diag}{{IV}{19}{Data dependences of \texttt {src/diagonal/PEMC-opt2-MPI-OpenMP-diagonal.c}. The loops are those of the baseline (Table~\ref {tab:dep-base-diag}); only the reduction between the ranks changes}{table.caption.9}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {IV}{\ignorespaces Data dependences of \texttt  {src/diagonal/PEMC-opt2-MPI-OpenMP-diagonal.c}. The loops are those of \texttt  {baseline-\allowbreak  MPI-\allowbreak  OpenMP}{} (Table~\ref {tab:dep-base-diag}); only the reduction between the ranks changes.}}{19}{table.caption.9}\protected@file@percent }
+\newlabel{tab:dep-opt2-diag}{{IV}{19}{Data dependences of \texttt {src/diagonal/PEMC-opt2-MPI-OpenMP-diagonal.c}. The loops are those of \vbase {} (Table~\ref {tab:dep-base-diag}); only the reduction between the ranks changes}{table.caption.9}{}}
 \@writefile{lot}{\contentsline {table}{\numberline {V}{\ignorespaces Data dependences of \texttt  {src/full/PEMC-baseline-MPI-OpenMP-full.c}.}}{19}{table.caption.10}\protected@file@percent }
 \newlabel{tab:dep-base-full}{{V}{19}{Data dependences of \texttt {src/full/PEMC-baseline-MPI-OpenMP-full.c}}{table.caption.10}{}}
 \@writefile{lot}{\contentsline {table}{\numberline {VI}{\ignorespaces Data dependences of \texttt  {src/full/PEMC-opt1-MPI-OpenMP-full.c}.}}{20}{table.caption.11}\protected@file@percent }
 \newlabel{tab:dep-opt1-full}{{VI}{20}{Data dependences of \texttt {src/full/PEMC-opt1-MPI-OpenMP-full.c}}{table.caption.11}{}}
-\@writefile{lot}{\contentsline {table}{\numberline {VII}{\ignorespaces Data dependences of \texttt  {src/full/PEMC-opt2-MPI-OpenMP-full.c}. The loops are those of the baseline (Table~\ref {tab:dep-base-full}); only the reduction between the ranks changes.}}{21}{table.caption.12}\protected@file@percent }
-\newlabel{tab:dep-opt2-full}{{VII}{21}{Data dependences of \texttt {src/full/PEMC-opt2-MPI-OpenMP-full.c}. The loops are those of the baseline (Table~\ref {tab:dep-base-full}); only the reduction between the ranks changes}{table.caption.12}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {VII}{\ignorespaces Data dependences of \texttt  {src/full/PEMC-opt2-MPI-OpenMP-full.c}. The loops are those of \texttt  {baseline-\allowbreak  MPI-\allowbreak  OpenMP}{} (Table~\ref {tab:dep-base-full}); only the reduction between the ranks changes.}}{21}{table.caption.12}\protected@file@percent }
+\newlabel{tab:dep-opt2-full}{{VII}{21}{Data dependences of \texttt {src/full/PEMC-opt2-MPI-OpenMP-full.c}. The loops are those of \vbase {} (Table~\ref {tab:dep-base-full}); only the reduction between the ranks changes}{table.caption.12}{}}
 \@writefile{toc}{\contentsline {section}{\numberline {III}Experimental Setup \& Dataset}{22}{section.3}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {III-A}}Hardware Infrastructure}{22}{subsection.3.1}\protected@file@percent }
 \newlabel{sec:hw}{{\mbox  {III-A}}{22}{Hardware Infrastructure}{subsection.3.1}{}}
@@ -159,22 +159,22 @@
 \newlabel{fig:p10-full}{{8}{35}{Roofline of one node (8 cores), full model}{figure.8}{}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-C}}Strong Scaling: Speedup and Efficiency}{36}{subsection.4.3}\protected@file@percent }
 \@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {IV-C}0a}Diagonal model}{36}{paragraph.4.3.0.1}\protected@file@percent }
-\@writefile{lof}{\contentsline {figure}{\numberline {9}{\ignorespaces Speedup over the sequential version, diagonal model.}}{36}{figure.9}\protected@file@percent }
-\newlabel{fig:p2-diag}{{9}{36}{Speedup over the sequential version, diagonal model}{figure.9}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {9}{\ignorespaces Speedup over \texttt  {baseline-\allowbreak  sequential}{}, diagonal model.}}{36}{figure.9}\protected@file@percent }
+\newlabel{fig:p2-diag}{{9}{36}{Speedup over \vseq {}, diagonal model}{figure.9}{}}
 \@writefile{lof}{\contentsline {figure}{\numberline {10}{\ignorespaces Parallel efficiency (speedup / cores), diagonal model.}}{36}{figure.10}\protected@file@percent }
 \newlabel{fig:p3-diag}{{10}{36}{Parallel efficiency (speedup / cores), diagonal model}{figure.10}{}}
 \@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {IV-C}0b}Full model}{37}{paragraph.4.3.0.2}\protected@file@percent }
-\@writefile{lof}{\contentsline {figure}{\numberline {11}{\ignorespaces Speedup over the sequential version, full model.}}{37}{figure.11}\protected@file@percent }
-\newlabel{fig:p2-full}{{11}{37}{Speedup over the sequential version, full model}{figure.11}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {11}{\ignorespaces Speedup over \texttt  {baseline-\allowbreak  sequential}{}, full model.}}{37}{figure.11}\protected@file@percent }
+\newlabel{fig:p2-full}{{11}{37}{Speedup over \vseq {}, full model}{figure.11}{}}
 \@writefile{lof}{\contentsline {figure}{\numberline {12}{\ignorespaces Parallel efficiency (speedup / cores), full model. Above 1 the optimization also makes the computation faster.}}{37}{figure.12}\protected@file@percent }
 \newlabel{fig:p3-full}{{12}{37}{Parallel efficiency (speedup / cores), full model. Above 1 the optimization also makes the computation faster}{figure.12}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-D}}Gain of the Optimizations over the Baseline}{38}{subsection.4.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-D}}Gain of the Optimizations over \texttt  {baseline-\allowbreak  MPI-\allowbreak  OpenMP}}{38}{subsection.4.4}\protected@file@percent }
 \@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {IV-D}0a}Diagonal model}{38}{paragraph.4.4.0.1}\protected@file@percent }
-\@writefile{lof}{\contentsline {figure}{\numberline {13}{\ignorespaces Time of Optimization~1 and~2 divided by the time of the parallel baseline on 32 cores (below 1 = faster), every long dataset.}}{38}{figure.13}\protected@file@percent }
-\newlabel{fig:p9-diag}{{13}{38}{Time of Optimization~1 and~2 divided by the time of the parallel baseline on 32 cores (below 1 = faster), every long dataset}{figure.13}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {13}{\ignorespaces Time of Optimization~1 and~2 divided by the time of \texttt  {baseline-\allowbreak  MPI-\allowbreak  OpenMP}{} on 32 cores (below 1 = faster), every long dataset.}}{38}{figure.13}\protected@file@percent }
+\newlabel{fig:p9-diag}{{13}{38}{Time of Optimization~1 and~2 divided by the time of \vbase {} on 32 cores (below 1 = faster), every long dataset}{figure.13}{}}
 \@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {IV-D}0b}Full model}{39}{paragraph.4.4.0.2}\protected@file@percent }
-\@writefile{lof}{\contentsline {figure}{\numberline {14}{\ignorespaces Time of Optimization~1 and~2 divided by the time of the parallel baseline on 32 cores (below 1 = faster), every long dataset.}}{39}{figure.14}\protected@file@percent }
-\newlabel{fig:p9-full}{{14}{39}{Time of Optimization~1 and~2 divided by the time of the parallel baseline on 32 cores (below 1 = faster), every long dataset}{figure.14}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {14}{\ignorespaces Time of Optimization~1 and~2 divided by the time of \texttt  {baseline-\allowbreak  MPI-\allowbreak  OpenMP}{} on 32 cores (below 1 = faster), every long dataset.}}{39}{figure.14}\protected@file@percent }
+\newlabel{fig:p9-full}{{14}{39}{Time of Optimization~1 and~2 divided by the time of \vbase {} on 32 cores (below 1 = faster), every long dataset}{figure.14}{}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-E}}Communication vs Computation Breakdown}{40}{subsection.4.5}\protected@file@percent }
 \newlabel{sec:breakdown}{{\mbox  {IV-E}}{40}{Communication vs Computation Breakdown}{subsection.4.5}{}}
 \@writefile{toc}{\contentsline {paragraph}{\numberline {\mbox  {IV-E}0a}Where the time goes}{40}{paragraph.4.5.0.1}\protected@file@percent }

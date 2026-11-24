@@ -5,7 +5,7 @@ clustering-summary.py
 Summary table of the clustering runs (the table of doc/plots.md, section 3, instead of a plot):
 one row per (dataset, model) at K = number of true classes, with N, D, K, final log-likelihood,
 BIC, AIC, iterations, convergence and ARI. The clustering result is the same in every version, so
-the table uses the SEQUENTIAL BASELINE, diagonal and full.
+the table uses baseline-sequential (bin/PEMC-baseline-sequential-<model>), diagonal and full.
 
 Usage (from the root of the repository):
     qsub src/script/pemc-cluster.sh                      # 1. the runs, on the cluster
@@ -87,7 +87,7 @@ def summary(logs):
                 missing.append(f"{ds} {model}")
                 continue
             r = g.iloc[0]
-            rows.append(dict(dataset=ds, model=model, N=int(r.N), D=int(r.D), K=int(r.K),
+            rows.append(dict(dataset=ds, model=model, version=r.version.rsplit("-", 1)[0], N=int(r.N), D=int(r.D), K=int(r.K),
                              loglik=r.loglik, BIC=r.bic, AIC=r.aic,
                              iterations=int(r.iterations), converged=int(r.converged), ARI=r.ari))
     return pd.DataFrame(rows), missing

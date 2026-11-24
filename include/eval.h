@@ -10,7 +10,7 @@
  * true classes are known (synthetic datasets, or labeled real ones) one can measure how closely
  * the groups found reproduce them. These measures serve two purposes:
  *   - evaluating the quality of the result;
- *   - checking that ALL the versions (sequential, parallel, optimized) find the same groups:
+ *   - checking that ALL the versions (baseline-sequential, baseline-MPI-OpenMP, opt1, opt2) find the same groups:
  *     if the ARI changes between two versions, there is an error somewhere.
  * The labels are NEVER used by EM itself.
  *
