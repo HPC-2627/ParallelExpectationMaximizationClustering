@@ -1,5 +1,12 @@
 # ParallelExpectationMaximizationClustering
 
+### Report and presentation
+
+[![Open the report](https://img.shields.io/badge/Open_the-Report_%28PDF%29-red?style=for-the-badge&logo=adobeacrobatreader&logoColor=white)](doc/latex/Group6-Report.pdf)
+[![Open the presentation](https://img.shields.io/badge/Open_the-Presentation-yellow?style=for-the-badge&logo=googleslides&logoColor=white)](https://docs.google.com/presentation/d/1nnzwo61ZBHoQlmlYfGVbIb39rVTOexQlnH01uqBfev0/edit?slide=id.g4dfce81f19_0_45#slide=id.g4dfce81f19_0_45)
+
+---
+
 ### How to run
 
 [![Run on the cluster](https://img.shields.io/badge/Run_on_the-Cluster-blue?style=for-the-badge&logo=gnubash&logoColor=white)](doc/exec-cluster.md)
