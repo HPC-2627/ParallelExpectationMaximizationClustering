@@ -331,8 +331,9 @@ watch -n 30 'qstat -u $USER | tail -n +6; echo; grep -c "^==== run" results/logs
 
 ### Output
 
-- logs: `results/logs/<model>/<stage>/<version>_<placement>_<nodes>n<ranks>r<threads>t.log` (`<version>_seq.log` for `baseline-sequential`), with model = `diagonal` | `full` and stage = `sequential` | `baseline` | `opt1` | `opt2` (folders already in the repository); sweeps in `results/logs/sweep/`; sweep over the block size of `opt1` full (`BLOCK=64 src/script/pemc-submit.sh full opt1`) in `results/logs/block/<version>_<layout>_b<B>.log`; clustering in `results/logs/cluster/` and `results/clusters/`;
-- standard output/error of the jobs: `results/logs/pbs/<job>.out|.err`.
+- logs: `results/logs/<model>/<stage>/<version>_<placement>_<nodes>n<ranks>r<threads>t.log` (`<version>_seq.log` for `baseline-sequential`), with model = `diagonal` | `full` and stage = `sequential` | `baseline` | `opt1` | `opt2` (folders already in the repository); sweeps in `results/logs/sweep/`; sweep over the block size of `opt1` full (`BLOCK=64 src/script/pemc-submit.sh full opt1`; all the measurements use B = 64) in `results/logs/block/<version>_<placement>_<nodes>n<ranks>r<threads>t_b<B>.log`; clustering in `results/logs/cluster/` and `results/clusters/`;
+- standard output/error of the jobs: `results/logs/pbs/<job>.out|.err`;
+- STREAM (roofs of P10): `results/logs/stream/`, see below.
 
 ---
 
@@ -353,6 +354,19 @@ Raw outputs in `results/hwinfo/` (versioned); to copy new ones from the cluster 
 ```bash
 scp -r username@hpc3-login1.unitn.it:ParallelExpectationMaximizationClustering/results/hwinfo results/
 ```
+
+---
+
+## Roofs of the roofline (plot P10)
+
+One exclusive job on a Xeon 6252N node measures the memory bandwidth with STREAM; the peak GFLOP/s are calculated. Details in [script.md, 3](script.md#3-roofs-of-the-roofline).
+
+```bash
+src/script/pemc-stream.sh submit                                                  # login node: downloads stream.c, submits the job
+src/script/pemc-stream.sh summary > results/logs/stream/stream_<node>-summary.txt # when it is done
+```
+
+Run in the repository: `hpc3-c12-n49`, Triad 97.0 GB/s with 8 threads, peak 588.8 GFLOP/s (AVX-512) and 73.6 GFLOP/s (SSE2): the defaults of `plots-performance.py`, so P10 needs no flag.
 
 ---
 

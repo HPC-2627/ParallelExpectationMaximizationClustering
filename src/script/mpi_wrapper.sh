@@ -10,7 +10,7 @@ IFACE=$(ip -4 route get 192.168.108.1 |
 
 # If no interface is found (or it is the loopback "lo") there is no point in continuing
 if [[ -z "$IFACE" || "$IFACE" == "lo" ]]; then
-    echo "ERRORE: there is not ethernet interface on $(hostname)" >&2
+    echo "ERROR: no Ethernet interface found on $(hostname)" >&2
     exit 1
 fi
 

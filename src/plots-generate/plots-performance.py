@@ -970,7 +970,7 @@ def main():
     ap.add_argument("--family", default="synth_overlap",
                     help="synthetic family for the weak scaling P5 [synth_overlap]")
     # Default roofs of P10, for the 8 cores of the 1-node runs on a Xeon Gold 6252N
-    # (src/script/pemc-stream.sh summary, results/logs/stream/):
+    # (src/script/pemc-stream.sh, run on hpc3-c12-n49: results/logs/stream/stream_hpc3-c12-n49-summary.txt):
     #   peak = 8 cores x 2.3 GHz x 32 FLOP/cycle (AVX-512, 2 FMA ports) = 588.8 GFLOP/s
     #   bandwidth = STREAM Triad with 8 threads (OMP_PROC_BIND=close) = 97.0 GB/s
     ap.add_argument("--peak-gflops", type=float, default=588.8,

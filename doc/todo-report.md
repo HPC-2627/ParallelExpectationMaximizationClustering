@@ -21,7 +21,7 @@
 - [X] Read [`doc/exec-visual.md`](../doc/exec-visual.md)
 - [ ] Read [`doc/papers_and_references.md`](../doc/papers_and_references.md)
 - [X] Read [`doc/plots.md`](../doc/plots.md)
-- [ ] Read [`doc/script.md`](../doc/script.md)
+- [X] Read [`doc/script.md`](../doc/script.md)
 - [X] Read [`results/tables/hardware.md`](../results/tables/hardware.md)
 - [X] Read [`results/tables/node-memory.md`](../results/tables/node-memory.md)
 

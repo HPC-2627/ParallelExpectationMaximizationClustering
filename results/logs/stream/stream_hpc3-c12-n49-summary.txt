@@ -14,6 +14,6 @@ threads  bind      Triad GB/s |       SSE2       AVX2    AVX-512
 96       spread         202.2 |      883.2     3532.8     7065.6
 
 P10 (1-node points use 8 cores):
-  machine peak : --peak-bw 97.0 --peak-gflops 588.8
-  as compiled  : --peak-bw 97.0 --peak-gflops 73.6    (SSE2, -O3 without -march)
+  --peak-bw 97.0 --peak-gflops 588.8 --peak-gflops-compiled 73.6
+  (peak-gflops = AVX-512 machine peak, peak-gflops-compiled = SSE2, -O3 without -march)
 

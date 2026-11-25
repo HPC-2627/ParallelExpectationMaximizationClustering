@@ -8,10 +8,12 @@
 #                                       no internet) and submits ONE exclusive job on a Xeon 6252N
 #                                       node (same CPU as all the runs) that compiles and runs it
 #   src/script/pemc-stream.sh summary   bandwidth (Triad) and peak GFLOP/s for every thread count,
-#                                       and the --peak-bw / --peak-gflops to give to the plots
+#                                       and the --peak-bw / --peak-gflops / --peak-gflops-compiled
+#                                       to give to the plots
 #
 # The job body is this same script (qsub runs it with MODE=job).
 # Output: results/logs/stream/stream_<node>.txt (raw STREAM output, one block per thread count).
+# Save the output of summary next to it: src/script/pemc-stream.sh summary > results/logs/stream/stream_<node>-summary.txt
 #
 # What the job measures: STREAM with T OpenMP threads, T in THREADS_LIST, threads bound to cores
 #   - close  : threads packed on consecutive cores (first socket first), like OMP_PROC_BIND=close
@@ -108,6 +110,7 @@ submit)
 summary)
     ls "$OUT"/stream_*.txt >/dev/null 2>&1 || { echo "no output in $OUT (job not done?)" >&2; exit 1; }
     for f in "$OUT"/stream_*.txt; do
+        [[ "$f" == *-summary.txt ]] && continue   # saved output of this command, not a STREAM run
         echo "== $f"
         head -1 "$f"
         printf "%-8s %-7s %12s | %10s %10s %10s\n" threads bind "Triad GB/s" "SSE2" "AVX2" "AVX-512"
@@ -121,8 +124,8 @@ summary)
         bw8=$(awk '/^### threads/ { t = $3; b = $5 } /^Triad:/ && t == 8 && b == "close" { printf "%.1f", $2 / 1000 }' "$f")
         echo
         echo "P10 (1-node points use 8 cores):"
-        echo "  machine peak : --peak-bw $bw8 --peak-gflops $(peak 8 32)"
-        echo "  as compiled  : --peak-bw $bw8 --peak-gflops $(peak 8 4)    (SSE2, -O3 without -march)"
+        echo "  --peak-bw $bw8 --peak-gflops $(peak 8 32) --peak-gflops-compiled $(peak 8 4)"
+        echo "  (peak-gflops = AVX-512 machine peak, peak-gflops-compiled = SSE2, -O3 without -march)"
         echo
     done
     ;;

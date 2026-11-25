@@ -13,8 +13,9 @@
 #
 # Then copy results/hwinfo/ to the laptop (scp -r, see doc/exec-cluster.md).
 #
-# The nodes are the 40 of the list NODES below: all the nodes used by the runs of both team members,
-# taken from their PBS outputs (results/logs/pbs/*.out). NODES_FILE=<file> uses another list.
+# The nodes are read from NODES_FILE [default results/hwinfo/nodes.txt, one node per line]: the 40
+# nodes used by the runs of both team members, taken from their PBS outputs (results/logs/pbs/*.out).
+# If the file is missing or empty it is created from the list NODES below (the same 40 nodes).
 # The raw outputs go to results/hwinfo/ (versioned); the summary is results/tables/hardware.md.
 # A node is "done" when results/hwinfo/<node>.txt contains the line MemTotal (job completed). A node
 # can stay in the queue for a long time if other users' jobs fill it ("Insufficient amount of

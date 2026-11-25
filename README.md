@@ -151,9 +151,9 @@ Public datasets, mostly medical, used for the clustering quality (none has missi
 ## Running the experiments
 
 - **Code:** [`src/diagonal/`](src/diagonal/), [`src/full/`](src/full/), [`src/common/`](src/common/), [`include/`](include/) (shared code)
-- **Scripts:** [`src/script/`](src/script/) (PBS submit + job), explained in [doc/script.md](doc/script.md)
+- **Scripts:** [`src/script/`](src/script/) (PBS submission of the experiments, hardware of the nodes, STREAM for the roofline), explained in [doc/script.md](doc/script.md)
 - **How to run:** [doc/exec-cluster.md](doc/exec-cluster.md) (VPN, build, PBS jobs)
-- **Output:** [`results/logs/`](results/logs/): `diagonal/` and `full/` (one folder per version), `sweep/` (P1), `cluster/` (clustering runs), `pbs/` (PBS stdout/stderr), `stream/` (STREAM bandwidth)
+- **Output:** [`results/logs/`](results/logs/): `diagonal/` and `full/` (one subfolder per stage: `sequential/`, `baseline/`, `opt1/`, `opt2/`), `sweep/` (P1), `cluster/` (clustering runs), `pbs/` (PBS stdout/stderr), `stream/` (STREAM bandwidth)
 
 ### Cluster hardware
 
