@@ -197,7 +197,7 @@ Up to 4 nodes (32 cores) of HPC3; only the datasets whose runs all last at least
 - **Opt1 (computation) wins:** speedup over `baseline-sequential` on 32 cores 27-29x (diagonal) and about 50x (full); faster than `baseline-MPI-OpenMP` 1.5-2.1x (diagonal) and up to 8x (full) on 32 cores, 2.3-2.5x (full) on one node of 8 cores; its ranks stay balanced. The one-node gain of the blocked full model agrees with Kwedlo 2023 (1.75-2.75x on 24 cores).
 - **Opt2 (communication) works but barely matters:** the cost of the collectives drops from 0.6 to 0.08 ms (diagonal) and from 6.5 to 0.5 ms (full) per iteration, at most 2% of an iteration.
 - **The bottleneck is the computation and its balance:** in `baseline-MPI-OpenMP` and opt2 almost all the MPI time is waiting for the slowest rank (up to 19% imbalance); it depends on the code, not on the memory of the nodes ([results/tables/node-memory.md](results/tables/node-memory.md)).
-- **Size decides:** the public medical tables are too small (runs of milliseconds, `baseline-sequential` is enough); the parallel versions pay off from 1-2 million rows (synthetic data, `brainweb` MRI).
+- **Size decides:** the public medical tables are too small (runs of milliseconds, `baseline-sequential` is enough); the parallel versions pay off from 0.5 million rows (full) and 2 million rows (diagonal) (synthetic data, `brainweb` MRI).
 - **Figures:** speedup [diagonal](results/plots/performance/P2-speedup-diagonal.pdf) / [full](results/plots/performance/P2-speedup-full.pdf), gain over `baseline-MPI-OpenMP` [diagonal](results/plots/performance/P9-opt-gain-diagonal.pdf) / [full](results/plots/performance/P9-opt-gain-full.pdf); all the others in [`results/plots/`](results/plots/).
 
 ### Future work
