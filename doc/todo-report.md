@@ -19,7 +19,7 @@
 - [X] Read [`doc/em-explained.md`](../doc/em-explained.md)
 - [ ] Read [`doc/exec-cluster.md`](../doc/exec-cluster.md)
 - [X] Read [`doc/exec-visual.md`](../doc/exec-visual.md)
-- [ ] Read [`doc/papers_and_references.md`](../doc/papers_and_references.md)
+- [X] Read [`doc/papers_and_references.md`](../doc/papers_and_references.md)
 - [X] Read [`doc/plots.md`](../doc/plots.md)
 - [X] Read [`doc/script.md`](../doc/script.md)
 - [X] Read [`results/tables/hardware.md`](../results/tables/hardware.md)
