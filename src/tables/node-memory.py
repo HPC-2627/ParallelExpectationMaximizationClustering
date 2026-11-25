@@ -2,27 +2,25 @@
 """
 node-memory.py
 
-Does the memory configuration of a node change the times? Table of all the nodes used by the
-experiments (RAM, populated memory channels, DIMMs per channel) next to how fast the MPI ranks
-that ran on them were, written to results/tables/node-memory.md. The report (Hardware
-Infrastructure, and the Discussion on the load imbalance) links this table.
+Do the memory channels of a node change the run times? Short answer, with the numbers, written to
+results/tables/node-memory.md. The report (Hardware Infrastructure, Discussion on the imbalance
+between the ranks, Limits) links it.
 
 Usage (from the root of the repository):
     src/script/pemc-hwinfo.sh submit / summary     # 1. hardware of every node, on the cluster
     scp -r ...:ParallelExpectationMaximizationClustering/results/hwinfo results/   # 2. copy it
-    python3 src/tables/node-memory.py               # 3. the table
+    python3 src/tables/node-memory.py               # 3. the file
     python3 src/tables/node-memory.py --print       #    and also print it
 
 Input
     results/hwinfo/<node>.txt       one file per node, written by src/script/pemc-hwprobe.sh: the
                                     lines "MemTotal: ..." and "DIMM: <label> <size> <type>"
-                                    (versioned; new nodes: copy them from the cluster)
     results/logs/pbs/*-scx-*.err    stderr of the multi-node jobs (scatter:excl): Open MPI writes
                                     "[<node>:<pid>] MCW rank <r> bound to ..." for every rank of
-                                    every run (option --report-bindings of src/script/pemc-job.sh),
+                                    every run (--report-bindings in src/script/pemc-job.sh),
                                     i.e. on which node every rank ran
     results/logs/<model>/<stage>/*.log   the runs (format: include/logger.h); "rank_compute" =
-                                    compute seconds of every rank, "hostname" = node of the run
+                                    compute seconds of every rank
 Output
     results/tables/node-memory.md
 
@@ -31,23 +29,20 @@ How the memory channels are found (6 channels per socket on these CPUs, Xeon Gol
     c10/c11 nodes: label PROC_<socket>_DIMM_<slot>, slots 1..12, two slots per channel
                                                                   -> channel = (slot + 1) // 2
     populated channels of a socket = number of distinct channels with at least one DIMM. The ranks
-    of every run are bound to socket 0 (see the MCW lines), so the table uses socket 0 (on these
-    nodes all the sockets have the same configuration anyway).
+    of every run are bound to socket 0 (see the MCW lines), so socket 0 is used (on these nodes
+    all the sockets have the same configuration anyway).
 
-What is compared (only the "long" datasets of the report, whose runs all last >= 1 s, the same
-rule of src/plots-generate/plots-performance.py --min-run)
-    1. Runs on several nodes (scatter:excl, 16 and 32 cores): the ranks of ONE run execute the same
-       code on the same amount of data, but on different nodes. For every rank:
-           relative time = its compute time / mean compute time of the ranks of its run
-       1.00 = as fast as the average rank of its run, 1.10 = 10% slower. If the number of memory
-       channels mattered, the ranks on nodes with fewer channels would be above 1.
-    2. Runs on one node, 8 cores: baseline-MPI-OpenMP and Optimization 2 have the same computation (only
-       the communication differs), so their compute time per iteration on the same dataset and
-       layout can be compared between the nodes that ran them:
-           relative time = compute time per iteration / median of the same (model, dataset,
-                           ranks, threads, placement) over baseline-MPI-OpenMP and Optimization 2 jobs
-       Every job runs on ONE node and every version ran on a few nodes only: here the node is
-       mixed with the version, so this part is only an indication.
+What is measured
+    Runs on 2 and 4 nodes (scatter:excl): the ranks of ONE run execute the same code on the same
+    amount of data, but on different nodes. For every rank:
+        relative time = its compute time / mean compute time of the ranks of its run
+    1.00 = as fast as the average rank of its run, 1.10 = 10% slower. If the number of memory
+    channels mattered, the ranks on nodes with fewer channels would be above 1.
+    Only the datasets whose runs all last >= 1 s (same rule as src/plots-generate/plots-performance.py
+    --min-run); the same check is repeated with the thresholds of THRESHOLDS to show that the
+    answer does not depend on it.
+    The runs on one node are not used: every job runs on one node and every version ran on a few
+    nodes only, so the node cannot be separated from the version.
 """
 
 import argparse
@@ -160,33 +155,12 @@ def rank_rows(logs, pbsdir, nodes, keep):
     return rows
 
 
-def single_node_rows(df, nodes, keep):
-    """Runs on one node, 8 cores, baseline-MPI-OpenMP and Optimization 2 (same computation): relative compute
-    time per iteration of every run (see the docstring)."""
-    d = df[(df.nodes == 1) & (df.cores == 8) & df.label.isin(["baseline", "opt2"])].copy()
-    d = d[[(m, ds) in keep for m, ds in zip(d.model, d.dataset)]]
-    d["node"] = d.hostname.str.replace(".unitn.it", "", regex=False)
-    d["channels"] = d.node.map(lambda n: nodes.get(n, {}).get("channels")).astype("Int64")
-    d["t"] = (d.t_estep + d.t_mstep) / d.iterations
-    key = ["model", "dataset", "ranks", "threads", "placement"]
-    d["rel"] = d.t / d.groupby(key).t.transform("median")
-    return d
 
 
 # ---------------------------------------------------------------------------------------------
-# Markdown
+# Text
 # ---------------------------------------------------------------------------------------------
-def md_table(df):
-    """DataFrame -> markdown table (no extra dependency)."""
-    cols = list(df.columns)
-    out = ["| " + " | ".join(cols) + " |", "|" + "---|" * len(cols)]
-    for _, r in df.iterrows():
-        out.append("| " + " | ".join("" if pd.isna(v) else str(v) for v in r) + " |")
-    return "\n".join(out)
-
-
-def fmt(x, nd=3):
-    return "" if pd.isna(x) else f"{x:.{nd}f}"
+BASE = "baseline-MPI-OpenMP"
 
 
 def main():
@@ -194,93 +168,90 @@ def main():
     ap.add_argument("--hwinfo", type=Path, default=ROOT / "results/hwinfo")
     ap.add_argument("--logs", type=Path, default=ROOT / "results/logs")
     ap.add_argument("--out", type=Path, default=ROOT / "results/tables/node-memory.md")
-    ap.add_argument("--print", action="store_true", help="also print the table")
+    ap.add_argument("--print", action="store_true", help="also print the file")
     args = ap.parse_args()
 
     nodes = read_nodes(args.hwinfo)
     if not nodes:
         raise SystemExit(f"no node in {args.hwinfo}: copy results/hwinfo/ from the cluster")
     df, keep = long_datasets(args.logs)
+    n_datasets = df[["model", "dataset"]].drop_duplicates().shape[0]
     ranks = rank_rows(args.logs, args.logs / "pbs", nodes, keep)
-    single = single_node_rows(df, nodes, keep)
-    ranks["family"] = np.where(ranks.version == "opt1", "opt1", "baseline/opt2")
+    o1 = ranks.version == "opt1"
 
-    # ---- 1. one row per node ----
-    per_node = []
-    for n, hw in sorted(nodes.items()):
-        r = ranks[ranks.node == n]
-        s = single[single.node == n]
-        per_node.append({
-            "node": n, "group": n.split("-")[1], "RAM (GiB)": f"{hw['ram']:.0f}",
-            "channels / socket": hw["channels"], "DIMMs / channel": hw["dimms_per_channel"],
-            "multi-node ranks": len(r),
-            "rel. time, baseline-MPI-OpenMP/opt2": fmt(r[r.family == "baseline/opt2"].rel.mean()),
-            "rel. time, opt1": fmt(r[r.family == "opt1"].rel.mean()),
-            "single-node runs": len(s), "rel. time, single node": fmt(s.rel.mean())})
-    per_node = pd.DataFrame(per_node)
+    # datasets used, by model
+    kept_txt = "; ".join(f"{m}: " + ", ".join(f"`{d}`" for d in sorted(d for mm, d in keep if mm == m))
+                         for m in sorted({m for m, _ in keep}))
 
-    # ---- 2. multi-node: by version and number of channels ----
-    by_ch = (ranks.groupby(["model", "version", "channels"]).rel
-             .agg(ranks="size", mean="mean", min="min", max="max").reset_index())
-    for c in ("mean", "min", "max"):
-        by_ch[c] = by_ch[c].map(fmt)
+    # 1. mean relative time by number of channels, with how many nodes and ranks
+    g = ranks.groupby("channels")
+    channels_txt = "\n".join(
+        f"   - {c} channels: **{g.rel.mean()[c]:.3f}×** ({g.node.nunique()[c]} nodes, {g.size()[c]} ranks)"
+        for c in g.rel.mean().index)
+    unknown = ranks[ranks.channels.isna()]
+    if len(unknown):
+        un = unknown.node.unique()
+        channels_txt += (f"\n   - unknown: {', '.join(f'`{n}`' for n in un)} ({len(unknown)} ranks) has no hardware data in"
+                         " `results/hwinfo/` and is left out of this point")
 
-    # ---- 3. multi-node: every job, its nodes and how fast their ranks were ----
-    by_job = (ranks.groupby(["job", "node", "channels"]).rel.mean().map(fmt).reset_index()
-              .rename(columns={"rel": "mean rel. time"}))
+    # 2. the clearest node that is slow with baseline-MPI-OpenMP and average with opt1
+    per_node = ranks.groupby(["node", "version"]).rel.mean().unstack("version")
+    per_node = per_node.dropna(subset=["baseline", "opt1"])
+    slow = (per_node.baseline - per_node.opt1).idxmax()
+    slow_ch = nodes[slow]["channels"]
+    slow_b, slow_o = per_node.loc[slow, "baseline"], per_node.loc[slow, "opt1"]
 
-    # ---- 4. spread of the ranks inside one run, by family ----
-    spread = (ranks.groupby(["model", "family"]).rel
-              .agg(ranks="size", p05=lambda s: s.quantile(0.05), p95=lambda s: s.quantile(0.95),
-                   min="min", max="max").reset_index())
-    for c in ("p05", "p95", "min", "max"):
-        spread[c] = spread[c].map(fmt)
+    # 3. spread inside one run: widest p05-p95 band over the two models
+    q = ranks[~o1].groupby("model").rel.quantile
+    b_lo, b_hi = q(0.05).min(), q(0.95).max()
 
-    # ---- 5. single node: by number of channels ----
-    single_ch = (single.groupby(["model", "label", "channels"]).rel
-                 .agg(runs="size", nodes=lambda s: single.loc[s.index, "node"].nunique(), mean="mean")
-                 .reset_index())
-    single_ch["mean"] = single_ch["mean"].map(fmt)
+    text = f"""# Node memory
 
-    text = f"""# Memory configuration of the nodes and speed of the runs
+Generated by `src/tables/node-memory.py`.
 
-Generated by `src/tables/node-memory.py` (do not edit by hand). Question: does the number of
-populated memory channels of a node (2, 4 or 6 per socket, see `hardware.md`) change the times?
-Only the datasets whose runs all last at least 1 s (the "long" datasets of the report).
+## Question
 
-**Relative time** of a rank = its compute time / mean compute time of the ranks of the same run
-(1.00 = average rank of its run, 1.10 = 10% slower). The ranks of one run execute the same code on
-the same amount of data, on different nodes: if the channels mattered, the ranks on the nodes with
-fewer channels would be above 1.
+**Do the memory channels of a node change the run times?**
 
-## 1. Every node
+The nodes have 2, 4 or 6 memory channels per socket (47 GB/s, 94 GB/s or 141 GB/s of peak
+bandwidth, see [hardware.md](hardware.md)), and we could not choose them. If this mattered, a
+version that ran on worse nodes would look slower than it is.
 
-`multi-node ranks`: ranks of the runs on 2 and 4 nodes (`scatter:excl`) that ran on the node.
-`single-node runs`: runs on 8 cores of one node, baseline-MPI-OpenMP and Optimization 2 (same computation),
-relative to the median of the same dataset and layout.
+## Answer
 
-{md_table(per_node)}
+**No.** The run times do not depend on the memory of the node. The differences between the ranks
+of one run come from the code.
 
-## 2. Runs on several nodes, by number of channels
+### How we checked
 
-{md_table(by_ch)}
+- **Runs on 2 and 4 nodes** (`scatter:excl`, 2 ranks x 4 threads per node, i.e. 8 cores of
+  socket 0). All the ranks of one run process the same number of rows of the same dataset, but on
+  different nodes. The node of every rank comes from the PBS output, its compute time from the
+  run log.
+- **Compute time** of a rank = time of its E-step + M-step (s), without the MPI communication.
+- **Relative time** of a rank = its compute time (s) / average compute time of the ranks of its
+  run (s). It is a ratio, written with ×: 1.00× = as fast as the average rank, 1.10× = 10% slower.
+  If the channels mattered, the ranks on the nodes with fewer channels would always be above 1.00×.
+- **Only the runs of at least 1 s**, the same rule as the report (Section "Datasets Shown and
+  Duration of the Runs"): a dataset is used only if every one of its runs (every version, every number of
+  cores) lasts at least 1 s. Shorter runs are dominated by noise and are not used. Datasets used
+  ({len(keep)} of {n_datasets}): {kept_txt}.
 
-## 3. Runs on several nodes, every job (PBS name: version-scx-nodes x ranks per node x threads)
+Data: {len(ranks)} ranks, {ranks.groupby(["job", "dataset", "run"]).ngroups} runs, {ranks.node.nunique()} nodes.
 
-{md_table(by_job)}
+### What we found
 
-## 4. Spread of the ranks inside one run
+1. **The channels make no difference.** Average relative time of a rank:
+{channels_txt}
 
-5th and 95th percentile, minimum and maximum of the relative time of the ranks.
+   The nodes with the least bandwidth are not the slow ones.
+2. **A slow node is not slow because of its memory.** `{slow}` ({slow_ch} channels) is
+   {100 * (slow_b - 1):.0f}% slower than the average with {BASE} ({slow_b:.2f}×), but at the average with opt1
+   ({slow_o:.2f}×).
+3. **The imbalance depends on the version.** {BASE} and opt2 have the same computation (opt2
+   changes only the communication): 90% of their ranks are between {b_lo:.2f}× and {b_hi:.2f}× the average of
+   their run (extremes {ranks[~o1].rel.min():.2f}× and {ranks[~o1].rel.max():.2f}×). In opt1 every rank is between {ranks[o1].rel.min():.2f}× and {ranks[o1].rel.max():.2f}×.
 
-{md_table(spread)}
-
-## 5. Runs on one node, by number of channels
-
-Every job runs on one node and every version ran on a few nodes only, so here the node is mixed
-with the version: only an indication.
-
-{md_table(single_ch)}
 """
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(text)

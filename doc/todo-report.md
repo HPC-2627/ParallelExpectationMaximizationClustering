@@ -23,7 +23,7 @@
 - [X] Read [`doc/plots.md`](../doc/plots.md)
 - [ ] Read [`doc/script.md`](../doc/script.md)
 - [X] Read [`results/tables/hardware.md`](../results/tables/hardware.md)
-- [ ] Read [`results/tables/node-memory.md`](../results/tables/node-memory.md)
+- [X] Read [`results/tables/node-memory.md`](../results/tables/node-memory.md)
 
 
 
