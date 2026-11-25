@@ -128,7 +128,7 @@ case "$VERSION" in
         # --report-bindings prints the cores of every rank in the .err file (to check it).
         # Nodes: OpenMPI does not see the other nodes of the job by itself (it sees only the first
         # one, and ppr:R:node then fails with more than one node): the list of the nodes assigned by
-        # PBS is passed with --hostfile (as in Exercise 10). plm_rsh_args: ssh between the nodes
+        # PBS is passed with --hostfile. plm_rsh_args: ssh between the nodes
         # without host-key prompts. Without PBS (test outside the queue) the local node is used.
         HOSTS=()
         [ -n "${PBS_NODEFILE:-}" ] && HOSTS=(--hostfile "$PBS_NODEFILE"

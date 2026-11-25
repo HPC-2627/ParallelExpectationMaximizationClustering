@@ -113,7 +113,7 @@ The cluster is **heterogeneous** (several Xeon generations, from 2014 to 2023) a
 | **Same CPU for every job** (`baseline-sequential` included) | PBS gives only nodes with `cpu_type=Xeon6252N` (87 nodes, the most common type; `pbsnodes -a` lists the others) | `NODE_FILTER` (default `cpu_type=Xeon6252N`, empty = any node) |
 | **No log from a wrong CPU** | at start every job checks the CPU model of all its nodes; if one is different it stops **before** writing any log | `REQUIRE_CPU` (default `6252N`, empty = no check). Must name the same CPU as `NODE_FILTER` |
 | **One core per OpenMP thread** | `mpiexec --map-by slot:PE=THREADS --bind-to core`: every rank gets `THREADS` cores. Without it Open MPI binds each rank to ONE core and all its threads share it (no speedup from the threads) | - |
-| **Multi-node runs on all the nodes** | `--hostfile $PBS_NODEFILE`: Open MPI does not see the other nodes of the job by itself (same as Exercise 10) | - |
+| **Multi-node runs on all the nodes** | `--hostfile $PBS_NODEFILE`: Open MPI does not see the other nodes of the job by itself | - |
 | **Repetitions** | every (dataset, layout) runs 3 times; the plots use the median, error bar min-max | `REPS` (default 3) |
 
 ### Before a new campaign: clean up
