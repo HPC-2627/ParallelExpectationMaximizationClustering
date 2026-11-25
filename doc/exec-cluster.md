@@ -134,24 +134,14 @@ unset CONFIGS_LIST                                     # no leftover filter from
 
 ### Submit
 
-**One stage at a time, both models, all the data.**
-
-One command = one version of one model (`diagonal` or `full`) on **all the datasets** (10 real + 15 synthetic; `gene_rnaseq` is skipped with the full model) with all the layouts below. 
-
-The queue has a **per-user limit** on the jobs (about 30 between running and queued, counting also the jobs of other projects): with everything at once some `qsub` are rejected. 
-
-So submit **one stage at a time**, and send the next one when the jobs of the previous one have finished (or at least started):
-
-Every stage is submitted in **two batches** (`PLACES_LIST`), at most 8 jobs each:
+One command = one version of one model on **all the datasets** (10 real + 15 synthetic; `gene_rnaseq` is skipped with the full model), with every layout and placement. The queue has a **per-user limit** (about 30 jobs between running and queued, counting other projects too): submit **one stage at a time**, each in **two batches** (`PLACES_LIST`, at most 8 jobs each):
 
 | Batch | Placements | Jobs per parallel stage | Why separate |
 |---|---|---|---|
-| **A** | `pack`, `scatter` | 8 | they start as soon as some cores are free: these are the runs that give the results |
-| **B** | `pack:excl`, `scatter:excl` | 8 | the nodes are reserved for the job (clean timing), but on a busy cluster they can stay queued for a long time (no Xeon6252N node is ever completely empty) |
+| **A** | `pack`, `scatter` | 8 | they start as soon as some cores are free; `pack` gives the 1-node points of the plots (1 to 8 cores) |
+| **B** | `pack:excl`, `scatter:excl` | 8 | the nodes are reserved for the job (clean timing); `scatter:excl` gives the multi-node points of the plots (16 and 32 cores). On a busy cluster they can stay queued for a long time (no Xeon6252N node is ever completely empty) |
 
-The `sequential` stage (`baseline-sequential`) is one job, already on a node used only by itself: it is submitted once, in batch A. 
-
-Send **all of batch A first**, check `qstat -u $USER`, then batch B when there is room under the limit.
+`baseline-sequential` (stage `sequential`) is one job, already on a node used only by itself: submit it once, in batch A. Send **all of batch A first**, check `qstat -u $USER`, then batch B when there is room under the limit.
 
 ```bash
 make clean && make all mpi-omp                       # build first (module OpenMPI loaded, see Phase 3)
@@ -177,39 +167,24 @@ src/script/pemc-submit.sh full opt1                  # 8 jobs
 src/script/pemc-submit.sh full opt2                  # 8 jobs
 ```
 
-Sweeps of K and D (plot P1: time per iteration vs K and vs D), one fixed layout (1 node, 1 rank x 8 threads, node used only by the job). 
+The plots need both batches: `plots-performance.py` uses `pack` on 1 node (batch A) and `scatter:excl` on 2 and 4 nodes (batch B) by default (`--placement`, `--multi-placement`); the other placements are used only by P6. After "per-user limit" errors resume the same group with `SKIP=<jobs already submitted>`.
 
-They need the D sweep files made in Phase 2 (`generate-synthetic-dataset.py --sweep`); the logs go in `results/logs/sweep/`:
+#### Sweeps of K and D (plot P1)
 
-```bash
-src/script/pemc-submit.sh sweep                       # all 8 versions: 16 jobs (K and D)
-```
-
-The first campaign swept only `baseline-sequential` and `baseline-MPI-OpenMP`. The opt1/opt2 sweeps were added later, without re-running the others (the logs are appended: giving a version again would duplicate its runs):
+One fixed layout (1 node, 1 rank x 8 threads, `pack:excl`). They need the D sweep files made in Phase 2 (`generate-synthetic-dataset.py --sweep`):
 
 ```bash
-SWEEP_VERSIONS="opt1-MPI-OpenMP-diagonal opt2-MPI-OpenMP-diagonal opt1-MPI-OpenMP-full opt2-MPI-OpenMP-full" \
-DRY_RUN=1 src/script/pemc-submit.sh sweep               # check: 8 qsub (4 versions x K, D)
-SWEEP_VERSIONS="opt1-MPI-OpenMP-diagonal opt2-MPI-OpenMP-diagonal opt1-MPI-OpenMP-full opt2-MPI-OpenMP-full" \
-src/script/pemc-submit.sh sweep                         # 8 jobs, a few minutes each once running
+src/script/pemc-submit.sh sweep                       # all 8 versions: 16 jobs (K and D), logs in results/logs/sweep/
 ```
 
-`SWEEP_PLACE` changes the placement (default `pack:excl`, the same as the first sweeps; `pack` starts sooner but the new curves would then be on a shared node). P1 draws every version found in `results/logs/sweep/`, no change to the plot script.
-
-After opt2 full was rewritten on `baseline-MPI-OpenMP` (2026-11-22), only its sweep was run again (2026-11-23, 2 jobs `o2f-swK`, `o2f-swD`, `pack:excl`). The old log was moved away first, because the logs are appended:
-
-```bash
-mv results/logs/sweep/opt2-MPI-OpenMP-full_pack_excl_1n1r8t.log old-logs/
-SWEEP_VERSIONS="opt2-MPI-OpenMP-full" src/script/pemc-submit.sh sweep
-grep -c '==== run' results/logs/sweep/opt2-MPI-OpenMP-full_pack_excl_1n1r8t.log   # 33 when done
-```
+The sweep logs are **appended**: to run some versions again, move their old log away first and give only them, e.g. `SWEEP_VERSIONS="opt2-MPI-OpenMP-full" src/script/pemc-submit.sh sweep` (done for opt2 full on 2026-11-23, after it was rewritten on `baseline-MPI-OpenMP`; 33 runs per log when done).
 
 #### Runs on 1, 2 and 4 cores of one node (speedup curves below 8 cores)
 
 The default layouts start at 8 cores, and 8 -> 16 -> 32 cores also changes 1 -> 2 -> 4 nodes: without these runs P2/P3, P4 and P5 jump from 1 to 8 cores. They give:
 
 - the **scaling inside one node** (1 -> 2 -> 4 -> 8 cores), separated from the network;
-- every version **on 1 core** (`1:1:1`): the gain of the optimization alone, so the efficiency above 1 of opt1 full (P2, P5) can be split into optimization x parallelism;
+- every version **on 1 core** (`1:1:1`): the gain of the optimization alone, so the efficiency above 1 of opt1 full (P3) can be split into optimization x parallelism;
 - two more points of the **weak scaling** (`synth_overlap_p02` on 2 cores, `p04` on 4 cores, as in P5).
 
 All the splits of 1, 2 and 4 cores, as for 8 cores:
@@ -220,7 +195,7 @@ All the splits of 1, 2 and 4 cores, as for 8 cores:
 | 2 | `1:1:2`, `1:2:1` |
 | 4 | `1:1:4`, `1:2:2`, `1:4:1` |
 
-One node, so `scatter` = `pack`: 6 layouts = **6 jobs per version**, 36 in all (`baseline-MPI-OpenMP`, opt1, opt2 x 2 models). The logs are new files (`<version>_pack_1n1r1t.log`, ...): nothing is overwritten. The longest jobs are the 1-core ones of the full model: about 2.5-3.5 h on a shared node for all the datasets (`baseline-sequential` full takes 148 min on an exclusive node): the 6 h walltime is enough.
+One node, so `scatter` = `pack`: 6 layouts = **6 jobs per version**, 36 in all (`baseline-MPI-OpenMP`, opt1, opt2 x 2 models). The logs are new files (`<version>_pack_1n1r1t.log`, ...): nothing is overwritten. The longest jobs are the 1-core ones of the full model: about 2.5-3.5 h on a shared node for all the datasets (the `baseline-sequential` full job, all the datasets × 3 repetitions, takes 148 min on an exclusive node): the 6 h walltime is enough.
 
 ```bash
 export CONFIGS_LIST="1:1:1 1:1:2 1:2:1 1:1:4 1:2:2 1:4:1"
@@ -237,30 +212,11 @@ src/script/pemc-submit.sh full opt2                  # 6 jobs
 unset CONFIGS_LIST PLACES_LIST                       # back to the default layouts and placements
 ```
 
-**Only `pack`, no exclusive runs for these layouts.** We did not run them with `pack:excl` because of the time: the exclusive jobs wait hours in the queue (no Xeon6252N node is ever completely free), and the plots use `pack` for all the core counts. The report says so in the Measurement Methodology.
+**Only `pack`, no exclusive runs for these layouts.** We did not run them with `pack:excl` because of the time: the exclusive jobs wait hours in the queue (no Xeon6252N node is ever completely free), and on one node the plots use `pack` anyway. The report says so in the Measurement Methodology.
 
-Batch A is enough for the plots (`plots-performance.py` uses the placement `pack` by default); batch B only completes the set of placements. After "per-user limit" errors resume the same group with `SKIP=<jobs already submitted>`. When the jobs are done copy `results/logs/diagonal/` and `results/logs/full/` to the laptop and run `plots-performance.py` again: the new core counts are picked up from the logs, no change to the scripts (P7 keeps only the splits of the 8 cores of the node).
+When the jobs are done copy `results/logs/diagonal/` and `results/logs/full/` to the laptop and run `plots-performance.py` again: the new core counts are picked up from the logs, no change to the scripts (P7 keeps only the splits of the 8 cores of the node).
 
-One job = one version with one layout, and it runs **all the datasets** (10 real + 15 synthetic; `gene_rnaseq` is skipped with full covariance). The `baseline-sequential` jobs use 1 core on an exclusive node. For the MPI + OpenMP versions the layout is `NODES x RANKS_PER_NODE x THREADS` (`ncpus` per node = `RANKS_PER_NODE x THREADS`, `mpiprocs` = `RANKS_PER_NODE`) and is combined with the 4 PBS placements:
-
-| Placement | Meaning |
-|---|---|
-| `pack` | the chunks go on as few nodes as possible |
-| `scatter` | every chunk on a different node |
-| `pack:excl`, `scatter:excl` | same, but the nodes are reserved for the job (no other job disturbs the timing) |
-
-With one node `pack` and `scatter` coincide, so only `pack` and `pack:excl` are submitted. Note: with `pack` PBS may put several chunks on the **same** node (e.g. a "2n2r4t" job with its 4 ranks on one node, communication through shared memory): for a real comparison across nodes use the `scatter` runs. 
-
-The layouts, memory, walltime, repetitions, node type and subset of datasets are variables at the top of [pemc-submit.sh](../src/script/pemc-submit.sh).
-
-Other options of `pemc-submit.sh` (environment variables, combined with the commands above):
-
-```bash
-CONFIGS_LIST="2:2:4 4:2:4" src/script/pemc-submit.sh diagonal opt1   # only these layouts (e.g. to resubmit failed jobs)
-SKIP=4 src/script/pemc-submit.sh diagonal opt1                       # skip the first 4 jobs (after "per-user limit" errors)
-REPS=1 src/script/pemc-submit.sh diagonal baseline                   # 1 repetition (quick test)
-NODE_FILTER= REQUIRE_CPU= src/script/pemc-submit.sh diagonal baseline   # any node (times NOT comparable)
-```
+Layouts, placements, names of the PBS outputs and all the options of `pemc-submit.sh` (`DRY_RUN`, `CONFIGS_LIST`, `SKIP`, `REPS`, `NODE_FILTER`, ...): [script.md](script.md#pemc-submitsh).
 
 ### Check the first jobs
 
@@ -282,7 +238,9 @@ grep -c "^==== run" results/logs/diagonal/*/*.log     # progress: runs written (
 
 If a rank shows only one `B`, the threads share one core: the times are wrong, cancel and check `pemc-job.sh`.
 
-Clustering runs (`baseline-sequential`, K range per dataset, input of plots C1-C6):
+### Clustering runs (plots C1-C6)
+
+`baseline-sequential` over a range of K for every dataset ([script.md](script.md#pemc-clustersh)):
 
 ```bash
 rm -rf results/logs/cluster results/clusters   # only before a new launch: the runs are appended, not skipped
@@ -290,7 +248,7 @@ qsub src/script/pemc-cluster.sh                # 24 cores of a Xeon 6252N node, 
 ONLY=heart KMAX=8 src/script/pemc-cluster.sh   # to test: one dataset, one process, in this shell
 ```
 
-Resources are in the `#PBS` lines of the script (24 cores, 48 GB, 6 h; `place=excl` is commented out, since no 6252N node is ever completely free). It starts one process per dataset and one per K for `brainweb` (alone it takes about 2 h). Progress: `tail -n 1 results/logs/cluster/run_*.txt` (`done, 0 failure(s)` = finished); at the end `pemc-cluster.o<id>` in the root of the repository ends with `all done, 0 process(es) with failures`.
+Resources are in the `#PBS` lines of the script (24 cores, 48 GB, 6 h; `place=excl` is commented out, since no 6252N node is ever completely free). It starts one process per dataset and one per K for `brainweb` (alone it takes about 2 h). Progress: `tail -n 1 results/logs/cluster/run_*.txt` (`done, 0 failure(s)` = finished); at the end `pemc-cluster.o<id>` (written in the folder of the `qsub`, then moved by hand to `results/logs/pbs/`) ends with `all done, 0 process(es) with failures`.
 
 ### Monitor the jobs
 
@@ -337,10 +295,9 @@ watch -n 30 'qstat -u $USER | tail -n +6; echo; grep -c "^==== run" results/logs
 
 ---
 
-## Hardware of the nodes (report table)
+## Hardware of the nodes
 
-One small PBS job on each of the nodes used by the runs (groups `c10`, `c11`, `c12`) reads CPU, RAM and DIMMs, NUMA, caches, network and OS.
-It fills the table "Hardware Infrastructure" of the report, because the nodes are not all the same (RAM and memory channels differ); summary in [results/tables/hardware.md](../results/tables/hardware.md).
+One small PBS job per node used by the runs (the 40 of `results/hwinfo/nodes.txt`) fills the table "Hardware Infrastructure" of the report; summary in [results/tables/hardware.md](../results/tables/hardware.md), details in [script.md, 2](script.md#2-cluster-hardware).
 
 ```bash
 src/script/pemc-hwinfo.sh submit      # one job per node
@@ -357,7 +314,7 @@ scp -r username@hpc3-login1.unitn.it:ParallelExpectationMaximizationClustering/r
 
 ---
 
-## Roofs of the roofline (plot P10)
+## Roofs of the roofline
 
 One exclusive job on a Xeon 6252N node measures the memory bandwidth with STREAM; the peak GFLOP/s are calculated. Details in [script.md, 3](script.md#3-roofs-of-the-roofline).
 
@@ -366,11 +323,10 @@ src/script/pemc-stream.sh submit                                                
 src/script/pemc-stream.sh summary > results/logs/stream/stream_<node>-summary.txt # when it is done
 ```
 
-Run in the repository: `hpc3-c12-n49`, Triad 97.0 GB/s with 8 threads, peak 588.8 GFLOP/s (AVX-512) and 73.6 GFLOP/s (SSE2): the defaults of `plots-performance.py`, so P10 needs no flag.
 
 ---
 
-## Phase 5: Plots
+## Phase 5: Performance Plots
 
 When all the jobs are finished, either generate the plots on the cluster (Python 3 with `numpy`, `pandas`, `matplotlib`) or copy the logs to the local machine. From the local machine:
 
