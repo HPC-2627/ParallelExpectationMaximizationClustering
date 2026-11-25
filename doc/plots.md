@@ -2,7 +2,7 @@
 
 Which plots go in the report and how they are drawn.
 
-- Scripts: `src/plots-generate/plots-performance.py` and `src/plots-generate/plots-cluster.py` (`plots-em-steps.py`: figures of the EM steps, not in this catalog).
+- Scripts: `src/plots-generate/plots-performance.py` and `src/plots-generate/plots-cluster.py` (`plots-em-steps.py`: figures of the EM steps to insert inside the report, not in this catalog).
 - Output: `results/plots/performance/` and `results/plots/cluster/`.
 - Runs and commands that produce the data: [exec-cluster.md](exec-cluster.md).
 
