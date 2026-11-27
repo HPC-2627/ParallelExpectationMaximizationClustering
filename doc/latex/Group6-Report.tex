@@ -1273,12 +1273,11 @@ The measurements on up to 4 nodes (32 cores) of the HPC3 cluster, on exclusive n
 \paragraph{Future work}
 \begin{itemize}
 \item Combine the two optimizations in one program (the computation of Optimization~1 with the single collective of Optimization~2), now measured separately on purpose.
-\item Measure the layouts with one rank per node on several nodes, which failed with the binding used here (a mapping with exactly one process per node, \texttt{-{}-map-by ppr:1:node:PE=8}, should fix it), and isolate the cause of the imbalance of \vbase{} with threads, e.g.\ with per-thread buffers aligned to the cache lines as in Optimization~1 and with a fixed CPU frequency.
 \item An automatic choice of the model and of the version. A script would read a dataset before running EM and look at its size ($N$, $D$), at the memory that the full model would need ($K D^2$ values per rank and per thread), and at how the variables are distributed (correlations, skewness). From these it would propose the diagonal or the full model (full only if the variables are correlated and $KD^2$ fits in memory; the proposal confirmed with the BIC on a sample of the rows, as in Figure~\ref{fig:c6}), and the version and layout from the measurements of this report (\vseq{} for the small tables, whose runs last milliseconds, and Optimization~1 on several nodes for the large ones).
 \item Lift the memory limit of the full model for large $D$: today every rank keeps the parameters and every thread a private copy of the sums ($KD^2$ values each), which makes \texttt{gene\_rnaseq} ($D=20\,264$) impossible with the full model. The sums of a rank could be accumulated in one shared buffer by blocks of rows, and the covariance matrices could be split among the ranks.
 \item Distribute the rows according to the measured speed of every rank instead of evenly, so that a slower rank receives fewer rows and the others wait less at the collectives.
 \item Move the blocked computation of the full model to GPUs, where many rows can be processed at the same time (EM on GPUs: Machlica et al.~\cite{machlica}).
-\item Scale to more nodes and larger real datasets, e.g.\ full MRI volumes, where the communication saved by Optimization~2 could become visible.
+\item Scale to more nodes and use larger real datasets.
 \end{itemize}
 
 \clearpage

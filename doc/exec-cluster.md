@@ -106,7 +106,7 @@ Submit from the root of the repository. What every script does: [script.md](scri
 
 ### What the scripts guarantee (guidelines for comparable times)
 
-The cluster is **heterogeneous** (several Xeon generations, from 2014 to 2023) and the nodes are shared: without precautions every job lands on a different CPU and the times of `baseline-MPI-OpenMP`, opt1 and `baseline-sequential` cannot be compared. [pemc-submit.sh](../src/script/pemc-submit.sh) and [pemc-job.sh](../src/script/pemc-job.sh) take care of it:
+The cluster is **heterogeneous** (several Xeon generations, from 2014 to 2023).
 
 | Guideline | How | Variable (top of `pemc-submit.sh`) |
 |---|---|---|
@@ -199,7 +199,7 @@ One node, so `scatter` = `pack`: 6 layouts x 2 placements = **12 jobs per versio
 
 ```bash
 export CONFIGS_LIST="1:1:1 1:1:2 1:2:1 1:1:4 1:2:2 1:4:1"
-export PLACES_LIST="pack pack:excl"                     # the plots use pack:excl (see below)
+export PLACES_LIST="pack pack:excl"                     
 DRY_RUN=1 src/script/pemc-submit.sh diagonal baseline   # check: prints the 6 qsub, submits nothing
 
 src/script/pemc-submit.sh diagonal baseline          # 6 jobs
@@ -212,8 +212,6 @@ src/script/pemc-submit.sh full opt2                  # 6 jobs
 unset CONFIGS_LIST PLACES_LIST                       # back to the default layouts and placements
 ```
 
-**`pack` and `pack:excl`.** These layouts were first run with `pack` only, because the exclusive jobs wait hours in the queue. On one shared node, however, `baseline-MPI-OpenMP` and opt2 full were 15-22% slower than on an exclusive one (memory bandwidth and caches shared with other jobs), so the curves mixed shared and exclusive nodes. They were run again with `pack:excl` (2026-11-26), and the plots use only those.
-
 #### Other splits on 2 and 4 nodes (same splits on every core count)
 
 The default multi-node layouts have one split only (2 ranks x 4 threads per node), while on one node the plots pick the fastest of several: `baseline-MPI-OpenMP` and opt2 are up to 1.9x slower with 2 x 4 than with 8 x 1. To use the same rule on every core count, the other splits were run on 2 and 4 nodes:
@@ -221,12 +219,16 @@ The default multi-node layouts have one split only (2 ranks x 4 threads per node
 ```bash
 export CONFIGS_LIST="2:8:1 2:4:2 4:8:1 4:4:2"
 export PLACES_LIST="scatter:excl"
-src/script/pemc-submit.sh diagonal baseline          # 4 jobs per version, 24 in all
-...                                                  # the same for diagonal opt1/opt2, full baseline/opt1/opt2
+
+src/script/pemc-submit.sh diagonal baseline          # 6 jobs
+src/script/pemc-submit.sh diagonal opt1              # 6 jobs
+src/script/pemc-submit.sh diagonal opt2              # 6 jobs
+src/script/pemc-submit.sh full baseline              # 6 jobs
+src/script/pemc-submit.sh full opt1                  # 6 jobs
+src/script/pemc-submit.sh full opt2                  # 6 jobs
+
 unset CONFIGS_LIST PLACES_LIST
 ```
-
-**Do not run `2:1:8` and `4:1:8`** (one rank per node): with `--map-by slot:PE=8` Open MPI refuses the binding on the remote nodes ("binding more processes than cpus") and every run is `FAILED`. For the same rule on every core count, the plots leave out the splits with one rank per node and several threads everywhere (1x2, 1x4, 1x8). The multi-node jobs last 5-45 min: `qalter -l walltime=01:30:00 <job>` on the queued jobs helps them start earlier.
 
 When the jobs are done copy `results/logs/diagonal/` and `results/logs/full/` to the laptop and run `plots-performance.py` again: the new core counts are picked up from the logs, no change to the scripts (P7 keeps only the splits of the 8 cores of the node).
 

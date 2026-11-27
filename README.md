@@ -211,10 +211,9 @@ Up to 4 nodes (32 cores) of HPC3, exclusive nodes only, fastest split with at le
 ### Future work
 
 - Combine opt1 and opt2 in one program.
-- Run one rank per node on several nodes (it fails with the current binding; `--map-by ppr:1:node:PE=8` should fix it) and find the cause of the imbalance of `baseline-MPI-OpenMP` with threads (aligned per-thread buffers, fixed CPU frequency).
 - A script that reads a dataset (size, correlations, memory needed) and picks diagonal or full covariance (confirmed with the BIC on a sample) and the right version and layout.
 - Lift the memory limit of the full model for large D (shared sums, covariances split among the ranks); distribute the rows by the measured speed of every rank.
-- Move the blocked full-model computation to GPUs; scale to more nodes and larger real data (full MRI volumes).
+- Move the blocked full-model computation to GPUs; scale to more nodes and larger real data.
 
 ## Documentation
 
