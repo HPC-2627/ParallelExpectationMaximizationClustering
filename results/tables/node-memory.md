@@ -38,7 +38,7 @@ Data: 1296 ranks, 216 runs, 20 nodes.
    - 2 channels: **0.985×** (2 nodes, 96 ranks)
    - 4 channels: **1.003×** (10 nodes, 672 ranks)
    - 6 channels: **1.003×** (7 nodes, 480 ranks)
- - 
+
    The nodes with the least bandwidth are not the slow ones.
 2. **A slow node is not slow because of its memory.** `hpc3-c12-n31` (6 channels) is
    8% slower than the average with baseline-MPI-OpenMP (1.08×), but at the average with opt1

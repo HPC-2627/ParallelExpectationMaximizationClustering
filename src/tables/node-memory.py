@@ -151,7 +151,7 @@ def rank_rows(logs, pbsdir, nodes, keep):
                                  "dataset": dataset, "run": i, "rank": r, "node": host[r],
                                  "channels": hw.get("channels"), "rel": rc[r] / rc.mean()})
     rows = pd.DataFrame(rows)
-    rows["channels"] = rows["channels"].astype("Int64")  # integer, empty for a node without data
+    rows["channels"] = rows["channels"].astype("Int64")  # integer, empty when the channel count is not known
     return rows
 
 
@@ -188,11 +188,7 @@ def main():
     channels_txt = "\n".join(
         f"   - {c} channels: **{g.rel.mean()[c]:.3f}×** ({g.node.nunique()[c]} nodes, {g.size()[c]} ranks)"
         for c in g.rel.mean().index)
-    unknown = ranks[ranks.channels.isna()]
-    if len(unknown):
-        un = unknown.node.unique()
-        channels_txt += (f"\n   - unknown: {', '.join(f'`{n}`' for n in un)} ({len(unknown)} ranks) has no hardware data in"
-                         " `results/hwinfo/` and is left out of this point")
+    # (groupby skips the ranks of a node without a channel count: they are not in this point)
 
     # 2. the clearest node that is slow with baseline-MPI-OpenMP and average with opt1
     per_node = ranks.groupby(["node", "version"]).rel.mean().unstack("version")

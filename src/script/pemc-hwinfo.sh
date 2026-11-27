@@ -2,9 +2,9 @@
 # Hardware of ALL the nodes used by the experiments (table "Hardware Infrastructure" of the report).
 # Run from the root of the repository, on the login node of the cluster:
 #
-#   src/script/pemc-hwinfo.sh submit     one small PBS job per node (body: pemc-hwprobe.sh), only
-#                                        for the nodes that have no valid output yet and no job in
-#                                        the queue; if the queue is full ("per-user limit") it waits
+#   src/script/pemc-hwinfo.sh submit     one small PBS job per node of nodes.txt (body:
+#                                        pemc-hwprobe.sh), skipping the nodes already done or already
+#                                        in the queue; if the queue is full ("per-user limit") it waits
 #                                        30 s and tries again, so it can be launched once for all
 #   src/script/pemc-hwinfo.sh status     done / in the queue (with the reason) / missing, per node
 #   src/script/pemc-hwinfo.sh software   compiler, MPI and UCX versions -> results/hwinfo/software.txt

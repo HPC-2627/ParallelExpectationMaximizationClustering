@@ -91,7 +91,7 @@ ONLY=heart src/script/pemc-cluster.sh      # only the datasets whose name contai
 For the "Hardware Infrastructure" table of the report and the README; summary in [`results/tables/hardware.md`](../results/tables/hardware.md). No binaries, no root.
 
 ```bash
-src/script/pemc-hwinfo.sh submit      # one job per node without data (retries if the queue is full)
+src/script/pemc-hwinfo.sh submit      # one job per node of nodes.txt (skips the ones already done; retries if the queue is full)
 src/script/pemc-hwinfo.sh status      # done / queued (with the reason) / missing, per node
 src/script/pemc-hwinfo.sh software    # GCC, Open MPI, UCX -> results/hwinfo/software.txt
 src/script/pemc-hwinfo.sh summary     # what is the same on all the nodes and what differs
