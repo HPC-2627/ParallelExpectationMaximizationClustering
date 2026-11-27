@@ -25,6 +25,8 @@
 \renewcommand{\familydefault}{\sfdefault}
 \setbeamerfont{title}{family=\sffamily}
 \usepackage{booktabs}
+\usepackage{adjustbox}
+\usepackage[ruled,vlined]{algorithm2e}
 \usepackage{tikz}
 \usetikzlibrary{positioning,arrows.meta,calc}
 \usepackage{xcolor}
@@ -702,27 +704,357 @@ Thank you!\\[1em]
 \backuptrue
 \section{Backup slides}
 
-\begin{frame}[fragile]{Backup: \vbase{} diagonal, pseudocode (rank $p$)}
-\scriptsize
-\begin{verbatim}
-read X_p (n_p ~ N/P contiguous rows)            // no scatter
-init: same K seeded indices on all ranks; owners copy rows; Allreduce(SUM)
-for t = 1 .. T_max:
-    c_k, iv_kd  (master thread)
-    #pragma omp parallel for schedule(static) reduction(+:l)
-    for i in X_p:  v_k = c_k - 1/2 sum_d (x_id - mu_kd)^2 iv_kd
-                   m = log_sum_exp(v);  l += m;  r_ik = exp(v_k - m)
-    MPI_Allreduce(l -> L, 1, SUM)                       // comm 1
-    if |L - L_prev| <= eps |L|: break                   // all ranks together
-    #pragma omp parallel for schedule(static) reduction(+:acc[0:K+2KD])
-    for i in X_p:  acc = [N_k | S | Q] += [r_ik | r_ik x_id | r_ik x_id^2]
-    MPI_Allreduce(IN_PLACE, acc, K+2KD, SUM)            // comm 2
-    update pi, mu, sigma^2 on every rank (no broadcast); L_prev = L
-MPI_Gatherv(labels -> rank 0)                           // not timed
-\end{verbatim}
-\normalsize
-\opttwo{}: M-step loop before the test, $\ell$ in \texttt{acc[K+2KD]}, one \texttt{Allreduce} of $K+2KD+1$ doubles.\\
-\optone{}: one \texttt{omp parallel} region, one fused loop, \texttt{double buf[K]} on the thread stack.
+% Pseudocode of the eight programs, the same as Algorithms 1-8 of the report
+\begin{frame}[plain]{}
+\vspace*{-0.6em}
+\begin{adjustbox}{max width=0.98\paperwidth, max totalheight=0.96\paperheight, center}
+\begin{minipage}{1.2\textwidth}\linespread{0.93}\selectfont
+\begin{algorithm}[H]
+\footnotesize
+\DontPrintSemicolon
+\SetAlgoLined
+
+\KwIn{$X$ ($N\times D$), $K$, seed, $\varepsilon$, $T_{\max}$}
+\KwOut{$\pi,\mu,\sigma^2$; $\mathcal{L}$; labels $\arg\max_k r_{ik}$}
+\tcp{Initialization: same rows for the same seed}
+$\mu_k\leftarrow K$ distinct rows of $X$; $\pi_k\leftarrow 1/K$; $\sigma^2_{kd}\leftarrow 1$; $\mathcal{L}_{\mathrm{prev}}\leftarrow-\infty$\;
+\For{$t\leftarrow 1$ \KwTo $T_{\max}$}{
+  \tcp{E-step: how much each cluster explains each point}
+  $c_k\leftarrow\ln\pi_k-\tfrac12\big(D\ln 2\pi+\sum_d\ln\sigma^2_{kd}\big)$ \tcp*{part that depends only on $k$}
+  $\mathrm{iv}_{kd}\leftarrow 1/\sigma^2_{kd}$ \tcp*{multiply instead of divide in the loop}
+  $\mathcal{L}\leftarrow 0$\;
+  \For{$i\leftarrow 1$ \KwTo $N$}{
+    $v_k\leftarrow c_k-\tfrac12\sum_d(x_{id}-\mu_{kd})^2\,\mathrm{iv}_{kd}$ for all $k$ \tcp*{log of $\pi_k\mathcal{N}(x_i)$}
+    $m\leftarrow\texttt{log\_sum\_exp}(v)$ \tcp*{$\ln p(x_i)$, no underflow}
+    $\mathcal{L}\leftarrow\mathcal{L}+m$\;
+    $r_{ik}\leftarrow e^{v_k-m}$ for all $k$ \tcp*{responsibilities, stored ($N\times K$)}
+  }
+  \tcp{Stop when $\mathcal{L}$ no longer changes}
+  \lIf{$|\mathcal{L}-\mathcal{L}_{\mathrm{prev}}|\le\varepsilon|\mathcal{L}|$}{\textbf{break}}
+  \tcp{M-step: new parameters weighted by $r_{ik}$}
+  $N_k\leftarrow\sum_i r_{ik}$; $S_{kd}\leftarrow\sum_i r_{ik}x_{id}$; $Q_{kd}\leftarrow\sum_i r_{ik}x_{id}^2$ \tcp*{one pass over the rows}
+  \For{$k\leftarrow 1$ \KwTo $K$}{
+    \lIf{$N_k<10^{-10}$}{$\pi_k\leftarrow 10^{-12}$; \textbf{continue} \tcp*[f]{empty cluster: keep $\mu_k,\sigma^2_k$}}
+    $\mu_{kd}\leftarrow S_{kd}/N_k$ \tcp*{weighted mean}
+    $\sigma^2_{kd}\leftarrow\max\big(Q_{kd}/N_k-\mu_{kd}^2,\ \delta\big)$ \tcp*{variance, never below $\delta$}
+    $\pi_k\leftarrow\max(N_k/N,\ 10^{-12})$ \tcp*{weight, never 0}
+  }
+  $\mathcal{L}_{\mathrm{prev}}\leftarrow\mathcal{L}$\;
+}
+\lIf{$T_{\max}$ reached}{repeat the E-step \tcp*[f]{$\mathcal{L}$, $r$ of the final parameters}}
+\caption{\vseq{}, diagonal model}
+\label{alg:seq-diag}
+\end{algorithm}
+\end{minipage}
+\end{adjustbox}
+\end{frame}
+
+\begin{frame}[plain]{}
+\vspace*{-0.6em}
+\begin{adjustbox}{max width=0.98\paperwidth, max totalheight=0.96\paperheight, center}
+\begin{minipage}{1.2\textwidth}\linespread{0.93}\selectfont
+\begin{algorithm}[H]
+\footnotesize
+\DontPrintSemicolon
+\SetAlgoLined
+
+\KwIn{$X$ ($N\times D$), $K$, seed, $\varepsilon$, $T_{\max}$}
+\KwOut{$\pi,\mu,\Sigma$; $\mathcal{L}$; labels $\arg\max_k r_{ik}$}
+$\mu_k\leftarrow K$ distinct rows of $X$; $\pi_k\leftarrow 1/K$; $\Sigma_k\leftarrow I$; $\mathcal{L}_{\mathrm{prev}}\leftarrow-\infty$\;
+\For{$t\leftarrow 1$ \KwTo $T_{\max}$}{
+  \tcp{E-step}
+  \For{$k\leftarrow 1$ \KwTo $K$}{
+    Cholesky $\Sigma_k=L_kL_k^\top$ \tcp*{instead of inverting $\Sigma_k$}
+    \lIf{a pivot is $\le 0$}{add a jitter ($\delta$, then $\times 10$) to the diagonal and retry; stop above $10^6$}
+    $c_k\leftarrow\ln\pi_k-\tfrac12\big(D\ln 2\pi+2\sum_d\ln L_{k,dd}\big)$ \tcp*{$\ln\det\Sigma_k$ from the diagonal of $L_k$}
+  }
+  $\mathcal{L}\leftarrow 0$\;
+  \For{$i\leftarrow 1$ \KwTo $N$}{
+    \For{$k\leftarrow 1$ \KwTo $K$}{
+      solve $L_kz=x_i-\mu_k$ by forward substitution \tcp*{$D^2/2$ operations}
+      $v_k\leftarrow c_k-\tfrac12\|z\|^2$ \tcp*{$\|z\|^2$ = Mahalanobis distance}
+    }
+    $m\leftarrow\texttt{log\_sum\_exp}(v)$; $\mathcal{L}\leftarrow\mathcal{L}+m$; $r_{ik}\leftarrow e^{v_k-m}$ for all $k$\;
+  }
+  \lIf{$|\mathcal{L}-\mathcal{L}_{\mathrm{prev}}|\le\varepsilon|\mathcal{L}|$}{\textbf{break}}
+  \tcp{M-step}
+  $N_k\leftarrow\sum_i r_{ik}$; $S_{ka}\leftarrow\sum_i r_{ik}x_{ia}$\;
+  $Q_{k,ab}\leftarrow\sum_i r_{ik}x_{ia}x_{ib}$ for $b\le a$ \tcp*{symmetric: lower triangle only}
+  \For{$k\leftarrow 1$ \KwTo $K$}{
+    \lIf{$N_k<10^{-10}$}{$\pi_k\leftarrow 10^{-12}$; \textbf{continue} \tcp*[f]{empty cluster}}
+    $\mu_k\leftarrow S_k/N_k$\;
+    $\Sigma_{k,ab}=\Sigma_{k,ba}\leftarrow Q_{k,ab}/N_k-\mu_{ka}\mu_{kb}$ \tcp*{copy to the upper triangle}
+    $\Sigma_{k,aa}\leftarrow\Sigma_{k,aa}+\delta$ \tcp*{keeps $\Sigma_k$ positive definite}
+    $\pi_k\leftarrow\max(N_k/N,\ 10^{-12})$\;
+  }
+  $\mathcal{L}_{\mathrm{prev}}\leftarrow\mathcal{L}$\;
+}
+\lIf{$T_{\max}$ reached}{repeat the E-step}
+\caption{\vseq{}, full model}
+\label{alg:seq-full}
+\end{algorithm}
+\end{minipage}
+\end{adjustbox}
+\end{frame}
+
+\begin{frame}[plain]{}
+\vspace*{-0.6em}
+\begin{adjustbox}{max width=0.98\paperwidth, max totalheight=0.96\paperheight, center}
+\begin{minipage}{1.2\textwidth}\linespread{0.93}\selectfont
+\begin{algorithm}[H]
+\footnotesize
+\DontPrintSemicolon
+\SetAlgoLined
+
+\KwIn{file of $X$, $K$, seed, $\varepsilon$, $T_{\max}$; rank $p$ of $P$, $T$ threads per rank}
+\KwOut{$\pi,\mu,\sigma^2$ and $\mathcal{L}$ (on every rank); labels (on rank 0)}
+\tcp{Data: each rank reads only its rows}
+read the block $X_p$ ($n_p\approx N/P$ contiguous rows) \tcp*{no scatter, nobody holds all $X$}
+\tcp{Initialization: all the ranks must start from the same $K$ rows}
+compute the $K$ seeded indices \tcp*{same indices on every rank}
+copy the chosen rows that are in $X_p$; zeros for the others\;
+\texttt{MPI\_Allreduce}(IN\_PLACE, rows, $KD$, SUM) \tcp*{sum of zeros + rows: everyone has all}
+$\pi_k\leftarrow 1/K$; $\sigma^2_{kd}\leftarrow 1$; $\mathcal{L}_{\mathrm{prev}}\leftarrow-\infty$\;
+\For{$t\leftarrow 1$ \KwTo $T_{\max}$}{
+  \tcp{E-step on the local rows}
+  $c_k$, $\mathrm{iv}_{kd}$ \tcp*{master thread; every rank computes them}
+  \texttt{\#pragma omp parallel for schedule(static) reduction(+:$\ell$)} \tcp*{rows split among threads}
+  \For{$i\in X_p$}{
+    $v_k$ in the thread's slice of one shared array \tcp*{neighbouring slices can share a cache line}
+    $m\leftarrow\texttt{log\_sum\_exp}(v)$; $\ell\mathrel{+}=m$; $r_{ik}\leftarrow e^{v_k-m}$\;
+  }
+  \tcp{Communication 1: global log-likelihood}
+  \texttt{MPI\_Allreduce}($\ell$, $\mathcal{L}$, 1, SUM) \tcp*{every rank gets the same $\mathcal{L}$}
+  \lIf{$|\mathcal{L}-\mathcal{L}_{\mathrm{prev}}|\le\varepsilon|\mathcal{L}|$}{\textbf{break} \tcp*[f]{all the ranks stop together}}
+  \tcp{M-step on the local rows: second pass over $X_p$ and $r$, a private copy of acc per thread}
+  \texttt{\#pragma omp parallel for schedule(static) reduction(+:acc[0:$K{+}2KD$])}\;
+  \For{$i\in X_p$}{
+    acc $=[N_k\,|\,S\,|\,Q]\mathrel{+}=[r_{ik}\,|\,r_{ik}x_{id}\,|\,r_{ik}x_{id}^2]$ for all $k,d$\;
+  }
+  \tcp{Communication 2: global sums, one packed buffer}
+  \texttt{MPI\_Allreduce}(IN\_PLACE, acc, $K+2KD$, SUM)\;
+  update $\pi,\mu,\sigma^2$ from acc as in Algorithm~\ref{alg:seq-diag} \tcp*{every rank: no broadcast}
+  $\mathcal{L}_{\mathrm{prev}}\leftarrow\mathcal{L}$\;
+}
+\lIf{$T_{\max}$ reached}{repeat the E-step and its \texttt{MPI\_Allreduce}}
+\texttt{MPI\_Gatherv}(labels of $X_p$, rank 0) \tcp*{only for the evaluation, not timed}
+\caption{\vbase{}, diagonal model (rank $p$)}
+\label{alg:base-diag}
+\end{algorithm}
+\end{minipage}
+\end{adjustbox}
+\end{frame}
+
+\begin{frame}[plain]{}
+\vspace*{-0.6em}
+\begin{adjustbox}{max width=0.98\paperwidth, max totalheight=0.96\paperheight, center}
+\begin{minipage}{1.2\textwidth}\linespread{0.93}\selectfont
+\begin{algorithm}[H]
+\footnotesize
+\DontPrintSemicolon
+\SetAlgoLined
+
+\KwIn{file of $X$, $K$, seed, $\varepsilon$, $T_{\max}$; rank $p$ of $P$, $T$ threads per rank}
+\KwOut{$\pi,\mu,\Sigma$ and $\mathcal{L}$ (on every rank); labels (on rank 0)}
+read $X_p$ and initialize as in Algorithm~\ref{alg:base-diag} ($\Sigma_k\leftarrow I$)\;
+\For{$t\leftarrow 1$ \KwTo $T_{\max}$}{
+  \tcp{E-step}
+  Cholesky of the $K$ matrices $\Sigma_k$ and $c_k$ \tcp*{master thread, $KD^3/6$, on every rank}
+  \texttt{\#pragma omp parallel for schedule(static) reduction(+:$\ell$)}\;
+  \For{$i\in X_p$}{
+    forward substitution for every $k$ \tcp*{$v$, $z$: thread slices of shared arrays}
+    $m\leftarrow\texttt{log\_sum\_exp}(v)$; $\ell\mathrel{+}=m$; $r_{ik}\leftarrow e^{v_k-m}$\;
+  }
+  \texttt{MPI\_Allreduce}($\ell$, $\mathcal{L}$, 1, SUM)\;
+  \lIf{$|\mathcal{L}-\mathcal{L}_{\mathrm{prev}}|\le\varepsilon|\mathcal{L}|$}{\textbf{break}}
+  \tcp{M-step}
+  \texttt{\#pragma omp parallel for schedule(static) reduction(+:acc[0:$K{+}KD{+}KD^2$])}\;
+  \For{$i\in X_p$}{
+    acc $=[N_k\,|\,S\,|\,Q]\mathrel{+}=[r_{ik}\,|\,r_{ik}x_{ia}\,|\,r_{ik}x_{ia}x_{ib}]$ for all $k$, $a$, $b\le a$\;
+  }
+  \texttt{MPI\_Allreduce}(IN\_PLACE, acc, $K+KD+KD^2$, SUM) \tcp*{$O(KD^2)$: grows with $D^2$}
+  update $\pi,\mu,\Sigma$ from acc as in Algorithm~\ref{alg:seq-full}\;
+  $\mathcal{L}_{\mathrm{prev}}\leftarrow\mathcal{L}$\;
+}
+\lIf{$T_{\max}$ reached}{repeat the E-step and its \texttt{MPI\_Allreduce}}
+\texttt{MPI\_Gatherv}(labels of $X_p$, rank 0)\;
+\caption{\vbase{}, full model (rank $p$)}
+\label{alg:base-full}
+\end{algorithm}
+\end{minipage}
+\end{adjustbox}
+\end{frame}
+
+\begin{frame}[plain]{}
+\vspace*{-0.6em}
+\begin{adjustbox}{max width=0.98\paperwidth, max totalheight=0.96\paperheight, center}
+\begin{minipage}{1.2\textwidth}\linespread{0.93}\selectfont
+\begin{algorithm}[H]
+\footnotesize
+\DontPrintSemicolon
+\SetAlgoLined
+
+\KwIn{file of $X$, $K$, seed, $\varepsilon$, $T_{\max}$; rank $p$ of $P$, $T$ threads per rank}
+\KwOut{$\pi,\mu,\sigma^2$ and $\mathcal{L}$ (on every rank); labels (on rank 0)}
+read $X_p$ and initialize as in Algorithm~\ref{alg:base-diag}\;
+\For{$t\leftarrow 1$ \KwTo $T_{\max}$}{
+  acc $\leftarrow 0$; $\ell\leftarrow 0$\;
+  \texttt{\#pragma omp parallel reduction(+:$\ell$, acc[0:$K{+}2KD$])} \tcp*{ONE region per iteration}
+  \Begin{
+    \texttt{\#pragma omp for}: $c_k$, $\mathrm{iv}_{kd}$ \tcp*{cluster terms split among the threads}
+    \texttt{double buf[$K$]} \tcp*{on the thread's own stack: no false sharing}
+    \texttt{\#pragma omp for schedule(static)}\;
+    \For(\tcp*[f]{E-step and M-step in ONE pass over $X_p$}){$i\in X_p$}{
+      $\mathrm{buf}_k\leftarrow c_k-\tfrac12\sum_d(x_{id}-\mu_{kd})^2\,\mathrm{iv}_{kd}$ for all $k$\;
+      $m\leftarrow\texttt{log\_sum\_exp}(\mathrm{buf})$; $\ell\mathrel{+}=m$\;
+      label$_i\leftarrow\arg\max_k\mathrm{buf}_k$ \tcp*{labels kept: no need for $r$ at the end}
+      \For{$k\leftarrow 1$ \KwTo $K$}{
+        $r\leftarrow e^{\mathrm{buf}_k-m}$ \tcp*{used at once, never stored}
+        $N_k\mathrel{+}=r$; $S_{kd}\mathrel{+}=r\,x_{id}$; $Q_{kd}\mathrel{+}=r\,x_{id}^2$ for all $d$\;
+      }
+    }
+  }
+  \tcp{Communication: as in \vbase{}}
+  \texttt{MPI\_Allreduce}($\ell$, $\mathcal{L}$, 1, SUM)\;
+  \lIf{$|\mathcal{L}-\mathcal{L}_{\mathrm{prev}}|\le\varepsilon|\mathcal{L}|$}{\textbf{break} \tcp*[f]{the sums of this pass are discarded}}
+  \texttt{MPI\_Allreduce}(IN\_PLACE, acc, $K+2KD$, SUM)\;
+  update $\pi,\mu,\sigma^2$ on every rank\;
+  $\mathcal{L}_{\mathrm{prev}}\leftarrow\mathcal{L}$\;
+}
+\lIf{$T_{\max}$ reached}{one more fused pass and its \texttt{MPI\_Allreduce}($\ell$)}
+\texttt{MPI\_Gatherv}(labels of $X_p$, rank 0)\;
+\caption{Optimization 1 MPI+OpenMP, diagonal model (rank $p$)}
+\label{alg:opt1-diag}
+\end{algorithm}
+\end{minipage}
+\end{adjustbox}
+\end{frame}
+
+\begin{frame}[plain]{}
+\vspace*{-0.6em}
+\begin{adjustbox}{max width=0.98\paperwidth, max totalheight=0.96\paperheight, center}
+\begin{minipage}{1.2\textwidth}\linespread{0.93}\selectfont
+\begin{algorithm}[H]
+\footnotesize
+\DontPrintSemicolon
+\SetAlgoLined
+\KwIn{file of $X$, $K$, seed, $\varepsilon$, $T_{\max}$; rank $p$ of $P$, $T$ threads per rank}
+\KwOut{$\pi,\mu,\sigma^2$ and $\mathcal{L}$ (on every rank); labels (on rank 0)}
+read $X_p$ and initialize as in Algorithm~\ref{alg:base-diag}\;
+\For{$t\leftarrow 1$ \KwTo $T_{\max}$}{
+  \tcp{E-step on the local rows: as in \vbase{}}
+  $c_k$, $\mathrm{iv}_{kd}$ \tcp*{master thread; every rank computes them}
+  \texttt{\#pragma omp parallel for schedule(static) reduction(+:$\ell$)}\;
+  \For{$i\in X_p$}{
+    $v_k$ in the thread's slice of one shared array; $m\leftarrow\texttt{log\_sum\_exp}(v)$; $\ell\mathrel{+}=m$; $r_{ik}\leftarrow e^{v_k-m}$\;
+  }
+  \tcp{M-step sums on the local rows: as in \vbase{}, but BEFORE the test}
+  \texttt{\#pragma omp parallel for schedule(static) reduction(+:acc[0:$K{+}2KD$])}\;
+  \For{$i\in X_p$}{
+    acc $=[N_k\,|\,S\,|\,Q]\mathrel{+}=[r_{ik}\,|\,r_{ik}x_{id}\,|\,r_{ik}x_{id}^2]$ for all $k,d$\;
+  }
+  acc$[K+2KD]\leftarrow\ell$ \tcp*{local log-likelihood in the extra last slot}
+  \tcp{Communication: ONE call for $\mathcal{L}$ and the sums}
+  \texttt{MPI\_Allreduce}(IN\_PLACE, acc, $K+2KD+1$, SUM) \tcp*{\vbase{}: two calls}
+  $\mathcal{L}\leftarrow$ acc$[K+2KD]$ \tcp*{same value as in \vbase{}}
+  \lIf{$|\mathcal{L}-\mathcal{L}_{\mathrm{prev}}|\le\varepsilon|\mathcal{L}|$}{\textbf{break} \tcp*[f]{the sums of this iteration are discarded}}
+  update $\pi,\mu,\sigma^2$ from acc as in Algorithm~\ref{alg:seq-diag} \tcp*{every rank: no broadcast}
+  $\mathcal{L}_{\mathrm{prev}}\leftarrow\mathcal{L}$\;
+}
+\lIf{$T_{\max}$ reached}{repeat the E-step and its \texttt{MPI\_Allreduce} of $\ell$}
+\texttt{MPI\_Gatherv}(labels of $X_p$, rank 0) \tcp*{only for the evaluation, not timed}
+\caption{Optimization 2 MPI+OpenMP, diagonal model (rank $p$)}
+\label{alg:opt2-diag}
+\end{algorithm}
+\end{minipage}
+\end{adjustbox}
+\end{frame}
+
+\begin{frame}[plain]{}
+\vspace*{-0.6em}
+\begin{adjustbox}{max width=0.98\paperwidth, max totalheight=0.96\paperheight, center}
+\begin{minipage}{1.2\textwidth}\linespread{0.93}\selectfont
+\begin{algorithm}[H]
+\footnotesize
+\DontPrintSemicolon
+\SetAlgoLined
+
+\KwIn{file of $X$, $K$, seed, $\varepsilon$, $T_{\max}$, block size $B$; rank $p$ of $P$, $T$ threads per rank}
+\KwOut{$\pi,\mu,\Sigma$ and $\mathcal{L}$ (on every rank); labels (on rank 0)}
+read $X_p$ and initialize as in Algorithm~\ref{alg:base-diag} ($\Sigma_k\leftarrow I$)\;
+\For{$t\leftarrow 1$ \KwTo $T_{\max}$}{
+  acc $\leftarrow 0$; $\ell\leftarrow 0$\;
+  \texttt{\#pragma omp parallel reduction(+:$\ell$, acc[0:$K{+}KD{+}KD^2$])} \tcp*{ONE region per iteration}
+  \Begin{
+    \texttt{\#pragma omp for}: Cholesky $\Sigma_k=L_kL_k^\top$ and $c_k$ \tcp*{one cluster per thread, not the master alone}
+    $X^\top_{\mathcal{I}}, Z, \mathrm{LP}, R\leftarrow$ my slice of the buffers \tcp*{64-byte aligned: no false sharing}
+    \texttt{\#pragma omp for schedule(static)}\;
+    \For(\tcp*[f]{E-step and M-step in ONE pass over $X_p$}){each block $\mathcal{I}$ of $B$ rows of $X_p$}{
+      $X^\top_{\mathcal{I}}\leftarrow$ rows of $\mathcal{I}$, transposed ($D\times B$) \tcp*{component $a$ of the $B$ rows contiguous}
+      \For{$k\leftarrow 1$ \KwTo $K$}{
+        \For{each tile of 8 rows of $\mathcal{I}$}{
+          solve $L_kz=x_i-\mu_k$ for the 8 rows together \tcp*{8 independent chains in SIMD (TRSM)}
+          $\mathrm{LP}_{ik}\leftarrow c_k-\tfrac12\|z\|^2$\;
+        }
+      }
+      \For{$i\in\mathcal{I}$}{
+        $m\leftarrow\texttt{log\_sum\_exp}(\mathrm{LP}_i)$; $\ell\mathrel{+}=m$; $R_{ki}\leftarrow e^{\mathrm{LP}_{ik}-m}$; label$_i\leftarrow\arg\max_k R_{ki}$\;
+      }
+      \tcp{M-step sums of the block, while $X^\top_{\mathcal{I}}$ is still in the cache}
+      \For{$k\leftarrow 1$ \KwTo $K$}{
+        $N_k\mathrel{+}=\sum_{i\in\mathcal{I}}R_{ki}$; $S_{ka}\mathrel{+}=\sum_{i\in\mathcal{I}}R_{ki}x_{ia}$\;
+        $Q_{k,ab}\mathrel{+}=\sum_{i\in\mathcal{I}}(R_{ki}x_{ia})\,x_{ib}$ for $b\le a$ \tcp*{register sum, ONE write per block (SYRK)}
+      }
+    }
+  }
+  \tcp{Communication: as in \vbase{}}
+  \texttt{MPI\_Allreduce}($\ell$, $\mathcal{L}$, 1, SUM)\;
+  \lIf{$|\mathcal{L}-\mathcal{L}_{\mathrm{prev}}|\le\varepsilon|\mathcal{L}|$}{\textbf{break} \tcp*[f]{the sums of this pass are discarded}}
+  \texttt{MPI\_Allreduce}(IN\_PLACE, acc, $K+KD+KD^2$, SUM)\;
+  update $\pi,\mu,\Sigma$ from acc as in Algorithm~\ref{alg:seq-full} \tcp*{every rank: no broadcast}
+  $\mathcal{L}_{\mathrm{prev}}\leftarrow\mathcal{L}$\;
+}
+\lIf{$T_{\max}$ reached}{one more fused pass and its \texttt{MPI\_Allreduce}($\ell$)}
+\texttt{MPI\_Gatherv}(labels of $X_p$, rank 0)\;
+\caption{Optimization 1 MPI+OpenMP, full model (rank $p$)}
+\label{alg:opt1-full}
+\end{algorithm}
+\end{minipage}
+\end{adjustbox}
+\end{frame}
+
+\begin{frame}[plain]{}
+\vspace*{-0.6em}
+\begin{adjustbox}{max width=0.98\paperwidth, max totalheight=0.96\paperheight, center}
+\begin{minipage}{1.2\textwidth}\linespread{0.93}\selectfont
+\begin{algorithm}[H]
+\footnotesize
+\DontPrintSemicolon
+\SetAlgoLined
+\KwIn{file of $X$, $K$, seed, $\varepsilon$, $T_{\max}$; rank $p$ of $P$, $T$ threads per rank}
+\KwOut{$\pi,\mu,\Sigma$ and $\mathcal{L}$ (on every rank); labels (on rank 0)}
+read $X_p$ and initialize as in Algorithm~\ref{alg:base-diag} ($\Sigma_k\leftarrow I$)\;
+$M\leftarrow K+KD+KD(D+1)/2+1$ \tcp*{size of the communication buffer cbuf}
+\For{$t\leftarrow 1$ \KwTo $T_{\max}$}{
+  \tcp{Computation: the two loops of Algorithm~\ref{alg:base-full}, unchanged}
+  $(\ell,\ r)\leftarrow$ E-step on $X_p$ \tcp*{Cholesky + responsibilities}
+  acc $=[N_k\,|\,S\,|\,Q]\leftarrow$ M-step local sums on $X_p$ \tcp*{also on the converged iteration}
+  \tcp{Pack: only the lower triangle of every $Q_k$, then $\ell$}
+  cbuf $\leftarrow[N_k\,|\,S\,|\,Q_{k,ab}\ \text{for}\ b\le a\,|\,\ell]$ \tcp*{$O(KD^2)$ copy}
+  \tcp{Communication: ONE call for $\mathcal{L}$ and the sums}
+  \texttt{MPI\_Allreduce}(IN\_PLACE, cbuf, $M$, SUM) \tcp*{\vbase{}: two calls, $1+K+KD+KD^2$ doubles}
+  acc $\leftarrow$ unpack(cbuf); $\mathcal{L}\leftarrow$ cbuf$[M-1]$ \tcp*{same value as in \vbase{}}
+  \lIf{$|\mathcal{L}-\mathcal{L}_{\mathrm{prev}}|\le\varepsilon|\mathcal{L}|$}{\textbf{break} \tcp*[f]{the global sums are not applied}}
+  update $\pi,\mu,\Sigma$ from acc as in Algorithm~\ref{alg:seq-full} \tcp*{every rank: no broadcast}
+  $\mathcal{L}_{\mathrm{prev}}\leftarrow\mathcal{L}$\;
+}
+\lIf{$T_{\max}$ reached}{repeat the E-step and its \texttt{MPI\_Allreduce}($\ell$)}
+\texttt{MPI\_Gatherv}(labels of $X_p$, rank 0) \tcp*{only for the evaluation, not timed}
+\caption{Optimization 2 MPI+OpenMP, full model (rank $p$)}
+\label{alg:opt2-full}
+\end{algorithm}
+\end{minipage}
+\end{adjustbox}
 \end{frame}
 
 \begin{frame}{Backup: why false sharing in \vbase{}?}
@@ -844,7 +1176,8 @@ $>$ 1 s & 1.7\% (1.0\% one exclusive node, 2.4\% reserved multi-node) \\
 \item R. Thakur, R. Rabenseifner, W. Gropp, Optimization of collective communication in MPICH, IJHPCA 2005.
 \item R. Chandra et al., \emph{Parallel Programming in OpenMP}, Morgan Kaufmann, 2001.
 \end{itemize}
-Full list of references: report, \href{https://github.com/HPC-2627/ParallelExpectationMaximizationClustering/blob/main/doc/latex/Group6-Report.pdf}{\texttt{doc/latex/Group6-Report.pdf}}. Code: \url{https://github.com/HPC-2627/ParallelExpectationMaximizationClustering}
+Full list of references: report, \href{https://github.com/HPC-2627/ParallelExpectationMaximizationClustering/blob/main/doc/latex/Group6-Report.pdf}{\texttt{doc/latex/Group6-Report.pdf}}.\\
+Code: \url{https://github.com/HPC-2627/ParallelExpectationMaximizationClustering}
 \end{frame}
 
 \end{document}
