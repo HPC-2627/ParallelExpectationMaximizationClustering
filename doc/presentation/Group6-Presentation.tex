@@ -1,6 +1,29 @@
+% !TEX program = xelatex
+% Compile with XeLaTeX (latexmk reads .latexmkrc in this folder): the Ubuntu fonts need fontspec
 \documentclass[aspectratio=169,10pt]{beamer}
 \usetheme{metropolis}
-\usepackage{amsmath,amssymb}
+\usepackage{amsmath}
+% Ubuntu everywhere: text, monospace (Ubuntu Mono) and, in the formulas, letters, digits, Greek and the
+% common operators (= + - x <= ...). Only the symbols that Ubuntu does not have (big sum, arrows,
+% calligraphic letters) come from the sans-serif math font TeX Gyre DejaVu Math.
+% fonts/ holds static instances of the Ubuntu fonts (Ubuntu Font Licence, fonts/LICENCE.txt): the system
+% files are variable fonts, of which XeLaTeX embeds only the regular weight.
+\usefonttheme{professionalfonts}
+\usepackage{fontspec}
+\usepackage{unicode-math}
+\defaultfontfeatures{Path=fonts/, Extension=.ttf}
+\setsansfont{Ubuntu}[UprightFont=*-Regular, BoldFont=*-Bold, ItalicFont=*-Italic, BoldItalicFont=*-BoldItalic]
+\setmainfont{Ubuntu}[UprightFont=*-Regular, BoldFont=*-Bold, ItalicFont=*-Italic, BoldItalicFont=*-BoldItalic]
+\setmonofont{UbuntuMono}[UprightFont=*-Regular, BoldFont=*-Bold, ItalicFont=*-Italic, BoldItalicFont=*-BoldItalic]
+\setmathfont{texgyredejavu-math.otf}[Path=, Extension=]
+\setmathfont{Ubuntu-Regular}[range={up/{Latin,latin,num,Greek,greek},"2B,"3D,"28,"29,"5B,"5D,"2F,"7C,"2212,"D7,"2264,"2265,"2248,"221E,"3C,"3E,"2C,"3A,"3B,"21,"2026,"2032}]
+\setmathfont{Ubuntu-Italic}[range={it/{Latin,latin}}]
+\setmathfont{Ubuntu-Regular}[range={it/{Greek,greek}}] % upright Greek: the italic pi of Ubuntu looks like an n
+\setmathfont{Ubuntu-Bold}[range={bfup/{Latin,latin,num,Greek,greek}}]
+\setmathrm{Ubuntu}[UprightFont=*-Regular, BoldFont=*-Bold, ItalicFont=*-Italic, BoldItalicFont=*-BoldItalic]
+\setoperatorfont\mathrm
+\renewcommand{\familydefault}{\sfdefault}
+\setbeamerfont{title}{family=\sffamily}
 \usepackage{booktabs}
 \usepackage{tikz}
 \usetikzlibrary{positioning,arrows.meta,calc}
@@ -74,7 +97,7 @@ Gabriele Fronzoni\\
   % title on the right
   \node[anchor=south west,text width=8.4cm,inner sep=0pt] at (7.1,4.75) {%
     {\color{accent}\footnotesize\bfseries \ifbackup APPENDIX\else SECTION 0\arabic{section}\fi\par}\vspace{4pt}
-    {\usebeamercolor[fg]{normal text}\fontsize{22}{26}\selectfont\bfseries \insertsectionhead\par}};
+    {\usebeamercolor[fg]{normal text}\fontsize{22}{26}\selectfont\bfseries\raggedright\hyphenpenalty=10000 \insertsectionhead\par}};
   \draw[accent,line width=1.2pt] (7.1,4.45) -- (11.1,4.45);
   % progress bar: one block per main section
   \ifbackup
@@ -129,8 +152,8 @@ Gabriele Fronzoni\\
   \fill[accent] (0.75,7.95) rectangle (0.86,6.35);
   \foreach \k in {0,...,5} \fill[accent,opacity={1-0.15*\k}] ({1.05+0.3*\k},0.35) -- ({1.25+0.3*\k},0.35) -- ({1.15+0.3*\k},0.53) -- cycle;
   % --- text
-  \node[anchor=north west,text width=8.4cm,inner sep=0pt] at (1.05,7.95) {%
-    {\usebeamercolor[fg]{title}\fontsize{15}{18}\selectfont\bfseries Parallel Expectation--Maximization\\ Clustering\par}
+  \node[anchor=north west,text width=9.2cm,inner sep=0pt] at (1.05,7.95) {%
+    {\usebeamercolor[fg]{title}\fontsize{14}{17}\selectfont\bfseries\mbox{Parallel Expectation--Maximization}\\ Clustering\par}
     \vspace{5pt}
     {\color{accentdark}\small Hybrid MPI + OpenMP EM for Gaussian mixtures,\\ diagonal and full covariance\par}
     \vspace{7pt}
@@ -142,7 +165,7 @@ Gabriele Fronzoni\\
     \textbf{Michael Bernasconi}\\[0pt]
     {\scriptsize Student ID: 267681}\\[-1pt]
     {\scriptsize michael.bernasconi@studenti.unitn.it}
-    \end{tabular}\hspace{2.6em}%
+    \end{tabular}\hspace{1.4em}%
     \begin{tabular}[t]{@{}l@{}}
     \textbf{Gabriele Fronzoni}\\[0pt]
     {\scriptsize Student ID: 267336}\\[-1pt]
