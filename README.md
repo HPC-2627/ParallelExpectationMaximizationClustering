@@ -3,7 +3,7 @@
 ### Report and presentation
 
 [![Open the report](https://img.shields.io/badge/Open_the-Report_%28PDF%29-red?style=for-the-badge&logo=adobeacrobatreader&logoColor=white)](doc/latex/Group6-Report.pdf)
-[![Open the presentation](https://img.shields.io/badge/Open_the-Presentation-yellow?style=for-the-badge&logo=googleslides&logoColor=white)](https://docs.google.com/presentation/d/1nnzwo61ZBHoQlmlYfGVbIb39rVTOexQlnH01uqBfev0/edit?slide=id.g4dfce81f19_0_45#slide=id.g4dfce81f19_0_45)
+[![Open the presentation](https://img.shields.io/badge/Open_the-Presentation_%28PDF%29-orange?style=for-the-badge&logo=adobeacrobatreader&logoColor=white)](doc/presentation/Group6-Presentation.pdf)
 
 ---
 
@@ -219,7 +219,7 @@ Up to 4 nodes (32 cores) of HPC3, exclusive nodes only, fastest split with at le
 
 - **Deliverables**
   - [Report (PDF)](doc/latex/Group6-Report.pdf)
-  - [Presentation](https://docs.google.com/presentation/d/1nnzwo61ZBHoQlmlYfGVbIb39rVTOexQlnH01uqBfev0/edit?slide=id.g4dfce81f19_0_45#slide=id.g4dfce81f19_0_45)
+  - [Presentation (PDF)](doc/presentation/Group6-Presentation.pdf)
 - **How to run**
   - [exec-cluster.md](doc/exec-cluster.md): everything on the cluster, from VPN to plots
   - [script.md](doc/script.md): the scripts in `src/script/` and their variables
