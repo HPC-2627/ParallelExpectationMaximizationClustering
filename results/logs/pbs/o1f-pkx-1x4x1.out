@@ -1,0 +1,1083 @@
+CPU check: every node has 6252N
+version opt1-MPI-OpenMP-full | layout pack_excl_1n4r1t | datasets 25 | reps 3 | log results/logs/full/opt1/opt1-MPI-OpenMP-full_pack_excl_1n4r1t.log
+nodes assigned by PBS:
+      4 hpc3-c11-n03.unitn.it
+---- brainweb K=12 rep 1/3
+=== opt1-MPI-OpenMP-full ===
+dataset         : data/real/brainweb/brainweb.bin
+covariance      : full
+rows x columns  : 11862016 x 1, K = 12
+ranks x threads : 4 x 1
+block           : 64 rows
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 2.0057 s (not in the times)
+iterations      : 200 (maximum number of iterations reached)
+log-likelihood  : 512149.3396
+vs true labels  : ARI 0.1713, purity 0.8384
+time (s)        : total 152.7142 | read 0.0102 | init 0.0000 | E-step 152.2203 | M-step 0.0001 | comm 11.3207
+per iteration   : 817.705 ms (E-step + M-step + comm)
+log             : results/logs/full/opt1/opt1-MPI-OpenMP-full_pack_excl_1n4r1t.log
+---- brainweb K=12 rep 2/3
+=== opt1-MPI-OpenMP-full ===
+dataset         : data/real/brainweb/brainweb.bin
+covariance      : full
+rows x columns  : 11862016 x 1, K = 12
+ranks x threads : 4 x 1
+block           : 64 rows
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 2.0464 s (not in the times)
+iterations      : 200 (maximum number of iterations reached)
+log-likelihood  : 512149.3396
+vs true labels  : ARI 0.1713, purity 0.8384
+time (s)        : total 152.5233 | read 0.0105 | init 0.0001 | E-step 151.6605 | M-step 0.0001 | comm 9.5421
+per iteration   : 806.014 ms (E-step + M-step + comm)
+log             : results/logs/full/opt1/opt1-MPI-OpenMP-full_pack_excl_1n4r1t.log
+---- brainweb K=12 rep 3/3
+=== opt1-MPI-OpenMP-full ===
+dataset         : data/real/brainweb/brainweb.bin
+covariance      : full
+rows x columns  : 11862016 x 1, K = 12
+ranks x threads : 4 x 1
+block           : 64 rows
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 1.9937 s (not in the times)
+iterations      : 200 (maximum number of iterations reached)
+log-likelihood  : 512149.3396
+vs true labels  : ARI 0.1713, purity 0.8384
+time (s)        : total 152.2545 | read 0.0104 | init 0.0000 | E-step 151.5583 | M-step 0.0001 | comm 10.9363
+per iteration   : 812.473 ms (E-step + M-step + comm)
+log             : results/logs/full/opt1/opt1-MPI-OpenMP-full_pack_excl_1n4r1t.log
+---- cardiotocography K=10 rep 1/3
+=== opt1-MPI-OpenMP-full ===
+dataset         : data/real/cardiotocography/cardiotocography.bin
+covariance      : full
+rows x columns  : 2126 x 21, K = 10
+ranks x threads : 4 x 1
+block           : 64 rows
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 0.0040 s (not in the times)
+iterations      : 72 (converged)
+log-likelihood  : 28746.79554
+vs true labels  : ARI 0.1396, purity 0.4196
+time (s)        : total 0.0902 | read 0.0006 | init 0.0000 | E-step 0.0858 | M-step 0.0002 | comm 0.0078
+per iteration   : 1.303 ms (E-step + M-step + comm)
+log             : results/logs/full/opt1/opt1-MPI-OpenMP-full_pack_excl_1n4r1t.log
+---- cardiotocography K=10 rep 2/3
+=== opt1-MPI-OpenMP-full ===
+dataset         : data/real/cardiotocography/cardiotocography.bin
+covariance      : full
+rows x columns  : 2126 x 21, K = 10
+ranks x threads : 4 x 1
+block           : 64 rows
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 0.0039 s (not in the times)
+iterations      : 72 (converged)
+log-likelihood  : 28746.79554
+vs true labels  : ARI 0.1396, purity 0.4196
+time (s)        : total 0.0899 | read 0.0005 | init 0.0000 | E-step 0.0862 | M-step 0.0002 | comm 0.0081
+per iteration   : 1.313 ms (E-step + M-step + comm)
+log             : results/logs/full/opt1/opt1-MPI-OpenMP-full_pack_excl_1n4r1t.log
+---- cardiotocography K=10 rep 3/3
+=== opt1-MPI-OpenMP-full ===
+dataset         : data/real/cardiotocography/cardiotocography.bin
+covariance      : full
+rows x columns  : 2126 x 21, K = 10
+ranks x threads : 4 x 1
+block           : 64 rows
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 0.0039 s (not in the times)
+iterations      : 72 (converged)
+log-likelihood  : 28746.79554
+vs true labels  : ARI 0.1396, purity 0.4196
+time (s)        : total 0.0913 | read 0.0006 | init 0.0000 | E-step 0.0875 | M-step 0.0002 | comm 0.0086
+per iteration   : 1.337 ms (E-step + M-step + comm)
+log             : results/logs/full/opt1/opt1-MPI-OpenMP-full_pack_excl_1n4r1t.log
+---- cardiovascular K=2 rep 1/3
+=== opt1-MPI-OpenMP-full ===
+dataset         : data/real/cardiovascular/cardiovascular.bin
+covariance      : full
+rows x columns  : 70000 x 11, K = 2
+ranks x threads : 4 x 1
+block           : 64 rows
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 0.0091 s (not in the times)
+iterations      : 7 (converged)
+log-likelihood  : -698627.4605
+vs true labels  : ARI 0.0001, purity 0.5041
+time (s)        : total 0.0251 | read 0.0014 | init 0.0000 | E-step 0.0224 | M-step 0.0000 | comm 0.0002
+per iteration   : 3.224 ms (E-step + M-step + comm)
+log             : results/logs/full/opt1/opt1-MPI-OpenMP-full_pack_excl_1n4r1t.log
+---- cardiovascular K=2 rep 2/3
+=== opt1-MPI-OpenMP-full ===
+dataset         : data/real/cardiovascular/cardiovascular.bin
+covariance      : full
+rows x columns  : 70000 x 11, K = 2
+ranks x threads : 4 x 1
+block           : 64 rows
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 0.0090 s (not in the times)
+iterations      : 7 (converged)
+log-likelihood  : -698627.4605
+vs true labels  : ARI 0.0001, purity 0.5041
+time (s)        : total 0.0249 | read 0.0019 | init 0.0000 | E-step 0.0224 | M-step 0.0000 | comm 0.0002
+per iteration   : 3.220 ms (E-step + M-step + comm)
+log             : results/logs/full/opt1/opt1-MPI-OpenMP-full_pack_excl_1n4r1t.log
+---- cardiovascular K=2 rep 3/3
+=== opt1-MPI-OpenMP-full ===
+dataset         : data/real/cardiovascular/cardiovascular.bin
+covariance      : full
+rows x columns  : 70000 x 11, K = 2
+ranks x threads : 4 x 1
+block           : 64 rows
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 0.0090 s (not in the times)
+iterations      : 7 (converged)
+log-likelihood  : -698627.4605
+vs true labels  : ARI 0.0001, purity 0.5041
+time (s)        : total 0.0243 | read 0.0014 | init 0.0000 | E-step 0.0223 | M-step 0.0000 | comm 0.0001
+per iteration   : 3.210 ms (E-step + M-step + comm)
+log             : results/logs/full/opt1/opt1-MPI-OpenMP-full_pack_excl_1n4r1t.log
+---- cdc_diabetes K=2 rep 1/3
+=== opt1-MPI-OpenMP-full ===
+dataset         : data/real/cdc_diabetes/cdc_diabetes.bin
+covariance      : full
+rows x columns  : 253680 x 21, K = 2
+ranks x threads : 4 x 1
+block           : 64 rows
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 0.0747 s (not in the times)
+iterations      : 26 (converged)
+log-likelihood  : -5359425.935
+vs true labels  : ARI 0.0846, purity 0.8607
+time (s)        : total 0.6588 | read 0.0050 | init 0.0000 | E-step 0.6519 | M-step 0.0000 | comm 0.0027
+per iteration   : 25.179 ms (E-step + M-step + comm)
+log             : results/logs/full/opt1/opt1-MPI-OpenMP-full_pack_excl_1n4r1t.log
+---- cdc_diabetes K=2 rep 2/3
+=== opt1-MPI-OpenMP-full ===
+dataset         : data/real/cdc_diabetes/cdc_diabetes.bin
+covariance      : full
+rows x columns  : 253680 x 21, K = 2
+ranks x threads : 4 x 1
+block           : 64 rows
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 0.0751 s (not in the times)
+iterations      : 26 (converged)
+log-likelihood  : -5359425.935
+vs true labels  : ARI 0.0846, purity 0.8607
+time (s)        : total 0.6662 | read 0.0053 | init 0.0000 | E-step 0.6592 | M-step 0.0000 | comm 0.0100
+per iteration   : 25.741 ms (E-step + M-step + comm)
+log             : results/logs/full/opt1/opt1-MPI-OpenMP-full_pack_excl_1n4r1t.log
+---- cdc_diabetes K=2 rep 3/3
+=== opt1-MPI-OpenMP-full ===
+dataset         : data/real/cdc_diabetes/cdc_diabetes.bin
+covariance      : full
+rows x columns  : 253680 x 21, K = 2
+ranks x threads : 4 x 1
+block           : 64 rows
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 0.0769 s (not in the times)
+iterations      : 26 (converged)
+log-likelihood  : -5359425.935
+vs true labels  : ARI 0.0846, purity 0.8607
+time (s)        : total 0.6643 | read 0.0075 | init 0.0000 | E-step 0.6550 | M-step 0.0000 | comm 0.0065
+per iteration   : 25.445 ms (E-step + M-step + comm)
+log             : results/logs/full/opt1/opt1-MPI-OpenMP-full_pack_excl_1n4r1t.log
+---- diabetes130 K=3 rep 1/3
+=== opt1-MPI-OpenMP-full ===
+dataset         : data/real/diabetes130/diabetes130.bin
+covariance      : full
+rows x columns  : 101766 x 11, K = 3
+ranks x threads : 4 x 1
+block           : 64 rows
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 0.0187 s (not in the times)
+iterations      : 23 (converged)
+log-likelihood  : -365475.2063
+vs true labels  : ARI 0.0384, purity 0.5526
+time (s)        : total 0.1412 | read 0.0019 | init 0.0000 | E-step 0.1380 | M-step 0.0000 | comm 0.0008
+per iteration   : 6.035 ms (E-step + M-step + comm)
+log             : results/logs/full/opt1/opt1-MPI-OpenMP-full_pack_excl_1n4r1t.log
+---- diabetes130 K=3 rep 2/3
+=== opt1-MPI-OpenMP-full ===
+dataset         : data/real/diabetes130/diabetes130.bin
+covariance      : full
+rows x columns  : 101766 x 11, K = 3
+ranks x threads : 4 x 1
+block           : 64 rows
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 0.0183 s (not in the times)
+iterations      : 23 (converged)
+log-likelihood  : -365475.2063
+vs true labels  : ARI 0.0384, purity 0.5526
+time (s)        : total 0.1409 | read 0.0017 | init 0.0000 | E-step 0.1383 | M-step 0.0000 | comm 0.0010
+per iteration   : 6.059 ms (E-step + M-step + comm)
+log             : results/logs/full/opt1/opt1-MPI-OpenMP-full_pack_excl_1n4r1t.log
+---- diabetes130 K=3 rep 3/3
+=== opt1-MPI-OpenMP-full ===
+dataset         : data/real/diabetes130/diabetes130.bin
+covariance      : full
+rows x columns  : 101766 x 11, K = 3
+ranks x threads : 4 x 1
+block           : 64 rows
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 0.0181 s (not in the times)
+iterations      : 23 (converged)
+log-likelihood  : -365475.2063
+vs true labels  : ARI 0.0384, purity 0.5526
+time (s)        : total 0.1410 | read 0.0021 | init 0.0000 | E-step 0.1381 | M-step 0.0000 | comm 0.0013
+per iteration   : 6.061 ms (E-step + M-step + comm)
+log             : results/logs/full/opt1/opt1-MPI-OpenMP-full_pack_excl_1n4r1t.log
+---- eeg_eye_state K=2 rep 1/3
+=== opt1-MPI-OpenMP-full ===
+dataset         : data/real/eeg_eye_state/eeg_eye_state.bin
+covariance      : full
+rows x columns  : 14980 x 14, K = 2
+ranks x threads : 4 x 1
+block           : 64 rows
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 0.0027 s (not in the times)
+iterations      : 8 (converged)
+log-likelihood  : 286583.4776
+vs true labels  : ARI 0.0005, purity 0.5512
+time (s)        : total 0.0090 | read 0.0009 | init 0.0000 | E-step 0.0072 | M-step 0.0000 | comm 0.0004
+per iteration   : 0.948 ms (E-step + M-step + comm)
+log             : results/logs/full/opt1/opt1-MPI-OpenMP-full_pack_excl_1n4r1t.log
+---- eeg_eye_state K=2 rep 2/3
+=== opt1-MPI-OpenMP-full ===
+dataset         : data/real/eeg_eye_state/eeg_eye_state.bin
+covariance      : full
+rows x columns  : 14980 x 14, K = 2
+ranks x threads : 4 x 1
+block           : 64 rows
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 0.0026 s (not in the times)
+iterations      : 8 (converged)
+log-likelihood  : 286583.4776
+vs true labels  : ARI 0.0005, purity 0.5512
+time (s)        : total 0.0082 | read 0.0005 | init 0.0000 | E-step 0.0072 | M-step 0.0000 | comm 0.0003
+per iteration   : 0.930 ms (E-step + M-step + comm)
+log             : results/logs/full/opt1/opt1-MPI-OpenMP-full_pack_excl_1n4r1t.log
+---- eeg_eye_state K=2 rep 3/3
+=== opt1-MPI-OpenMP-full ===
+dataset         : data/real/eeg_eye_state/eeg_eye_state.bin
+covariance      : full
+rows x columns  : 14980 x 14, K = 2
+ranks x threads : 4 x 1
+block           : 64 rows
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 0.0029 s (not in the times)
+iterations      : 8 (converged)
+log-likelihood  : 286583.4776
+vs true labels  : ARI 0.0005, purity 0.5512
+time (s)        : total 0.0091 | read 0.0012 | init 0.0000 | E-step 0.0073 | M-step 0.0000 | comm 0.0003
+per iteration   : 0.947 ms (E-step + M-step + comm)
+log             : results/logs/full/opt1/opt1-MPI-OpenMP-full_pack_excl_1n4r1t.log
+skip gene_rnaseq (not feasible with full covariance)
+---- heart_failure K=2 rep 1/3
+=== opt1-MPI-OpenMP-full ===
+dataset         : data/real/heart_failure/heart_failure.bin
+covariance      : full
+rows x columns  : 299 x 12, K = 2
+ranks x threads : 4 x 1
+block           : 64 rows
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 0.0003 s (not in the times)
+iterations      : 19 (converged)
+log-likelihood  : -4537.820934
+vs true labels  : ARI 0.0801, purity 0.6789
+time (s)        : total 0.0015 | read 0.0003 | init 0.0000 | E-step 0.0004 | M-step 0.0000 | comm 0.0001
+per iteration   : 0.027 ms (E-step + M-step + comm)
+log             : results/logs/full/opt1/opt1-MPI-OpenMP-full_pack_excl_1n4r1t.log
+---- heart_failure K=2 rep 2/3
+=== opt1-MPI-OpenMP-full ===
+dataset         : data/real/heart_failure/heart_failure.bin
+covariance      : full
+rows x columns  : 299 x 12, K = 2
+ranks x threads : 4 x 1
+block           : 64 rows
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 0.0003 s (not in the times)
+iterations      : 19 (converged)
+log-likelihood  : -4537.820934
+vs true labels  : ARI 0.0801, purity 0.6789
+time (s)        : total 0.0015 | read 0.0004 | init 0.0000 | E-step 0.0004 | M-step 0.0000 | comm 0.0001
+per iteration   : 0.028 ms (E-step + M-step + comm)
+log             : results/logs/full/opt1/opt1-MPI-OpenMP-full_pack_excl_1n4r1t.log
+---- heart_failure K=2 rep 3/3
+=== opt1-MPI-OpenMP-full ===
+dataset         : data/real/heart_failure/heart_failure.bin
+covariance      : full
+rows x columns  : 299 x 12, K = 2
+ranks x threads : 4 x 1
+block           : 64 rows
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 0.0003 s (not in the times)
+iterations      : 19 (converged)
+log-likelihood  : -4537.820934
+vs true labels  : ARI 0.0801, purity 0.6789
+time (s)        : total 0.0013 | read 0.0003 | init 0.0000 | E-step 0.0004 | M-step 0.0000 | comm 0.0001
+per iteration   : 0.028 ms (E-step + M-step + comm)
+log             : results/logs/full/opt1/opt1-MPI-OpenMP-full_pack_excl_1n4r1t.log
+---- parkinson K=2 rep 1/3
+=== opt1-MPI-OpenMP-full ===
+dataset         : data/real/parkinson/parkinson.bin
+covariance      : full
+rows x columns  : 5875 x 19, K = 2
+ranks x threads : 4 x 1
+block           : 64 rows
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 0.0020 s (not in the times)
+iterations      : 15 (converged)
+log-likelihood  : 43579.41318
+time (s)        : total 0.0101 | read 0.0006 | init 0.0000 | E-step 0.0083 | M-step 0.0000 | comm 0.0005
+per iteration   : 0.590 ms (E-step + M-step + comm)
+log             : results/logs/full/opt1/opt1-MPI-OpenMP-full_pack_excl_1n4r1t.log
+---- parkinson K=2 rep 2/3
+=== opt1-MPI-OpenMP-full ===
+dataset         : data/real/parkinson/parkinson.bin
+covariance      : full
+rows x columns  : 5875 x 19, K = 2
+ranks x threads : 4 x 1
+block           : 64 rows
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 0.0018 s (not in the times)
+iterations      : 15 (converged)
+log-likelihood  : 43579.41318
+time (s)        : total 0.0098 | read 0.0006 | init 0.0000 | E-step 0.0083 | M-step 0.0000 | comm 0.0005
+per iteration   : 0.586 ms (E-step + M-step + comm)
+log             : results/logs/full/opt1/opt1-MPI-OpenMP-full_pack_excl_1n4r1t.log
+---- parkinson K=2 rep 3/3
+=== opt1-MPI-OpenMP-full ===
+dataset         : data/real/parkinson/parkinson.bin
+covariance      : full
+rows x columns  : 5875 x 19, K = 2
+ranks x threads : 4 x 1
+block           : 64 rows
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 0.0019 s (not in the times)
+iterations      : 15 (converged)
+log-likelihood  : 43579.41318
+time (s)        : total 0.0098 | read 0.0007 | init 0.0000 | E-step 0.0083 | M-step 0.0000 | comm 0.0005
+per iteration   : 0.587 ms (E-step + M-step + comm)
+log             : results/logs/full/opt1/opt1-MPI-OpenMP-full_pack_excl_1n4r1t.log
+---- statlog_heart K=2 rep 1/3
+=== opt1-MPI-OpenMP-full ===
+dataset         : data/real/statlog_heart/statlog_heart.bin
+covariance      : full
+rows x columns  : 270 x 13, K = 2
+ranks x threads : 4 x 1
+block           : 64 rows
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 0.0004 s (not in the times)
+iterations      : 8 (converged)
+log-likelihood  : -2976.296127
+vs true labels  : ARI -0.0044, purity 0.5556
+time (s)        : total 0.0009 | read 0.0002 | init 0.0000 | E-step 0.0002 | M-step 0.0000 | comm 0.0001
+per iteration   : 0.034 ms (E-step + M-step + comm)
+log             : results/logs/full/opt1/opt1-MPI-OpenMP-full_pack_excl_1n4r1t.log
+---- statlog_heart K=2 rep 2/3
+=== opt1-MPI-OpenMP-full ===
+dataset         : data/real/statlog_heart/statlog_heart.bin
+covariance      : full
+rows x columns  : 270 x 13, K = 2
+ranks x threads : 4 x 1
+block           : 64 rows
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 0.0006 s (not in the times)
+iterations      : 8 (converged)
+log-likelihood  : -2976.296127
+vs true labels  : ARI -0.0044, purity 0.5556
+time (s)        : total 0.0009 | read 0.0002 | init 0.0000 | E-step 0.0002 | M-step 0.0000 | comm 0.0001
+per iteration   : 0.041 ms (E-step + M-step + comm)
+log             : results/logs/full/opt1/opt1-MPI-OpenMP-full_pack_excl_1n4r1t.log
+---- statlog_heart K=2 rep 3/3
+=== opt1-MPI-OpenMP-full ===
+dataset         : data/real/statlog_heart/statlog_heart.bin
+covariance      : full
+rows x columns  : 270 x 13, K = 2
+ranks x threads : 4 x 1
+block           : 64 rows
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 0.0006 s (not in the times)
+iterations      : 8 (converged)
+log-likelihood  : -2976.296127
+vs true labels  : ARI -0.0044, purity 0.5556
+time (s)        : total 0.0011 | read 0.0003 | init 0.0000 | E-step 0.0002 | M-step 0.0000 | comm 0.0001
+per iteration   : 0.035 ms (E-step + M-step + comm)
+log             : results/logs/full/opt1/opt1-MPI-OpenMP-full_pack_excl_1n4r1t.log
+---- synth_clean_p01 K=4 rep 1/3
+=== opt1-MPI-OpenMP-full ===
+dataset         : data/synthetic/synth_clean/synth_clean_p01.bin
+covariance      : full
+rows x columns  : 250000 x 10, K = 4
+ranks x threads : 4 x 1
+block           : 64 rows
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 0.0509 s (not in the times)
+iterations      : 56 (converged)
+log-likelihood  : -3087715.759
+vs true labels  : ARI 0.9143, purity 0.9668
+time (s)        : total 0.9445 | read 0.0032 | init 0.0000 | E-step 0.9390 | M-step 0.0000 | comm 0.0052
+per iteration   : 16.862 ms (E-step + M-step + comm)
+log             : results/logs/full/opt1/opt1-MPI-OpenMP-full_pack_excl_1n4r1t.log
+---- synth_clean_p01 K=4 rep 2/3
+=== opt1-MPI-OpenMP-full ===
+dataset         : data/synthetic/synth_clean/synth_clean_p01.bin
+covariance      : full
+rows x columns  : 250000 x 10, K = 4
+ranks x threads : 4 x 1
+block           : 64 rows
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 0.0510 s (not in the times)
+iterations      : 56 (converged)
+log-likelihood  : -3087715.759
+vs true labels  : ARI 0.9143, purity 0.9668
+time (s)        : total 0.9441 | read 0.0029 | init 0.0000 | E-step 0.9395 | M-step 0.0000 | comm 0.0067
+per iteration   : 16.896 ms (E-step + M-step + comm)
+log             : results/logs/full/opt1/opt1-MPI-OpenMP-full_pack_excl_1n4r1t.log
+---- synth_clean_p01 K=4 rep 3/3
+=== opt1-MPI-OpenMP-full ===
+dataset         : data/synthetic/synth_clean/synth_clean_p01.bin
+covariance      : full
+rows x columns  : 250000 x 10, K = 4
+ranks x threads : 4 x 1
+block           : 64 rows
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 0.0510 s (not in the times)
+iterations      : 56 (converged)
+log-likelihood  : -3087715.759
+vs true labels  : ARI 0.9143, purity 0.9668
+time (s)        : total 0.9427 | read 0.0035 | init 0.0000 | E-step 0.9368 | M-step 0.0000 | comm 0.0042
+per iteration   : 16.805 ms (E-step + M-step + comm)
+log             : results/logs/full/opt1/opt1-MPI-OpenMP-full_pack_excl_1n4r1t.log
+---- synth_clean_p02 K=4 rep 1/3
+=== opt1-MPI-OpenMP-full ===
+dataset         : data/synthetic/synth_clean/synth_clean_p02.bin
+covariance      : full
+rows x columns  : 500000 x 10, K = 4
+ranks x threads : 4 x 1
+block           : 64 rows
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 0.1013 s (not in the times)
+iterations      : 30 (converged)
+log-likelihood  : -6174066.039
+vs true labels  : ARI 0.9154, purity 0.9672
+time (s)        : total 1.0396 | read 0.0049 | init 0.0000 | E-step 1.0329 | M-step 0.0000 | comm 0.0067
+per iteration   : 34.655 ms (E-step + M-step + comm)
+log             : results/logs/full/opt1/opt1-MPI-OpenMP-full_pack_excl_1n4r1t.log
+---- synth_clean_p02 K=4 rep 2/3
+=== opt1-MPI-OpenMP-full ===
+dataset         : data/synthetic/synth_clean/synth_clean_p02.bin
+covariance      : full
+rows x columns  : 500000 x 10, K = 4
+ranks x threads : 4 x 1
+block           : 64 rows
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 0.1012 s (not in the times)
+iterations      : 30 (converged)
+log-likelihood  : -6174066.039
+vs true labels  : ARI 0.9154, purity 0.9672
+time (s)        : total 1.0372 | read 0.0048 | init 0.0000 | E-step 1.0297 | M-step 0.0000 | comm 0.0060
+per iteration   : 34.525 ms (E-step + M-step + comm)
+log             : results/logs/full/opt1/opt1-MPI-OpenMP-full_pack_excl_1n4r1t.log
+---- synth_clean_p02 K=4 rep 3/3
+=== opt1-MPI-OpenMP-full ===
+dataset         : data/synthetic/synth_clean/synth_clean_p02.bin
+covariance      : full
+rows x columns  : 500000 x 10, K = 4
+ranks x threads : 4 x 1
+block           : 64 rows
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 0.1015 s (not in the times)
+iterations      : 30 (converged)
+log-likelihood  : -6174066.039
+vs true labels  : ARI 0.9154, purity 0.9672
+time (s)        : total 1.0402 | read 0.0049 | init 0.0000 | E-step 1.0341 | M-step 0.0000 | comm 0.0088
+per iteration   : 34.764 ms (E-step + M-step + comm)
+log             : results/logs/full/opt1/opt1-MPI-OpenMP-full_pack_excl_1n4r1t.log
+---- synth_clean_p04 K=4 rep 1/3
+=== opt1-MPI-OpenMP-full ===
+dataset         : data/synthetic/synth_clean/synth_clean_p04.bin
+covariance      : full
+rows x columns  : 1000000 x 10, K = 4
+ranks x threads : 4 x 1
+block           : 64 rows
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 0.2031 s (not in the times)
+iterations      : 61 (converged)
+log-likelihood  : -12347082.42
+vs true labels  : ARI 0.9151, purity 0.9671
+time (s)        : total 4.1765 | read 0.0087 | init 0.0000 | E-step 4.1629 | M-step 0.0001 | comm 0.0178
+per iteration   : 68.537 ms (E-step + M-step + comm)
+log             : results/logs/full/opt1/opt1-MPI-OpenMP-full_pack_excl_1n4r1t.log
+---- synth_clean_p04 K=4 rep 2/3
+=== opt1-MPI-OpenMP-full ===
+dataset         : data/synthetic/synth_clean/synth_clean_p04.bin
+covariance      : full
+rows x columns  : 1000000 x 10, K = 4
+ranks x threads : 4 x 1
+block           : 64 rows
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 0.2039 s (not in the times)
+iterations      : 61 (converged)
+log-likelihood  : -12347082.42
+vs true labels  : ARI 0.9151, purity 0.9671
+time (s)        : total 4.2029 | read 0.0087 | init 0.0000 | E-step 4.1921 | M-step 0.0001 | comm 0.0406
+per iteration   : 69.389 ms (E-step + M-step + comm)
+log             : results/logs/full/opt1/opt1-MPI-OpenMP-full_pack_excl_1n4r1t.log
+---- synth_clean_p04 K=4 rep 3/3
+=== opt1-MPI-OpenMP-full ===
+dataset         : data/synthetic/synth_clean/synth_clean_p04.bin
+covariance      : full
+rows x columns  : 1000000 x 10, K = 4
+ranks x threads : 4 x 1
+block           : 64 rows
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 0.2030 s (not in the times)
+iterations      : 61 (converged)
+log-likelihood  : -12347082.42
+vs true labels  : ARI 0.9151, purity 0.9671
+time (s)        : total 4.1779 | read 0.0088 | init 0.0001 | E-step 4.1651 | M-step 0.0001 | comm 0.0212
+per iteration   : 68.629 ms (E-step + M-step + comm)
+log             : results/logs/full/opt1/opt1-MPI-OpenMP-full_pack_excl_1n4r1t.log
+---- synth_clean_p08 K=4 rep 1/3
+=== opt1-MPI-OpenMP-full ===
+dataset         : data/synthetic/synth_clean/synth_clean_p08.bin
+covariance      : full
+rows x columns  : 2000000 x 10, K = 4
+ranks x threads : 4 x 1
+block           : 64 rows
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 0.4048 s (not in the times)
+iterations      : 40 (converged)
+log-likelihood  : -24695301.21
+vs true labels  : ARI 0.9151, purity 0.9671
+time (s)        : total 5.5234 | read 0.0160 | init 0.0000 | E-step 5.5038 | M-step 0.0000 | comm 0.0267
+per iteration   : 138.264 ms (E-step + M-step + comm)
+log             : results/logs/full/opt1/opt1-MPI-OpenMP-full_pack_excl_1n4r1t.log
+---- synth_clean_p08 K=4 rep 2/3
+=== opt1-MPI-OpenMP-full ===
+dataset         : data/synthetic/synth_clean/synth_clean_p08.bin
+covariance      : full
+rows x columns  : 2000000 x 10, K = 4
+ranks x threads : 4 x 1
+block           : 64 rows
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 0.4145 s (not in the times)
+iterations      : 40 (converged)
+log-likelihood  : -24695301.21
+vs true labels  : ARI 0.9151, purity 0.9671
+time (s)        : total 5.6341 | read 0.0160 | init 0.0000 | E-step 5.6148 | M-step 0.0000 | comm 0.1418
+per iteration   : 143.915 ms (E-step + M-step + comm)
+log             : results/logs/full/opt1/opt1-MPI-OpenMP-full_pack_excl_1n4r1t.log
+---- synth_clean_p08 K=4 rep 3/3
+=== opt1-MPI-OpenMP-full ===
+dataset         : data/synthetic/synth_clean/synth_clean_p08.bin
+covariance      : full
+rows x columns  : 2000000 x 10, K = 4
+ranks x threads : 4 x 1
+block           : 64 rows
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 0.4086 s (not in the times)
+iterations      : 40 (converged)
+log-likelihood  : -24695301.21
+vs true labels  : ARI 0.9151, purity 0.9671
+time (s)        : total 5.5617 | read 0.0162 | init 0.0000 | E-step 5.5399 | M-step 0.0001 | comm 0.0346
+per iteration   : 139.363 ms (E-step + M-step + comm)
+log             : results/logs/full/opt1/opt1-MPI-OpenMP-full_pack_excl_1n4r1t.log
+---- synth_clean_p16 K=4 rep 1/3
+=== opt1-MPI-OpenMP-full ===
+dataset         : data/synthetic/synth_clean/synth_clean_p16.bin
+covariance      : full
+rows x columns  : 4000000 x 10, K = 4
+ranks x threads : 4 x 1
+block           : 64 rows
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 0.8129 s (not in the times)
+iterations      : 19 (converged)
+log-likelihood  : -49883984.51
+vs true labels  : ARI 0.6063, purity 0.7421
+time (s)        : total 5.4401 | read 0.0314 | init 0.0000 | E-step 5.4044 | M-step 0.0000 | comm 0.0501
+per iteration   : 287.083 ms (E-step + M-step + comm)
+log             : results/logs/full/opt1/opt1-MPI-OpenMP-full_pack_excl_1n4r1t.log
+---- synth_clean_p16 K=4 rep 2/3
+=== opt1-MPI-OpenMP-full ===
+dataset         : data/synthetic/synth_clean/synth_clean_p16.bin
+covariance      : full
+rows x columns  : 4000000 x 10, K = 4
+ranks x threads : 4 x 1
+block           : 64 rows
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 0.8090 s (not in the times)
+iterations      : 19 (converged)
+log-likelihood  : -49883984.51
+vs true labels  : ARI 0.6063, purity 0.7421
+time (s)        : total 5.4004 | read 0.0307 | init 0.0000 | E-step 5.3632 | M-step 0.0000 | comm 0.0144
+per iteration   : 283.038 ms (E-step + M-step + comm)
+log             : results/logs/full/opt1/opt1-MPI-OpenMP-full_pack_excl_1n4r1t.log
+---- synth_clean_p16 K=4 rep 3/3
+=== opt1-MPI-OpenMP-full ===
+dataset         : data/synthetic/synth_clean/synth_clean_p16.bin
+covariance      : full
+rows x columns  : 4000000 x 10, K = 4
+ranks x threads : 4 x 1
+block           : 64 rows
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 0.8096 s (not in the times)
+iterations      : 19 (converged)
+log-likelihood  : -49883984.51
+vs true labels  : ARI 0.6063, purity 0.7421
+time (s)        : total 5.4020 | read 0.0306 | init 0.0000 | E-step 5.3679 | M-step 0.0000 | comm 0.0269
+per iteration   : 283.938 ms (E-step + M-step + comm)
+log             : results/logs/full/opt1/opt1-MPI-OpenMP-full_pack_excl_1n4r1t.log
+---- synth_overlap_p01 K=5 rep 1/3
+=== opt1-MPI-OpenMP-full ===
+dataset         : data/synthetic/synth_overlap/synth_overlap_p01.bin
+covariance      : full
+rows x columns  : 250000 x 20, K = 5
+ranks x threads : 4 x 1
+block           : 64 rows
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 0.1590 s (not in the times)
+iterations      : 41 (converged)
+log-likelihood  : -6051364.327
+vs true labels  : ARI 0.8495, purity 0.9359
+time (s)        : total 2.2200 | read 0.0052 | init 0.0000 | E-step 2.2109 | M-step 0.0001 | comm 0.0085
+per iteration   : 54.133 ms (E-step + M-step + comm)
+log             : results/logs/full/opt1/opt1-MPI-OpenMP-full_pack_excl_1n4r1t.log
+---- synth_overlap_p01 K=5 rep 2/3
+=== opt1-MPI-OpenMP-full ===
+dataset         : data/synthetic/synth_overlap/synth_overlap_p01.bin
+covariance      : full
+rows x columns  : 250000 x 20, K = 5
+ranks x threads : 4 x 1
+block           : 64 rows
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 0.1590 s (not in the times)
+iterations      : 41 (converged)
+log-likelihood  : -6051364.327
+vs true labels  : ARI 0.8495, purity 0.9359
+time (s)        : total 2.2191 | read 0.0054 | init 0.0000 | E-step 2.2100 | M-step 0.0001 | comm 0.0128
+per iteration   : 54.217 ms (E-step + M-step + comm)
+log             : results/logs/full/opt1/opt1-MPI-OpenMP-full_pack_excl_1n4r1t.log
+---- synth_overlap_p01 K=5 rep 3/3
+=== opt1-MPI-OpenMP-full ===
+dataset         : data/synthetic/synth_overlap/synth_overlap_p01.bin
+covariance      : full
+rows x columns  : 250000 x 20, K = 5
+ranks x threads : 4 x 1
+block           : 64 rows
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 0.1592 s (not in the times)
+iterations      : 41 (converged)
+log-likelihood  : -6051364.327
+vs true labels  : ARI 0.8495, purity 0.9359
+time (s)        : total 2.2245 | read 0.0054 | init 0.0000 | E-step 2.2172 | M-step 0.0001 | comm 0.0194
+per iteration   : 54.554 ms (E-step + M-step + comm)
+log             : results/logs/full/opt1/opt1-MPI-OpenMP-full_pack_excl_1n4r1t.log
+---- synth_overlap_p02 K=5 rep 1/3
+=== opt1-MPI-OpenMP-full ===
+dataset         : data/synthetic/synth_overlap/synth_overlap_p02.bin
+covariance      : full
+rows x columns  : 500000 x 20, K = 5
+ranks x threads : 4 x 1
+block           : 64 rows
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 0.3164 s (not in the times)
+iterations      : 35 (converged)
+log-likelihood  : -12120788.95
+vs true labels  : ARI 0.8447, purity 0.9349
+time (s)        : total 3.8128 | read 0.0089 | init 0.0000 | E-step 3.7976 | M-step 0.0002 | comm 0.0158
+per iteration   : 108.958 ms (E-step + M-step + comm)
+log             : results/logs/full/opt1/opt1-MPI-OpenMP-full_pack_excl_1n4r1t.log
+---- synth_overlap_p02 K=5 rep 2/3
+=== opt1-MPI-OpenMP-full ===
+dataset         : data/synthetic/synth_overlap/synth_overlap_p02.bin
+covariance      : full
+rows x columns  : 500000 x 20, K = 5
+ranks x threads : 4 x 1
+block           : 64 rows
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 0.3189 s (not in the times)
+iterations      : 35 (converged)
+log-likelihood  : -12120788.95
+vs true labels  : ARI 0.8447, purity 0.9349
+time (s)        : total 3.8451 | read 0.0082 | init 0.0000 | E-step 3.8346 | M-step 0.0001 | comm 0.0352
+per iteration   : 110.570 ms (E-step + M-step + comm)
+log             : results/logs/full/opt1/opt1-MPI-OpenMP-full_pack_excl_1n4r1t.log
+---- synth_overlap_p02 K=5 rep 3/3
+=== opt1-MPI-OpenMP-full ===
+dataset         : data/synthetic/synth_overlap/synth_overlap_p02.bin
+covariance      : full
+rows x columns  : 500000 x 20, K = 5
+ranks x threads : 4 x 1
+block           : 64 rows
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 0.3192 s (not in the times)
+iterations      : 35 (converged)
+log-likelihood  : -12120788.95
+vs true labels  : ARI 0.8447, purity 0.9349
+time (s)        : total 3.8421 | read 0.0090 | init 0.0000 | E-step 3.8302 | M-step 0.0001 | comm 0.0412
+per iteration   : 110.616 ms (E-step + M-step + comm)
+log             : results/logs/full/opt1/opt1-MPI-OpenMP-full_pack_excl_1n4r1t.log
+---- synth_overlap_p04 K=5 rep 1/3
+=== opt1-MPI-OpenMP-full ===
+dataset         : data/synthetic/synth_overlap/synth_overlap_p04.bin
+covariance      : full
+rows x columns  : 1000000 x 20, K = 5
+ranks x threads : 4 x 1
+block           : 64 rows
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 0.6384 s (not in the times)
+iterations      : 46 (converged)
+log-likelihood  : -24263429.29
+vs true labels  : ARI 0.6725, purity 0.8188
+time (s)        : total 10.0038 | read 0.0165 | init 0.0000 | E-step 9.9836 | M-step 0.0002 | comm 0.0415
+per iteration   : 217.941 ms (E-step + M-step + comm)
+log             : results/logs/full/opt1/opt1-MPI-OpenMP-full_pack_excl_1n4r1t.log
+---- synth_overlap_p04 K=5 rep 2/3
+=== opt1-MPI-OpenMP-full ===
+dataset         : data/synthetic/synth_overlap/synth_overlap_p04.bin
+covariance      : full
+rows x columns  : 1000000 x 20, K = 5
+ranks x threads : 4 x 1
+block           : 64 rows
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 0.6341 s (not in the times)
+iterations      : 46 (converged)
+log-likelihood  : -24263429.29
+vs true labels  : ARI 0.6725, purity 0.8188
+time (s)        : total 9.9107 | read 0.0159 | init 0.0000 | E-step 9.8880 | M-step 0.0002 | comm 0.0165
+per iteration   : 215.318 ms (E-step + M-step + comm)
+log             : results/logs/full/opt1/opt1-MPI-OpenMP-full_pack_excl_1n4r1t.log
+---- synth_overlap_p04 K=5 rep 3/3
+=== opt1-MPI-OpenMP-full ===
+dataset         : data/synthetic/synth_overlap/synth_overlap_p04.bin
+covariance      : full
+rows x columns  : 1000000 x 20, K = 5
+ranks x threads : 4 x 1
+block           : 64 rows
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 0.6403 s (not in the times)
+iterations      : 46 (converged)
+log-likelihood  : -24263429.29
+vs true labels  : ARI 0.6725, purity 0.8188
+time (s)        : total 10.0008 | read 0.0162 | init 0.0000 | E-step 9.9812 | M-step 0.0002 | comm 0.0915
+per iteration   : 218.977 ms (E-step + M-step + comm)
+log             : results/logs/full/opt1/opt1-MPI-OpenMP-full_pack_excl_1n4r1t.log
+---- synth_overlap_p08 K=5 rep 1/3
+=== opt1-MPI-OpenMP-full ===
+dataset         : data/synthetic/synth_overlap/synth_overlap_p08.bin
+covariance      : full
+rows x columns  : 2000000 x 20, K = 5
+ranks x threads : 4 x 1
+block           : 64 rows
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 1.2843 s (not in the times)
+iterations      : 37 (converged)
+log-likelihood  : -48360968.03
+vs true labels  : ARI 0.7942, purity 0.9067
+time (s)        : total 16.2484 | read 0.0304 | init 0.0001 | E-step 16.2144 | M-step 0.0002 | comm 0.1133
+per iteration   : 441.293 ms (E-step + M-step + comm)
+log             : results/logs/full/opt1/opt1-MPI-OpenMP-full_pack_excl_1n4r1t.log
+---- synth_overlap_p08 K=5 rep 2/3
+=== opt1-MPI-OpenMP-full ===
+dataset         : data/synthetic/synth_overlap/synth_overlap_p08.bin
+covariance      : full
+rows x columns  : 2000000 x 20, K = 5
+ranks x threads : 4 x 1
+block           : 64 rows
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 1.2788 s (not in the times)
+iterations      : 37 (converged)
+log-likelihood  : -48360968.03
+vs true labels  : ARI 0.7942, purity 0.9067
+time (s)        : total 16.3082 | read 0.0407 | init 0.0000 | E-step 16.2639 | M-step 0.0002 | comm 0.1656
+per iteration   : 444.045 ms (E-step + M-step + comm)
+log             : results/logs/full/opt1/opt1-MPI-OpenMP-full_pack_excl_1n4r1t.log
+---- synth_overlap_p08 K=5 rep 3/3
+=== opt1-MPI-OpenMP-full ===
+dataset         : data/synthetic/synth_overlap/synth_overlap_p08.bin
+covariance      : full
+rows x columns  : 2000000 x 20, K = 5
+ranks x threads : 4 x 1
+block           : 64 rows
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 1.2888 s (not in the times)
+iterations      : 37 (converged)
+log-likelihood  : -48360968.03
+vs true labels  : ARI 0.7942, purity 0.9067
+time (s)        : total 16.3387 | read 0.0301 | init 0.0001 | E-step 16.3050 | M-step 0.0002 | comm 0.2350
+per iteration   : 447.031 ms (E-step + M-step + comm)
+log             : results/logs/full/opt1/opt1-MPI-OpenMP-full_pack_excl_1n4r1t.log
+---- synth_overlap_p16 K=5 rep 1/3
+=== opt1-MPI-OpenMP-full ===
+dataset         : data/synthetic/synth_overlap/synth_overlap_p16.bin
+covariance      : full
+rows x columns  : 4000000 x 20, K = 5
+ranks x threads : 4 x 1
+block           : 64 rows
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 2.5509 s (not in the times)
+iterations      : 65 (converged)
+log-likelihood  : -97081757.88
+vs true labels  : ARI 0.8286, purity 0.9247
+time (s)        : total 56.2607 | read 0.0602 | init 0.0000 | E-step 56.1873 | M-step 0.0003 | comm 0.1434
+per iteration   : 866.630 ms (E-step + M-step + comm)
+log             : results/logs/full/opt1/opt1-MPI-OpenMP-full_pack_excl_1n4r1t.log
+---- synth_overlap_p16 K=5 rep 2/3
+=== opt1-MPI-OpenMP-full ===
+dataset         : data/synthetic/synth_overlap/synth_overlap_p16.bin
+covariance      : full
+rows x columns  : 4000000 x 20, K = 5
+ranks x threads : 4 x 1
+block           : 64 rows
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 2.5719 s (not in the times)
+iterations      : 65 (converged)
+log-likelihood  : -97081757.88
+vs true labels  : ARI 0.8286, purity 0.9247
+time (s)        : total 56.7781 | read 0.0605 | init 0.0000 | E-step 56.7110 | M-step 0.0003 | comm 0.5949
+per iteration   : 881.634 ms (E-step + M-step + comm)
+log             : results/logs/full/opt1/opt1-MPI-OpenMP-full_pack_excl_1n4r1t.log
+---- synth_overlap_p16 K=5 rep 3/3
+=== opt1-MPI-OpenMP-full ===
+dataset         : data/synthetic/synth_overlap/synth_overlap_p16.bin
+covariance      : full
+rows x columns  : 4000000 x 20, K = 5
+ranks x threads : 4 x 1
+block           : 64 rows
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 2.5842 s (not in the times)
+iterations      : 65 (converged)
+log-likelihood  : -97081757.88
+vs true labels  : ARI 0.8286, purity 0.9247
+time (s)        : total 57.1559 | read 0.0604 | init 0.0000 | E-step 57.0884 | M-step 0.0003 | comm 0.6864
+per iteration   : 888.846 ms (E-step + M-step + comm)
+log             : results/logs/full/opt1/opt1-MPI-OpenMP-full_pack_excl_1n4r1t.log
+---- synth_rare_p01 K=6 rep 1/3
+=== opt1-MPI-OpenMP-full ===
+dataset         : data/synthetic/synth_rare/synth_rare_p01.bin
+covariance      : full
+rows x columns  : 250000 x 50, K = 6
+ranks x threads : 4 x 1
+block           : 64 rows
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 0.9343 s (not in the times)
+iterations      : 15 (converged)
+log-likelihood  : -16053385.72
+vs true labels  : ARI 0.9284, purity 0.9376
+time (s)        : total 4.9850 | read 0.0105 | init 0.0000 | E-step 4.9685 | M-step 0.0003 | comm 0.0098
+per iteration   : 331.907 ms (E-step + M-step + comm)
+log             : results/logs/full/opt1/opt1-MPI-OpenMP-full_pack_excl_1n4r1t.log
+---- synth_rare_p01 K=6 rep 2/3
+=== opt1-MPI-OpenMP-full ===
+dataset         : data/synthetic/synth_rare/synth_rare_p01.bin
+covariance      : full
+rows x columns  : 250000 x 50, K = 6
+ranks x threads : 4 x 1
+block           : 64 rows
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 0.9386 s (not in the times)
+iterations      : 15 (converged)
+log-likelihood  : -16053385.72
+vs true labels  : ARI 0.9284, purity 0.9376
+time (s)        : total 5.0036 | read 0.0105 | init 0.0000 | E-step 4.9907 | M-step 0.0003 | comm 0.0200
+per iteration   : 334.071 ms (E-step + M-step + comm)
+log             : results/logs/full/opt1/opt1-MPI-OpenMP-full_pack_excl_1n4r1t.log
+---- synth_rare_p01 K=6 rep 3/3
+=== opt1-MPI-OpenMP-full ===
+dataset         : data/synthetic/synth_rare/synth_rare_p01.bin
+covariance      : full
+rows x columns  : 250000 x 50, K = 6
+ranks x threads : 4 x 1
+block           : 64 rows
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 0.9412 s (not in the times)
+iterations      : 15 (converged)
+log-likelihood  : -16053385.72
+vs true labels  : ARI 0.9284, purity 0.9376
+time (s)        : total 5.0074 | read 0.0107 | init 0.0000 | E-step 4.9943 | M-step 0.0004 | comm 0.0392
+per iteration   : 335.594 ms (E-step + M-step + comm)
+log             : results/logs/full/opt1/opt1-MPI-OpenMP-full_pack_excl_1n4r1t.log
+---- synth_rare_p02 K=6 rep 1/3
+=== opt1-MPI-OpenMP-full ===
+dataset         : data/synthetic/synth_rare/synth_rare_p02.bin
+covariance      : full
+rows x columns  : 500000 x 50, K = 6
+ranks x threads : 4 x 1
+block           : 64 rows
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 1.8805 s (not in the times)
+iterations      : 24 (converged)
+log-likelihood  : -32104884.36
+vs true labels  : ARI 0.9284, purity 0.9375
+time (s)        : total 15.6968 | read 0.0202 | init 0.0000 | E-step 15.6682 | M-step 0.0007 | comm 0.0190
+per iteration   : 653.662 ms (E-step + M-step + comm)
+log             : results/logs/full/opt1/opt1-MPI-OpenMP-full_pack_excl_1n4r1t.log
+---- synth_rare_p02 K=6 rep 2/3
+=== opt1-MPI-OpenMP-full ===
+dataset         : data/synthetic/synth_rare/synth_rare_p02.bin
+covariance      : full
+rows x columns  : 500000 x 50, K = 6
+ranks x threads : 4 x 1
+block           : 64 rows
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 1.8873 s (not in the times)
+iterations      : 24 (converged)
+log-likelihood  : -32104884.36
+vs true labels  : ARI 0.9284, purity 0.9375
+time (s)        : total 15.7276 | read 0.0199 | init 0.0000 | E-step 15.7034 | M-step 0.0007 | comm 0.1951
+per iteration   : 662.468 ms (E-step + M-step + comm)
+log             : results/logs/full/opt1/opt1-MPI-OpenMP-full_pack_excl_1n4r1t.log
+---- synth_rare_p02 K=6 rep 3/3
+=== opt1-MPI-OpenMP-full ===
+dataset         : data/synthetic/synth_rare/synth_rare_p02.bin
+covariance      : full
+rows x columns  : 500000 x 50, K = 6
+ranks x threads : 4 x 1
+block           : 64 rows
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 1.8836 s (not in the times)
+iterations      : 24 (converged)
+log-likelihood  : -32104884.36
+vs true labels  : ARI 0.9284, purity 0.9375
+time (s)        : total 15.5653 | read 0.0197 | init 0.0000 | E-step 15.5144 | M-step 0.0007 | comm 0.0158
+per iteration   : 647.118 ms (E-step + M-step + comm)
+log             : results/logs/full/opt1/opt1-MPI-OpenMP-full_pack_excl_1n4r1t.log
+---- synth_rare_p04 K=6 rep 1/3
+=== opt1-MPI-OpenMP-full ===
+dataset         : data/synthetic/synth_rare/synth_rare_p04.bin
+covariance      : full
+rows x columns  : 1000000 x 50, K = 6
+ranks x threads : 4 x 1
+block           : 64 rows
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 3.7346 s (not in the times)
+iterations      : 33 (converged)
+log-likelihood  : -63078392.02
+vs true labels  : ARI 0.5439, purity 0.8339
+time (s)        : total 43.1298 | read 0.0377 | init 0.0000 | E-step 43.0694 | M-step 0.0009 | comm 0.0970
+per iteration   : 1308.100 ms (E-step + M-step + comm)
+log             : results/logs/full/opt1/opt1-MPI-OpenMP-full_pack_excl_1n4r1t.log
+---- synth_rare_p04 K=6 rep 2/3
+=== opt1-MPI-OpenMP-full ===
+dataset         : data/synthetic/synth_rare/synth_rare_p04.bin
+covariance      : full
+rows x columns  : 1000000 x 50, K = 6
+ranks x threads : 4 x 1
+block           : 64 rows
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 3.7266 s (not in the times)
+iterations      : 33 (converged)
+log-likelihood  : -63078392.02
+vs true labels  : ARI 0.5439, purity 0.8339
+time (s)        : total 42.9629 | read 0.0376 | init 0.0000 | E-step 42.9018 | M-step 0.0009 | comm 0.0883
+per iteration   : 1302.760 ms (E-step + M-step + comm)
+log             : results/logs/full/opt1/opt1-MPI-OpenMP-full_pack_excl_1n4r1t.log
+---- synth_rare_p04 K=6 rep 3/3
+=== opt1-MPI-OpenMP-full ===
+dataset         : data/synthetic/synth_rare/synth_rare_p04.bin
+covariance      : full
+rows x columns  : 1000000 x 50, K = 6
+ranks x threads : 4 x 1
+block           : 64 rows
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 3.7648 s (not in the times)
+iterations      : 33 (converged)
+log-likelihood  : -63078392.02
+vs true labels  : ARI 0.5439, purity 0.8339
+time (s)        : total 43.4054 | read 0.0381 | init 0.0000 | E-step 43.3604 | M-step 0.0009 | comm 0.5026
+per iteration   : 1329.210 ms (E-step + M-step + comm)
+log             : results/logs/full/opt1/opt1-MPI-OpenMP-full_pack_excl_1n4r1t.log
+---- synth_rare_p08 K=6 rep 1/3
+=== opt1-MPI-OpenMP-full ===
+dataset         : data/synthetic/synth_rare/synth_rare_p08.bin
+covariance      : full
+rows x columns  : 2000000 x 50, K = 6
+ranks x threads : 4 x 1
+block           : 64 rows
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 7.5183 s (not in the times)
+iterations      : 12 (converged)
+log-likelihood  : -128106120.1
+vs true labels  : ARI 0.9573, purity 0.9773
+time (s)        : total 32.7335 | read 0.0732 | init 0.0000 | E-step 32.6161 | M-step 0.0003 | comm 0.2864
+per iteration   : 2741.901 ms (E-step + M-step + comm)
+log             : results/logs/full/opt1/opt1-MPI-OpenMP-full_pack_excl_1n4r1t.log
+---- synth_rare_p08 K=6 rep 2/3
+=== opt1-MPI-OpenMP-full ===
+dataset         : data/synthetic/synth_rare/synth_rare_p08.bin
+covariance      : full
+rows x columns  : 2000000 x 50, K = 6
+ranks x threads : 4 x 1
+block           : 64 rows
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 7.5727 s (not in the times)
+iterations      : 12 (converged)
+log-likelihood  : -128106120.1
+vs true labels  : ARI 0.9573, purity 0.9773
+time (s)        : total 32.9394 | read 0.0734 | init 0.0000 | E-step 32.8619 | M-step 0.0004 | comm 0.4332
+per iteration   : 2774.622 ms (E-step + M-step + comm)
+log             : results/logs/full/opt1/opt1-MPI-OpenMP-full_pack_excl_1n4r1t.log
+---- synth_rare_p08 K=6 rep 3/3
+=== opt1-MPI-OpenMP-full ===
+dataset         : data/synthetic/synth_rare/synth_rare_p08.bin
+covariance      : full
+rows x columns  : 2000000 x 50, K = 6
+ranks x threads : 4 x 1
+block           : 64 rows
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 7.5289 s (not in the times)
+iterations      : 12 (converged)
+log-likelihood  : -128106120.1
+vs true labels  : ARI 0.9573, purity 0.9773
+time (s)        : total 32.8092 | read 0.0737 | init 0.0000 | E-step 32.7315 | M-step 0.0003 | comm 0.2638
+per iteration   : 2749.635 ms (E-step + M-step + comm)
+log             : results/logs/full/opt1/opt1-MPI-OpenMP-full_pack_excl_1n4r1t.log
+---- synth_rare_p16 K=6 rep 1/3
+=== opt1-MPI-OpenMP-full ===
+dataset         : data/synthetic/synth_rare/synth_rare_p16.bin
+covariance      : full
+rows x columns  : 4000000 x 50, K = 6
+ranks x threads : 4 x 1
+block           : 64 rows
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 14.9241 s (not in the times)
+iterations      : 30 (converged)
+log-likelihood  : -252282672.6
+vs true labels  : ARI 0.5423, purity 0.8336
+time (s)        : total 157.9793 | read 0.1450 | init 0.0000 | E-step 157.8120 | M-step 0.0009 | comm 0.3017
+per iteration   : 5270.487 ms (E-step + M-step + comm)
+log             : results/logs/full/opt1/opt1-MPI-OpenMP-full_pack_excl_1n4r1t.log
+---- synth_rare_p16 K=6 rep 2/3
+=== opt1-MPI-OpenMP-full ===
+dataset         : data/synthetic/synth_rare/synth_rare_p16.bin
+covariance      : full
+rows x columns  : 4000000 x 50, K = 6
+ranks x threads : 4 x 1
+block           : 64 rows
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 15.1025 s (not in the times)
+iterations      : 30 (converged)
+log-likelihood  : -252282672.6
+vs true labels  : ARI 0.5423, purity 0.8336
+time (s)        : total 160.0108 | read 0.1451 | init 0.0000 | E-step 159.8557 | M-step 0.0009 | comm 2.2682
+per iteration   : 5404.160 ms (E-step + M-step + comm)
+log             : results/logs/full/opt1/opt1-MPI-OpenMP-full_pack_excl_1n4r1t.log
+---- synth_rare_p16 K=6 rep 3/3
+=== opt1-MPI-OpenMP-full ===
+dataset         : data/synthetic/synth_rare/synth_rare_p16.bin
+covariance      : full
+rows x columns  : 4000000 x 50, K = 6
+ranks x threads : 4 x 1
+block           : 64 rows
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 14.9748 s (not in the times)
+iterations      : 30 (converged)
+log-likelihood  : -252282672.6
+vs true labels  : ARI 0.5423, purity 0.8336
+time (s)        : total 158.0736 | read 0.1450 | init 0.0000 | E-step 157.9094 | M-step 0.0009 | comm 0.2385
+per iteration   : 5271.626 ms (E-step + M-step + comm)
+log             : results/logs/full/opt1/opt1-MPI-OpenMP-full_pack_excl_1n4r1t.log
+done, 0 failure(s)

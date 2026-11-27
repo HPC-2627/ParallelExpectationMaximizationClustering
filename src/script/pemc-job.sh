@@ -133,6 +133,8 @@ case "$VERSION" in
         HOSTS=()
         [ -n "${PBS_NODEFILE:-}" ] && HOSTS=(--hostfile "$PBS_NODEFILE"
             --mca plm_rsh_args "-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR")
+        # Note: one rank per node on several nodes (e.g. 2:1:8) fails with this mapping (Open MPI
+        # 4.1: "binding more processes than cpus", every run FAILED): those layouts are not used.
         # Multi-node runs go through the UCX wrapper (Ethernet interface of the cluster)
         LAUNCH=(mpiexec -n $((NODES * RANKS_PER_NODE)) "${HOSTS[@]}"
                 --map-by slot:PE=${THREADS} --bind-to core --report-bindings

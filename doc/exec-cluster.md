@@ -138,8 +138,8 @@ One command = one version of one model on **all the datasets** (10 real + 15 syn
 
 | Batch | Placements | Jobs per parallel stage | Why separate |
 |---|---|---|---|
-| **A** | `pack`, `scatter` | 8 | they start as soon as some cores are free; `pack` gives the 1-node points of the plots (1 to 8 cores) |
-| **B** | `pack:excl`, `scatter:excl` | 8 | the nodes are reserved for the job (clean timing); `scatter:excl` gives the multi-node points of the plots (16 and 32 cores). On a busy cluster they can stay queued for a long time (no Xeon6252N node is ever completely empty) |
+| **A** | `pack`, `scatter` | 8 | they start as soon as some cores are free; shared nodes, used only by the placement plot P6 |
+| **B** | `pack:excl`, `scatter:excl` | 8 | the nodes are reserved for the job (clean timing); `pack:excl` gives the 1-node points of the plots (1 to 8 cores), `scatter:excl` the multi-node points (16 and 32 cores). On a busy cluster they can stay queued for a long time (no Xeon6252N node is ever completely empty) |
 
 `baseline-sequential` (stage `sequential`) is one job, already on a node used only by itself: submit it once, in batch A. Send **all of batch A first**, check `qstat -u $USER`, then batch B when there is room under the limit.
 
@@ -167,7 +167,7 @@ src/script/pemc-submit.sh full opt1                  # 8 jobs
 src/script/pemc-submit.sh full opt2                  # 8 jobs
 ```
 
-The plots need both batches: `plots-performance.py` uses `pack` on 1 node (batch A) and `scatter:excl` on 2 and 4 nodes (batch B) by default (`--placement`, `--multi-placement`); the other placements are used only by P6. After "per-user limit" errors resume the same group with `SKIP=<jobs already submitted>`.
+The plots need batch B: `plots-performance.py` uses `pack:excl` for 1-8 cores on 1 node and `scatter:excl` for 16 and 32 cores on 2 and 4 nodes by default (`--placement`, `--multi-placement`); batch A (shared nodes) is used only by P6. After "per-user limit" errors resume the same group with `SKIP=<jobs already submitted>`.
 
 #### Sweeps of K and D (plot P1)
 
@@ -195,11 +195,11 @@ All the splits of 1, 2 and 4 cores, as for 8 cores:
 | 2 | `1:1:2`, `1:2:1` |
 | 4 | `1:1:4`, `1:2:2`, `1:4:1` |
 
-One node, so `scatter` = `pack`: 6 layouts = **6 jobs per version**, 36 in all (`baseline-MPI-OpenMP`, opt1, opt2 x 2 models). The logs are new files (`<version>_pack_1n1r1t.log`, ...): nothing is overwritten. The longest jobs are the 1-core ones of the full model: about 2.5-3.5 h on a shared node for all the datasets (the `baseline-sequential` full job, all the datasets × 3 repetitions, takes 148 min on an exclusive node): the 6 h walltime is enough.
+One node, so `scatter` = `pack`: 6 layouts x 2 placements = **12 jobs per version**, 72 in all (`baseline-MPI-OpenMP`, opt1, opt2 x 2 models). The logs are new files (`<version>_pack_1n1r1t.log`, `<version>_pack_excl_1n1r1t.log`, ...): nothing is overwritten. The longest jobs are the 1-core ones of the full model: about 2.5-3.5 h on a shared node for all the datasets (the `baseline-sequential` full job, all the datasets × 3 repetitions, takes 148 min on an exclusive node): the 6 h walltime is enough.
 
 ```bash
 export CONFIGS_LIST="1:1:1 1:1:2 1:2:1 1:1:4 1:2:2 1:4:1"
-export PLACES_LIST="pack"                               # pack only (see below)
+export PLACES_LIST="pack pack:excl"                     # the plots use pack:excl (see below)
 DRY_RUN=1 src/script/pemc-submit.sh diagonal baseline   # check: prints the 6 qsub, submits nothing
 
 src/script/pemc-submit.sh diagonal baseline          # 6 jobs
@@ -212,7 +212,21 @@ src/script/pemc-submit.sh full opt2                  # 6 jobs
 unset CONFIGS_LIST PLACES_LIST                       # back to the default layouts and placements
 ```
 
-**Only `pack`, no exclusive runs for these layouts.** We did not run them with `pack:excl` because of the time: the exclusive jobs wait hours in the queue (no Xeon6252N node is ever completely free), and on one node the plots use `pack` anyway. The report says so in the Measurement Methodology.
+**`pack` and `pack:excl`.** These layouts were first run with `pack` only, because the exclusive jobs wait hours in the queue. On one shared node, however, `baseline-MPI-OpenMP` and opt2 full were 15-22% slower than on an exclusive one (memory bandwidth and caches shared with other jobs), so the curves mixed shared and exclusive nodes. They were run again with `pack:excl` (2026-11-26), and the plots use only those.
+
+#### Other splits on 2 and 4 nodes (same splits on every core count)
+
+The default multi-node layouts have one split only (2 ranks x 4 threads per node), while on one node the plots pick the fastest of several: `baseline-MPI-OpenMP` and opt2 are up to 1.9x slower with 2 x 4 than with 8 x 1. To use the same rule on every core count, the other splits were run on 2 and 4 nodes:
+
+```bash
+export CONFIGS_LIST="2:8:1 2:4:2 4:8:1 4:4:2"
+export PLACES_LIST="scatter:excl"
+src/script/pemc-submit.sh diagonal baseline          # 4 jobs per version, 24 in all
+...                                                  # the same for diagonal opt1/opt2, full baseline/opt1/opt2
+unset CONFIGS_LIST PLACES_LIST
+```
+
+**Do not run `2:1:8` and `4:1:8`** (one rank per node): with `--map-by slot:PE=8` Open MPI refuses the binding on the remote nodes ("binding more processes than cpus") and every run is `FAILED`. For the same rule on every core count, the plots leave out the splits with one rank per node and several threads everywhere (1x2, 1x4, 1x8). The multi-node jobs last 5-45 min: `qalter -l walltime=01:30:00 <job>` on the queued jobs helps them start earlier.
 
 When the jobs are done copy `results/logs/diagonal/` and `results/logs/full/` to the laptop and run `plots-performance.py` again: the new core counts are picked up from the logs, no change to the scripts (P7 keeps only the splits of the 8 cores of the node).
 

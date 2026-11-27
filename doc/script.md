@@ -41,8 +41,8 @@ src/script/pemc-submit.sh [sequential|parallel|all]                        # bas
 src/script/pemc-submit.sh sweep                                            # K and D sweeps (P1)
 ```
 
-- **Layouts** (`CONFIGS`): `1:1:8 1:2:4 1:4:2 1:8:1` (8 cores, 1 node), `2:2:4 4:2:4` (16 and 32 cores). The runs on 1, 2 and 4 cores were submitted with `CONFIGS_LIST`/`PLACES_LIST` ([exec-cluster.md](exec-cluster.md), "Runs on 1, 2 and 4 cores of one node").
-- **Placements** (`PLACES`): `pack`, `scatter`, `pack:excl`, `scatter:excl` (on 1 node only `pack` and `pack:excl`). The scaling plots use `pack` on 1 node and `scatter:excl` on 2-4 nodes. `baseline-sequential`: 1 core, `pack:excl`.
+- **Layouts** (`CONFIGS`): `1:1:8 1:2:4 1:4:2 1:8:1` (8 cores, 1 node), `2:2:4 4:2:4` (16 and 32 cores). The runs on 1, 2 and 4 cores and the other splits on 2 and 4 nodes (`2:8:1 2:4:2 4:8:1 4:4:2`) were submitted with `CONFIGS_LIST`/`PLACES_LIST` ([exec-cluster.md](exec-cluster.md)). One rank per node on several nodes (`2:1:8`, `4:1:8`) fails: Open MPI refuses the binding, every run is `FAILED`.
+- **Placements** (`PLACES`): `pack`, `scatter`, `pack:excl`, `scatter:excl` (on 1 node only `pack` and `pack:excl`). The plots use only exclusive nodes: `pack:excl` for 1-8 cores (1 node) and `scatter:excl` for 16 and 32 cores (2 and 4 nodes); `pack` and `scatter` only in P6. `baseline-sequential`: 1 core, `pack:excl`.
 - **Same CPU everywhere:** `NODE_FILTER=cpu_type=Xeon6252N` in the `select`; `pemc-job.sh` checks it again.
 - **Sweeps** (`sweep`, 2 jobs per version): fixed layout `1:1:8`, `pack:excl` (`baseline-sequential` on 1 core). K sweep: `synth_clean_p01`, K = 2, 4, 8, 16, 32, 64. D sweep: `synth_sweep_d005`…`d050` (D = 5, 10, 20, 35, 50), K = 4, generated first with `generate-synthetic-dataset.py --sweep`. Logs in `results/logs/sweep/`, **appended**.
 - **New versions** must be added to `WRITTEN` here and to `MPI_BINS` in the makefile.

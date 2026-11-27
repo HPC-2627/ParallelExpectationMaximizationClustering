@@ -1,0 +1,977 @@
+CPU check: every node has 6252N
+version opt2-MPI-OpenMP-diagonal | layout pack_excl_1n1r2t | datasets 25 | reps 3 | log results/logs/diagonal/opt2/opt2-MPI-OpenMP-diagonal_pack_excl_1n1r2t.log
+nodes assigned by PBS:
+      1 hpc3-c11-n23.unitn.it
+---- brainweb K=12 rep 1/3
+=== opt2-MPI-OpenMP-diagonal ===
+dataset         : data/real/brainweb/brainweb.bin
+rows x columns  : 11862016 x 1, K = 12
+ranks x threads : 1 x 2
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 5.2859 s (not in the times)
+iterations      : 200 (maximum number of iterations reached)
+log-likelihood  : 513268.2107
+vs true labels  : ARI 0.1611, purity 0.8384
+time (s)        : total 371.3028 | read 0.0866 | init 0.0000 | E-step 332.1793 | M-step 38.9035 | comm 0.0005
+per iteration   : 1855.417 ms (E-step + M-step + comm)
+log             : results/logs/diagonal/opt2/opt2-MPI-OpenMP-diagonal_pack_excl_1n1r2t.log
+---- brainweb K=12 rep 2/3
+=== opt2-MPI-OpenMP-diagonal ===
+dataset         : data/real/brainweb/brainweb.bin
+rows x columns  : 11862016 x 1, K = 12
+ranks x threads : 1 x 2
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 5.1354 s (not in the times)
+iterations      : 200 (maximum number of iterations reached)
+log-likelihood  : 513268.2107
+vs true labels  : ARI 0.1611, purity 0.8384
+time (s)        : total 369.0400 | read 0.0366 | init 0.0000 | E-step 329.9344 | M-step 38.9368 | comm 0.0006
+per iteration   : 1844.359 ms (E-step + M-step + comm)
+log             : results/logs/diagonal/opt2/opt2-MPI-OpenMP-diagonal_pack_excl_1n1r2t.log
+---- brainweb K=12 rep 3/3
+=== opt2-MPI-OpenMP-diagonal ===
+dataset         : data/real/brainweb/brainweb.bin
+rows x columns  : 11862016 x 1, K = 12
+ranks x threads : 1 x 2
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 5.1793 s (not in the times)
+iterations      : 200 (maximum number of iterations reached)
+log-likelihood  : 513268.2107
+vs true labels  : ARI 0.1611, purity 0.8384
+time (s)        : total 370.0620 | read 0.0334 | init 0.0000 | E-step 330.7731 | M-step 39.1140 | comm 0.0004
+per iteration   : 1849.437 ms (E-step + M-step + comm)
+log             : results/logs/diagonal/opt2/opt2-MPI-OpenMP-diagonal_pack_excl_1n1r2t.log
+---- cardiotocography K=10 rep 1/3
+=== opt2-MPI-OpenMP-diagonal ===
+dataset         : data/real/cardiotocography/cardiotocography.bin
+rows x columns  : 2126 x 21, K = 10
+ranks x threads : 1 x 2
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 0.0019 s (not in the times)
+iterations      : 55 (converged)
+log-likelihood  : 1023.679342
+vs true labels  : ARI 0.1396, purity 0.4040
+time (s)        : total 0.0365 | read 0.0015 | init 0.0000 | E-step 0.0254 | M-step 0.0081 | comm 0.0000
+per iteration   : 0.609 ms (E-step + M-step + comm)
+log             : results/logs/diagonal/opt2/opt2-MPI-OpenMP-diagonal_pack_excl_1n1r2t.log
+---- cardiotocography K=10 rep 2/3
+=== opt2-MPI-OpenMP-diagonal ===
+dataset         : data/real/cardiotocography/cardiotocography.bin
+rows x columns  : 2126 x 21, K = 10
+ranks x threads : 1 x 2
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 0.0020 s (not in the times)
+iterations      : 55 (converged)
+log-likelihood  : 1023.679342
+vs true labels  : ARI 0.1396, purity 0.4040
+time (s)        : total 0.0317 | read 0.0008 | init 0.0000 | E-step 0.0226 | M-step 0.0077 | comm 0.0000
+per iteration   : 0.551 ms (E-step + M-step + comm)
+log             : results/logs/diagonal/opt2/opt2-MPI-OpenMP-diagonal_pack_excl_1n1r2t.log
+---- cardiotocography K=10 rep 3/3
+=== opt2-MPI-OpenMP-diagonal ===
+dataset         : data/real/cardiotocography/cardiotocography.bin
+rows x columns  : 2126 x 21, K = 10
+ranks x threads : 1 x 2
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 0.0018 s (not in the times)
+iterations      : 55 (converged)
+log-likelihood  : 1023.679342
+vs true labels  : ARI 0.1396, purity 0.4040
+time (s)        : total 0.0622 | read 0.0010 | init 0.0000 | E-step 0.0229 | M-step 0.0077 | comm 0.0000
+per iteration   : 0.558 ms (E-step + M-step + comm)
+log             : results/logs/diagonal/opt2/opt2-MPI-OpenMP-diagonal_pack_excl_1n1r2t.log
+---- cardiovascular K=2 rep 1/3
+=== opt2-MPI-OpenMP-diagonal ===
+dataset         : data/real/cardiovascular/cardiovascular.bin
+rows x columns  : 70000 x 11, K = 2
+ranks x threads : 1 x 2
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 0.0105 s (not in the times)
+iterations      : 11 (converged)
+log-likelihood  : 74867.48009
+vs true labels  : ARI 0.0001, purity 0.5054
+time (s)        : total 0.1423 | read 0.0851 | init 0.0000 | E-step 0.0299 | M-step 0.0065 | comm 0.0000
+per iteration   : 3.312 ms (E-step + M-step + comm)
+log             : results/logs/diagonal/opt2/opt2-MPI-OpenMP-diagonal_pack_excl_1n1r2t.log
+---- cardiovascular K=2 rep 2/3
+=== opt2-MPI-OpenMP-diagonal ===
+dataset         : data/real/cardiovascular/cardiovascular.bin
+rows x columns  : 70000 x 11, K = 2
+ranks x threads : 1 x 2
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 0.0105 s (not in the times)
+iterations      : 11 (converged)
+log-likelihood  : 74867.48009
+vs true labels  : ARI 0.0001, purity 0.5054
+time (s)        : total 0.0408 | read 0.0033 | init 0.0000 | E-step 0.0302 | M-step 0.0066 | comm 0.0000
+per iteration   : 3.344 ms (E-step + M-step + comm)
+log             : results/logs/diagonal/opt2/opt2-MPI-OpenMP-diagonal_pack_excl_1n1r2t.log
+---- cardiovascular K=2 rep 3/3
+=== opt2-MPI-OpenMP-diagonal ===
+dataset         : data/real/cardiovascular/cardiovascular.bin
+rows x columns  : 70000 x 11, K = 2
+ranks x threads : 1 x 2
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 0.0102 s (not in the times)
+iterations      : 11 (converged)
+log-likelihood  : 74867.48009
+vs true labels  : ARI 0.0001, purity 0.5054
+time (s)        : total 0.0398 | read 0.0028 | init 0.0000 | E-step 0.0298 | M-step 0.0066 | comm 0.0000
+per iteration   : 3.311 ms (E-step + M-step + comm)
+log             : results/logs/diagonal/opt2/opt2-MPI-OpenMP-diagonal_pack_excl_1n1r2t.log
+---- cdc_diabetes K=2 rep 1/3
+=== opt2-MPI-OpenMP-diagonal ===
+dataset         : data/real/cdc_diabetes/cdc_diabetes.bin
+rows x columns  : 253680 x 21, K = 2
+ranks x threads : 1 x 2
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 0.0480 s (not in the times)
+iterations      : 18 (converged)
+log-likelihood  : -3321852.38
+vs true labels  : ARI 0.1409, purity 0.8607
+time (s)        : total 0.3375 | read 0.0495 | init 0.0000 | E-step 0.2120 | M-step 0.0670 | comm 0.0000
+per iteration   : 15.498 ms (E-step + M-step + comm)
+log             : results/logs/diagonal/opt2/opt2-MPI-OpenMP-diagonal_pack_excl_1n1r2t.log
+---- cdc_diabetes K=2 rep 2/3
+=== opt2-MPI-OpenMP-diagonal ===
+dataset         : data/real/cdc_diabetes/cdc_diabetes.bin
+rows x columns  : 253680 x 21, K = 2
+ranks x threads : 1 x 2
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 0.0465 s (not in the times)
+iterations      : 18 (converged)
+log-likelihood  : -3321852.38
+vs true labels  : ARI 0.1409, purity 0.8607
+time (s)        : total 0.2957 | read 0.0164 | init 0.0000 | E-step 0.2117 | M-step 0.0663 | comm 0.0000
+per iteration   : 15.446 ms (E-step + M-step + comm)
+log             : results/logs/diagonal/opt2/opt2-MPI-OpenMP-diagonal_pack_excl_1n1r2t.log
+---- cdc_diabetes K=2 rep 3/3
+=== opt2-MPI-OpenMP-diagonal ===
+dataset         : data/real/cdc_diabetes/cdc_diabetes.bin
+rows x columns  : 253680 x 21, K = 2
+ranks x threads : 1 x 2
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 0.0458 s (not in the times)
+iterations      : 18 (converged)
+log-likelihood  : -3321852.38
+vs true labels  : ARI 0.1409, purity 0.8607
+time (s)        : total 0.2927 | read 0.0167 | init 0.0000 | E-step 0.2084 | M-step 0.0665 | comm 0.0000
+per iteration   : 15.273 ms (E-step + M-step + comm)
+log             : results/logs/diagonal/opt2/opt2-MPI-OpenMP-diagonal_pack_excl_1n1r2t.log
+---- diabetes130 K=3 rep 1/3
+=== opt2-MPI-OpenMP-diagonal ===
+dataset         : data/real/diabetes130/diabetes130.bin
+rows x columns  : 101766 x 11, K = 3
+ranks x threads : 1 x 2
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 0.0236 s (not in the times)
+iterations      : 24 (converged)
+log-likelihood  : -549221.7007
+vs true labels  : ARI 0.0241, purity 0.5522
+time (s)        : total 0.2846 | read 0.0592 | init 0.0000 | E-step 0.1553 | M-step 0.0289 | comm 0.0000
+per iteration   : 7.673 ms (E-step + M-step + comm)
+log             : results/logs/diagonal/opt2/opt2-MPI-OpenMP-diagonal_pack_excl_1n1r2t.log
+---- diabetes130 K=3 rep 2/3
+=== opt2-MPI-OpenMP-diagonal ===
+dataset         : data/real/diabetes130/diabetes130.bin
+rows x columns  : 101766 x 11, K = 3
+ranks x threads : 1 x 2
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 0.0251 s (not in the times)
+iterations      : 24 (converged)
+log-likelihood  : -549221.7007
+vs true labels  : ARI 0.0241, purity 0.5522
+time (s)        : total 0.2069 | read 0.0058 | init 0.0000 | E-step 0.1714 | M-step 0.0287 | comm 0.0000
+per iteration   : 8.336 ms (E-step + M-step + comm)
+log             : results/logs/diagonal/opt2/opt2-MPI-OpenMP-diagonal_pack_excl_1n1r2t.log
+---- diabetes130 K=3 rep 3/3
+=== opt2-MPI-OpenMP-diagonal ===
+dataset         : data/real/diabetes130/diabetes130.bin
+rows x columns  : 101766 x 11, K = 3
+ranks x threads : 1 x 2
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 0.0241 s (not in the times)
+iterations      : 24 (converged)
+log-likelihood  : -549221.7007
+vs true labels  : ARI 0.0241, purity 0.5522
+time (s)        : total 0.2298 | read 0.0076 | init 0.0000 | E-step 0.1558 | M-step 0.0289 | comm 0.0000
+per iteration   : 7.697 ms (E-step + M-step + comm)
+log             : results/logs/diagonal/opt2/opt2-MPI-OpenMP-diagonal_pack_excl_1n1r2t.log
+---- eeg_eye_state K=2 rep 1/3
+=== opt2-MPI-OpenMP-diagonal ===
+dataset         : data/real/eeg_eye_state/eeg_eye_state.bin
+rows x columns  : 14980 x 14, K = 2
+ranks x threads : 1 x 2
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 0.0023 s (not in the times)
+iterations      : 7 (converged)
+log-likelihood  : 64101.00851
+vs true labels  : ARI 0.0016, purity 0.5530
+time (s)        : total 0.0093 | read 0.0025 | init 0.0000 | E-step 0.0039 | M-step 0.0011 | comm 0.0000
+per iteration   : 0.724 ms (E-step + M-step + comm)
+log             : results/logs/diagonal/opt2/opt2-MPI-OpenMP-diagonal_pack_excl_1n1r2t.log
+---- eeg_eye_state K=2 rep 2/3
+=== opt2-MPI-OpenMP-diagonal ===
+dataset         : data/real/eeg_eye_state/eeg_eye_state.bin
+rows x columns  : 14980 x 14, K = 2
+ranks x threads : 1 x 2
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 0.0021 s (not in the times)
+iterations      : 7 (converged)
+log-likelihood  : 64101.00851
+vs true labels  : ARI 0.0016, purity 0.5530
+time (s)        : total 0.0069 | read 0.0016 | init 0.0000 | E-step 0.0038 | M-step 0.0011 | comm 0.0000
+per iteration   : 0.711 ms (E-step + M-step + comm)
+log             : results/logs/diagonal/opt2/opt2-MPI-OpenMP-diagonal_pack_excl_1n1r2t.log
+---- eeg_eye_state K=2 rep 3/3
+=== opt2-MPI-OpenMP-diagonal ===
+dataset         : data/real/eeg_eye_state/eeg_eye_state.bin
+rows x columns  : 14980 x 14, K = 2
+ranks x threads : 1 x 2
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 0.0021 s (not in the times)
+iterations      : 7 (converged)
+log-likelihood  : 64101.00851
+vs true labels  : ARI 0.0016, purity 0.5530
+time (s)        : total 0.0197 | read 0.0019 | init 0.0000 | E-step 0.0037 | M-step 0.0010 | comm 0.0000
+per iteration   : 0.676 ms (E-step + M-step + comm)
+log             : results/logs/diagonal/opt2/opt2-MPI-OpenMP-diagonal_pack_excl_1n1r2t.log
+---- gene_rnaseq K=5 rep 1/3
+=== opt2-MPI-OpenMP-diagonal ===
+dataset         : data/real/gene_rnaseq/gene_rnaseq.bin
+rows x columns  : 801 x 20264, K = 5
+ranks x threads : 1 x 2
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 0.2619 s (not in the times)
+iterations      : 5 (converged)
+log-likelihood  : -19561343.8
+vs true labels  : ARI 0.6057, purity 0.7915
+time (s)        : total 0.6163 | read 0.0921 | init 0.0003 | E-step 0.2864 | M-step 0.2296 | comm 0.0000
+per iteration   : 103.189 ms (E-step + M-step + comm)
+log             : results/logs/diagonal/opt2/opt2-MPI-OpenMP-diagonal_pack_excl_1n1r2t.log
+---- gene_rnaseq K=5 rep 2/3
+=== opt2-MPI-OpenMP-diagonal ===
+dataset         : data/real/gene_rnaseq/gene_rnaseq.bin
+rows x columns  : 801 x 20264, K = 5
+ranks x threads : 1 x 2
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 0.2632 s (not in the times)
+iterations      : 5 (converged)
+log-likelihood  : -19561343.8
+vs true labels  : ARI 0.6057, purity 0.7915
+time (s)        : total 0.5822 | read 0.0605 | init 0.0003 | E-step 0.2895 | M-step 0.2304 | comm 0.0000
+per iteration   : 103.992 ms (E-step + M-step + comm)
+log             : results/logs/diagonal/opt2/opt2-MPI-OpenMP-diagonal_pack_excl_1n1r2t.log
+---- gene_rnaseq K=5 rep 3/3
+=== opt2-MPI-OpenMP-diagonal ===
+dataset         : data/real/gene_rnaseq/gene_rnaseq.bin
+rows x columns  : 801 x 20264, K = 5
+ranks x threads : 1 x 2
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 0.2610 s (not in the times)
+iterations      : 5 (converged)
+log-likelihood  : -19561343.8
+vs true labels  : ARI 0.6057, purity 0.7915
+time (s)        : total 0.6299 | read 0.1129 | init 0.0003 | E-step 0.2862 | M-step 0.2289 | comm 0.0000
+per iteration   : 103.024 ms (E-step + M-step + comm)
+log             : results/logs/diagonal/opt2/opt2-MPI-OpenMP-diagonal_pack_excl_1n1r2t.log
+---- heart_failure K=2 rep 1/3
+=== opt2-MPI-OpenMP-diagonal ===
+dataset         : data/real/heart_failure/heart_failure.bin
+rows x columns  : 299 x 12, K = 2
+ranks x threads : 1 x 2
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 0.0003 s (not in the times)
+iterations      : 13 (converged)
+log-likelihood  : -4695.608146
+vs true labels  : ARI 0.0975, purity 0.6823
+time (s)        : total 0.0023 | read 0.0004 | init 0.0000 | E-step 0.0002 | M-step 0.0001 | comm 0.0000
+per iteration   : 0.022 ms (E-step + M-step + comm)
+log             : results/logs/diagonal/opt2/opt2-MPI-OpenMP-diagonal_pack_excl_1n1r2t.log
+---- heart_failure K=2 rep 2/3
+=== opt2-MPI-OpenMP-diagonal ===
+dataset         : data/real/heart_failure/heart_failure.bin
+rows x columns  : 299 x 12, K = 2
+ranks x threads : 1 x 2
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 0.0002 s (not in the times)
+iterations      : 13 (converged)
+log-likelihood  : -4695.608146
+vs true labels  : ARI 0.0975, purity 0.6823
+time (s)        : total 0.0017 | read 0.0011 | init 0.0000 | E-step 0.0002 | M-step 0.0001 | comm 0.0000
+per iteration   : 0.018 ms (E-step + M-step + comm)
+log             : results/logs/diagonal/opt2/opt2-MPI-OpenMP-diagonal_pack_excl_1n1r2t.log
+---- heart_failure K=2 rep 3/3
+=== opt2-MPI-OpenMP-diagonal ===
+dataset         : data/real/heart_failure/heart_failure.bin
+rows x columns  : 299 x 12, K = 2
+ranks x threads : 1 x 2
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 0.0002 s (not in the times)
+iterations      : 13 (converged)
+log-likelihood  : -4695.608146
+vs true labels  : ARI 0.0975, purity 0.6823
+time (s)        : total 0.0015 | read 0.0006 | init 0.0000 | E-step 0.0002 | M-step 0.0001 | comm 0.0000
+per iteration   : 0.018 ms (E-step + M-step + comm)
+log             : results/logs/diagonal/opt2/opt2-MPI-OpenMP-diagonal_pack_excl_1n1r2t.log
+---- parkinson K=2 rep 1/3
+=== opt2-MPI-OpenMP-diagonal ===
+dataset         : data/real/parkinson/parkinson.bin
+rows x columns  : 5875 x 19, K = 2
+ranks x threads : 1 x 2
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 0.0011 s (not in the times)
+iterations      : 24 (converged)
+log-likelihood  : -103466.6856
+time (s)        : total 0.0205 | read 0.0108 | init 0.0000 | E-step 0.0065 | M-step 0.0019 | comm 0.0000
+per iteration   : 0.351 ms (E-step + M-step + comm)
+log             : results/logs/diagonal/opt2/opt2-MPI-OpenMP-diagonal_pack_excl_1n1r2t.log
+---- parkinson K=2 rep 2/3
+=== opt2-MPI-OpenMP-diagonal ===
+dataset         : data/real/parkinson/parkinson.bin
+rows x columns  : 5875 x 19, K = 2
+ranks x threads : 1 x 2
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 0.0011 s (not in the times)
+iterations      : 24 (converged)
+log-likelihood  : -103466.6856
+time (s)        : total 0.0098 | read 0.0013 | init 0.0000 | E-step 0.0062 | M-step 0.0018 | comm 0.0000
+per iteration   : 0.335 ms (E-step + M-step + comm)
+log             : results/logs/diagonal/opt2/opt2-MPI-OpenMP-diagonal_pack_excl_1n1r2t.log
+---- parkinson K=2 rep 3/3
+=== opt2-MPI-OpenMP-diagonal ===
+dataset         : data/real/parkinson/parkinson.bin
+rows x columns  : 5875 x 19, K = 2
+ranks x threads : 1 x 2
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 0.0011 s (not in the times)
+iterations      : 24 (converged)
+log-likelihood  : -103466.6856
+time (s)        : total 0.0100 | read 0.0013 | init 0.0000 | E-step 0.0064 | M-step 0.0018 | comm 0.0000
+per iteration   : 0.343 ms (E-step + M-step + comm)
+log             : results/logs/diagonal/opt2/opt2-MPI-OpenMP-diagonal_pack_excl_1n1r2t.log
+---- statlog_heart K=2 rep 1/3
+=== opt2-MPI-OpenMP-diagonal ===
+dataset         : data/real/statlog_heart/statlog_heart.bin
+rows x columns  : 270 x 13, K = 2
+ranks x threads : 1 x 2
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 0.0002 s (not in the times)
+iterations      : 7 (converged)
+log-likelihood  : -3075.796466
+vs true labels  : ARI -0.0036, purity 0.5556
+time (s)        : total 0.0328 | read 0.0004 | init 0.0000 | E-step 0.0001 | M-step 0.0000 | comm 0.0000
+per iteration   : 0.018 ms (E-step + M-step + comm)
+log             : results/logs/diagonal/opt2/opt2-MPI-OpenMP-diagonal_pack_excl_1n1r2t.log
+---- statlog_heart K=2 rep 2/3
+=== opt2-MPI-OpenMP-diagonal ===
+dataset         : data/real/statlog_heart/statlog_heart.bin
+rows x columns  : 270 x 13, K = 2
+ranks x threads : 1 x 2
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 0.0004 s (not in the times)
+iterations      : 7 (converged)
+log-likelihood  : -3075.796466
+vs true labels  : ARI -0.0036, purity 0.5556
+time (s)        : total 0.0013 | read 0.0004 | init 0.0000 | E-step 0.0002 | M-step 0.0001 | comm 0.0000
+per iteration   : 0.043 ms (E-step + M-step + comm)
+log             : results/logs/diagonal/opt2/opt2-MPI-OpenMP-diagonal_pack_excl_1n1r2t.log
+---- statlog_heart K=2 rep 3/3
+=== opt2-MPI-OpenMP-diagonal ===
+dataset         : data/real/statlog_heart/statlog_heart.bin
+rows x columns  : 270 x 13, K = 2
+ranks x threads : 1 x 2
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 0.0004 s (not in the times)
+iterations      : 7 (converged)
+log-likelihood  : -3075.796466
+vs true labels  : ARI -0.0036, purity 0.5556
+time (s)        : total 0.0027 | read 0.0013 | init 0.0000 | E-step 0.0002 | M-step 0.0001 | comm 0.0000
+per iteration   : 0.036 ms (E-step + M-step + comm)
+log             : results/logs/diagonal/opt2/opt2-MPI-OpenMP-diagonal_pack_excl_1n1r2t.log
+---- synth_clean_p01 K=4 rep 1/3
+=== opt2-MPI-OpenMP-diagonal ===
+dataset         : data/synthetic/synth_clean/synth_clean_p01.bin
+rows x columns  : 250000 x 10, K = 4
+ranks x threads : 1 x 2
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 0.0695 s (not in the times)
+iterations      : 20 (converged)
+log-likelihood  : -3087811.881
+vs true labels  : ARI 0.9146, purity 0.9669
+time (s)        : total 0.5265 | read 0.0084 | init 0.0000 | E-step 0.4124 | M-step 0.0697 | comm 0.0000
+per iteration   : 24.104 ms (E-step + M-step + comm)
+log             : results/logs/diagonal/opt2/opt2-MPI-OpenMP-diagonal_pack_excl_1n1r2t.log
+---- synth_clean_p01 K=4 rep 2/3
+=== opt2-MPI-OpenMP-diagonal ===
+dataset         : data/synthetic/synth_clean/synth_clean_p01.bin
+rows x columns  : 250000 x 10, K = 4
+ranks x threads : 1 x 2
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 0.0687 s (not in the times)
+iterations      : 20 (converged)
+log-likelihood  : -3087811.881
+vs true labels  : ARI 0.9146, purity 0.9669
+time (s)        : total 0.5221 | read 0.0419 | init 0.0000 | E-step 0.4080 | M-step 0.0684 | comm 0.0000
+per iteration   : 23.819 ms (E-step + M-step + comm)
+log             : results/logs/diagonal/opt2/opt2-MPI-OpenMP-diagonal_pack_excl_1n1r2t.log
+---- synth_clean_p01 K=4 rep 3/3
+=== opt2-MPI-OpenMP-diagonal ===
+dataset         : data/synthetic/synth_clean/synth_clean_p01.bin
+rows x columns  : 250000 x 10, K = 4
+ranks x threads : 1 x 2
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 0.0701 s (not in the times)
+iterations      : 20 (converged)
+log-likelihood  : -3087811.881
+vs true labels  : ARI 0.9146, purity 0.9669
+time (s)        : total 0.4985 | read 0.0088 | init 0.0000 | E-step 0.4176 | M-step 0.0688 | comm 0.0000
+per iteration   : 24.322 ms (E-step + M-step + comm)
+log             : results/logs/diagonal/opt2/opt2-MPI-OpenMP-diagonal_pack_excl_1n1r2t.log
+---- synth_clean_p02 K=4 rep 1/3
+=== opt2-MPI-OpenMP-diagonal ===
+dataset         : data/synthetic/synth_clean/synth_clean_p02.bin
+rows x columns  : 500000 x 10, K = 4
+ranks x threads : 1 x 2
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 0.1366 s (not in the times)
+iterations      : 11 (converged)
+log-likelihood  : -6174171.255
+vs true labels  : ARI 0.9155, purity 0.9673
+time (s)        : total 0.5689 | read 0.0241 | init 0.0000 | E-step 0.4599 | M-step 0.0801 | comm 0.0000
+per iteration   : 49.089 ms (E-step + M-step + comm)
+log             : results/logs/diagonal/opt2/opt2-MPI-OpenMP-diagonal_pack_excl_1n1r2t.log
+---- synth_clean_p02 K=4 rep 2/3
+=== opt2-MPI-OpenMP-diagonal ===
+dataset         : data/synthetic/synth_clean/synth_clean_p02.bin
+rows x columns  : 500000 x 10, K = 4
+ranks x threads : 1 x 2
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 0.1381 s (not in the times)
+iterations      : 11 (converged)
+log-likelihood  : -6174171.255
+vs true labels  : ARI 0.9155, purity 0.9673
+time (s)        : total 0.5725 | read 0.0191 | init 0.0000 | E-step 0.4697 | M-step 0.0809 | comm 0.0000
+per iteration   : 50.061 ms (E-step + M-step + comm)
+log             : results/logs/diagonal/opt2/opt2-MPI-OpenMP-diagonal_pack_excl_1n1r2t.log
+---- synth_clean_p02 K=4 rep 3/3
+=== opt2-MPI-OpenMP-diagonal ===
+dataset         : data/synthetic/synth_clean/synth_clean_p02.bin
+rows x columns  : 500000 x 10, K = 4
+ranks x threads : 1 x 2
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 0.1420 s (not in the times)
+iterations      : 11 (converged)
+log-likelihood  : -6174171.255
+vs true labels  : ARI 0.9155, purity 0.9673
+time (s)        : total 0.5858 | read 0.0285 | init 0.0000 | E-step 0.4741 | M-step 0.0801 | comm 0.0000
+per iteration   : 50.383 ms (E-step + M-step + comm)
+log             : results/logs/diagonal/opt2/opt2-MPI-OpenMP-diagonal_pack_excl_1n1r2t.log
+---- synth_clean_p04 K=4 rep 1/3
+=== opt2-MPI-OpenMP-diagonal ===
+dataset         : data/synthetic/synth_clean/synth_clean_p04.bin
+rows x columns  : 1000000 x 10, K = 4
+ranks x threads : 1 x 2
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 0.2783 s (not in the times)
+iterations      : 11 (converged)
+log-likelihood  : -12347164.77
+vs true labels  : ARI 0.9152, purity 0.9672
+time (s)        : total 1.1373 | read 0.0497 | init 0.0000 | E-step 0.9213 | M-step 0.1604 | comm 0.0000
+per iteration   : 98.335 ms (E-step + M-step + comm)
+log             : results/logs/diagonal/opt2/opt2-MPI-OpenMP-diagonal_pack_excl_1n1r2t.log
+---- synth_clean_p04 K=4 rep 2/3
+=== opt2-MPI-OpenMP-diagonal ===
+dataset         : data/synthetic/synth_clean/synth_clean_p04.bin
+rows x columns  : 1000000 x 10, K = 4
+ranks x threads : 1 x 2
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 0.2762 s (not in the times)
+iterations      : 11 (converged)
+log-likelihood  : -12347164.77
+vs true labels  : ARI 0.9152, purity 0.9672
+time (s)        : total 1.1486 | read 0.0369 | init 0.0000 | E-step 0.9457 | M-step 0.1612 | comm 0.0000
+per iteration   : 100.625 ms (E-step + M-step + comm)
+log             : results/logs/diagonal/opt2/opt2-MPI-OpenMP-diagonal_pack_excl_1n1r2t.log
+---- synth_clean_p04 K=4 rep 3/3
+=== opt2-MPI-OpenMP-diagonal ===
+dataset         : data/synthetic/synth_clean/synth_clean_p04.bin
+rows x columns  : 1000000 x 10, K = 4
+ranks x threads : 1 x 2
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 0.2840 s (not in the times)
+iterations      : 11 (converged)
+log-likelihood  : -12347164.77
+vs true labels  : ARI 0.9152, purity 0.9672
+time (s)        : total 1.2132 | read 0.0904 | init 0.0000 | E-step 0.9576 | M-step 0.1603 | comm 0.0000
+per iteration   : 101.627 ms (E-step + M-step + comm)
+log             : results/logs/diagonal/opt2/opt2-MPI-OpenMP-diagonal_pack_excl_1n1r2t.log
+---- synth_clean_p08 K=4 rep 1/3
+=== opt2-MPI-OpenMP-diagonal ===
+dataset         : data/synthetic/synth_clean/synth_clean_p08.bin
+rows x columns  : 2000000 x 10, K = 4
+ranks x threads : 1 x 2
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 0.5650 s (not in the times)
+iterations      : 12 (converged)
+log-likelihood  : -24695374.63
+vs true labels  : ARI 0.9151, purity 0.9671
+time (s)        : total 2.8831 | read 0.4537 | init 0.0000 | E-step 2.0727 | M-step 0.3472 | comm 0.0000
+per iteration   : 201.662 ms (E-step + M-step + comm)
+log             : results/logs/diagonal/opt2/opt2-MPI-OpenMP-diagonal_pack_excl_1n1r2t.log
+---- synth_clean_p08 K=4 rep 2/3
+=== opt2-MPI-OpenMP-diagonal ===
+dataset         : data/synthetic/synth_clean/synth_clean_p08.bin
+rows x columns  : 2000000 x 10, K = 4
+ranks x threads : 1 x 2
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 0.5634 s (not in the times)
+iterations      : 12 (converged)
+log-likelihood  : -24695374.63
+vs true labels  : ARI 0.9151, purity 0.9671
+time (s)        : total 2.5065 | read 0.0834 | init 0.0000 | E-step 2.0677 | M-step 0.3467 | comm 0.0000
+per iteration   : 201.201 ms (E-step + M-step + comm)
+log             : results/logs/diagonal/opt2/opt2-MPI-OpenMP-diagonal_pack_excl_1n1r2t.log
+---- synth_clean_p08 K=4 rep 3/3
+=== opt2-MPI-OpenMP-diagonal ===
+dataset         : data/synthetic/synth_clean/synth_clean_p08.bin
+rows x columns  : 2000000 x 10, K = 4
+ranks x threads : 1 x 2
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 0.5580 s (not in the times)
+iterations      : 12 (converged)
+log-likelihood  : -24695374.63
+vs true labels  : ARI 0.9151, purity 0.9671
+time (s)        : total 2.4653 | read 0.0747 | init 0.0000 | E-step 2.0357 | M-step 0.3458 | comm 0.0000
+per iteration   : 198.456 ms (E-step + M-step + comm)
+log             : results/logs/diagonal/opt2/opt2-MPI-OpenMP-diagonal_pack_excl_1n1r2t.log
+---- synth_clean_p16 K=4 rep 1/3
+=== opt2-MPI-OpenMP-diagonal ===
+dataset         : data/synthetic/synth_clean/synth_clean_p16.bin
+rows x columns  : 4000000 x 10, K = 4
+ranks x threads : 1 x 2
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 1.1245 s (not in the times)
+iterations      : 12 (converged)
+log-likelihood  : -49397013
+vs true labels  : ARI 0.9148, purity 0.9670
+time (s)        : total 5.3172 | read 0.5493 | init 0.0000 | E-step 4.0404 | M-step 0.6989 | comm 0.0000
+per iteration   : 394.940 ms (E-step + M-step + comm)
+log             : results/logs/diagonal/opt2/opt2-MPI-OpenMP-diagonal_pack_excl_1n1r2t.log
+---- synth_clean_p16 K=4 rep 2/3
+=== opt2-MPI-OpenMP-diagonal ===
+dataset         : data/synthetic/synth_clean/synth_clean_p16.bin
+rows x columns  : 4000000 x 10, K = 4
+ranks x threads : 1 x 2
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 1.1006 s (not in the times)
+iterations      : 12 (converged)
+log-likelihood  : -49397013
+vs true labels  : ARI 0.9148, purity 0.9670
+time (s)        : total 4.8844 | read 0.1107 | init 0.0000 | E-step 4.0614 | M-step 0.6954 | comm 0.0000
+per iteration   : 396.405 ms (E-step + M-step + comm)
+log             : results/logs/diagonal/opt2/opt2-MPI-OpenMP-diagonal_pack_excl_1n1r2t.log
+---- synth_clean_p16 K=4 rep 3/3
+=== opt2-MPI-OpenMP-diagonal ===
+dataset         : data/synthetic/synth_clean/synth_clean_p16.bin
+rows x columns  : 4000000 x 10, K = 4
+ranks x threads : 1 x 2
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 1.0965 s (not in the times)
+iterations      : 12 (converged)
+log-likelihood  : -49397013
+vs true labels  : ARI 0.9148, purity 0.9670
+time (s)        : total 4.8599 | read 0.1102 | init 0.0000 | E-step 4.0371 | M-step 0.6946 | comm 0.0000
+per iteration   : 394.304 ms (E-step + M-step + comm)
+log             : results/logs/diagonal/opt2/opt2-MPI-OpenMP-diagonal_pack_excl_1n1r2t.log
+---- synth_overlap_p01 K=5 rep 1/3
+=== opt2-MPI-OpenMP-diagonal ===
+dataset         : data/synthetic/synth_overlap/synth_overlap_p01.bin
+rows x columns  : 250000 x 20, K = 5
+ranks x threads : 1 x 2
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 0.1197 s (not in the times)
+iterations      : 163 (converged)
+log-likelihood  : -6667819.569
+vs true labels  : ARI 0.0663, purity 0.4428
+time (s)        : total 6.5901 | read 0.0653 | init 0.0000 | E-step 5.2791 | M-step 1.2284 | comm 0.0002
+per iteration   : 39.924 ms (E-step + M-step + comm)
+log             : results/logs/diagonal/opt2/opt2-MPI-OpenMP-diagonal_pack_excl_1n1r2t.log
+---- synth_overlap_p01 K=5 rep 2/3
+=== opt2-MPI-OpenMP-diagonal ===
+dataset         : data/synthetic/synth_overlap/synth_overlap_p01.bin
+rows x columns  : 250000 x 20, K = 5
+ranks x threads : 1 x 2
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 0.1207 s (not in the times)
+iterations      : 163 (converged)
+log-likelihood  : -6667819.569
+vs true labels  : ARI 0.0663, purity 0.4428
+time (s)        : total 6.6130 | read 0.0141 | init 0.0000 | E-step 5.3088 | M-step 1.2881 | comm 0.0002
+per iteration   : 40.473 ms (E-step + M-step + comm)
+log             : results/logs/diagonal/opt2/opt2-MPI-OpenMP-diagonal_pack_excl_1n1r2t.log
+---- synth_overlap_p01 K=5 rep 3/3
+=== opt2-MPI-OpenMP-diagonal ===
+dataset         : data/synthetic/synth_overlap/synth_overlap_p01.bin
+rows x columns  : 250000 x 20, K = 5
+ranks x threads : 1 x 2
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 0.1193 s (not in the times)
+iterations      : 163 (converged)
+log-likelihood  : -6667819.569
+vs true labels  : ARI 0.0663, purity 0.4428
+time (s)        : total 6.5579 | read 0.0149 | init 0.0000 | E-step 5.3146 | M-step 1.2265 | comm 0.0002
+per iteration   : 40.130 ms (E-step + M-step + comm)
+log             : results/logs/diagonal/opt2/opt2-MPI-OpenMP-diagonal_pack_excl_1n1r2t.log
+---- synth_overlap_p02 K=5 rep 1/3
+=== opt2-MPI-OpenMP-diagonal ===
+dataset         : data/synthetic/synth_overlap/synth_overlap_p02.bin
+rows x columns  : 500000 x 20, K = 5
+ranks x threads : 1 x 2
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 0.2342 s (not in the times)
+iterations      : 110 (converged)
+log-likelihood  : -13339673.51
+vs true labels  : ARI 0.0649, purity 0.4398
+time (s)        : total 8.9183 | read 0.1481 | init 0.0000 | E-step 7.0895 | M-step 1.6674 | comm 0.0001
+per iteration   : 79.609 ms (E-step + M-step + comm)
+log             : results/logs/diagonal/opt2/opt2-MPI-OpenMP-diagonal_pack_excl_1n1r2t.log
+---- synth_overlap_p02 K=5 rep 2/3
+=== opt2-MPI-OpenMP-diagonal ===
+dataset         : data/synthetic/synth_overlap/synth_overlap_p02.bin
+rows x columns  : 500000 x 20, K = 5
+ranks x threads : 1 x 2
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 0.2359 s (not in the times)
+iterations      : 110 (converged)
+log-likelihood  : -13339673.51
+vs true labels  : ARI 0.0649, purity 0.4398
+time (s)        : total 8.7236 | read 0.0278 | init 0.0000 | E-step 7.0317 | M-step 1.6607 | comm 0.0001
+per iteration   : 79.023 ms (E-step + M-step + comm)
+log             : results/logs/diagonal/opt2/opt2-MPI-OpenMP-diagonal_pack_excl_1n1r2t.log
+---- synth_overlap_p02 K=5 rep 3/3
+=== opt2-MPI-OpenMP-diagonal ===
+dataset         : data/synthetic/synth_overlap/synth_overlap_p02.bin
+rows x columns  : 500000 x 20, K = 5
+ranks x threads : 1 x 2
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 0.2353 s (not in the times)
+iterations      : 110 (converged)
+log-likelihood  : -13339673.51
+vs true labels  : ARI 0.0649, purity 0.4398
+time (s)        : total 8.8300 | read 0.0294 | init 0.0000 | E-step 7.1115 | M-step 1.6852 | comm 0.0001
+per iteration   : 79.971 ms (E-step + M-step + comm)
+log             : results/logs/diagonal/opt2/opt2-MPI-OpenMP-diagonal_pack_excl_1n1r2t.log
+---- synth_overlap_p04 K=5 rep 1/3
+=== opt2-MPI-OpenMP-diagonal ===
+dataset         : data/synthetic/synth_overlap/synth_overlap_p04.bin
+rows x columns  : 1000000 x 20, K = 5
+ranks x threads : 1 x 2
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 0.4753 s (not in the times)
+iterations      : 105 (converged)
+log-likelihood  : -26678924.03
+vs true labels  : ARI 0.0650, purity 0.4402
+time (s)        : total 17.3133 | read 0.2769 | init 0.0000 | E-step 13.6515 | M-step 3.3736 | comm 0.0002
+per iteration   : 162.145 ms (E-step + M-step + comm)
+log             : results/logs/diagonal/opt2/opt2-MPI-OpenMP-diagonal_pack_excl_1n1r2t.log
+---- synth_overlap_p04 K=5 rep 2/3
+=== opt2-MPI-OpenMP-diagonal ===
+dataset         : data/synthetic/synth_overlap/synth_overlap_p04.bin
+rows x columns  : 1000000 x 20, K = 5
+ranks x threads : 1 x 2
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 0.4735 s (not in the times)
+iterations      : 105 (converged)
+log-likelihood  : -26678924.03
+vs true labels  : ARI 0.0650, purity 0.4402
+time (s)        : total 16.7171 | read 0.0555 | init 0.0000 | E-step 13.4816 | M-step 3.1743 | comm 0.0002
+per iteration   : 158.629 ms (E-step + M-step + comm)
+log             : results/logs/diagonal/opt2/opt2-MPI-OpenMP-diagonal_pack_excl_1n1r2t.log
+---- synth_overlap_p04 K=5 rep 3/3
+=== opt2-MPI-OpenMP-diagonal ===
+dataset         : data/synthetic/synth_overlap/synth_overlap_p04.bin
+rows x columns  : 1000000 x 20, K = 5
+ranks x threads : 1 x 2
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 0.4740 s (not in the times)
+iterations      : 105 (converged)
+log-likelihood  : -26678924.03
+vs true labels  : ARI 0.0650, purity 0.4402
+time (s)        : total 16.9817 | read 0.0563 | init 0.0000 | E-step 13.5582 | M-step 3.3608 | comm 0.0001
+per iteration   : 161.134 ms (E-step + M-step + comm)
+log             : results/logs/diagonal/opt2/opt2-MPI-OpenMP-diagonal_pack_excl_1n1r2t.log
+---- synth_overlap_p08 K=5 rep 1/3
+=== opt2-MPI-OpenMP-diagonal ===
+dataset         : data/synthetic/synth_overlap/synth_overlap_p08.bin
+rows x columns  : 2000000 x 20, K = 5
+ranks x threads : 1 x 2
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 0.9464 s (not in the times)
+iterations      : 160 (converged)
+log-likelihood  : -53357368.32
+vs true labels  : ARI 0.0675, purity 0.4440
+time (s)        : total 51.5698 | read 0.4735 | init 0.0000 | E-step 41.3091 | M-step 9.7746 | comm 0.0003
+per iteration   : 319.275 ms (E-step + M-step + comm)
+log             : results/logs/diagonal/opt2/opt2-MPI-OpenMP-diagonal_pack_excl_1n1r2t.log
+---- synth_overlap_p08 K=5 rep 2/3
+=== opt2-MPI-OpenMP-diagonal ===
+dataset         : data/synthetic/synth_overlap/synth_overlap_p08.bin
+rows x columns  : 2000000 x 20, K = 5
+ranks x threads : 1 x 2
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 0.9432 s (not in the times)
+iterations      : 160 (converged)
+log-likelihood  : -53357368.32
+vs true labels  : ARI 0.0675, purity 0.4440
+time (s)        : total 50.9888 | read 0.1276 | init 0.0000 | E-step 41.1049 | M-step 9.7455 | comm 0.0002
+per iteration   : 317.816 ms (E-step + M-step + comm)
+log             : results/logs/diagonal/opt2/opt2-MPI-OpenMP-diagonal_pack_excl_1n1r2t.log
+---- synth_overlap_p08 K=5 rep 3/3
+=== opt2-MPI-OpenMP-diagonal ===
+dataset         : data/synthetic/synth_overlap/synth_overlap_p08.bin
+rows x columns  : 2000000 x 20, K = 5
+ranks x threads : 1 x 2
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 0.9528 s (not in the times)
+iterations      : 160 (converged)
+log-likelihood  : -53357368.32
+vs true labels  : ARI 0.0675, purity 0.4440
+time (s)        : total 51.8634 | read 0.1278 | init 0.0000 | E-step 41.4167 | M-step 10.3074 | comm 0.0002
+per iteration   : 323.277 ms (E-step + M-step + comm)
+log             : results/logs/diagonal/opt2/opt2-MPI-OpenMP-diagonal_pack_excl_1n1r2t.log
+---- synth_overlap_p16 K=5 rep 1/3
+=== opt2-MPI-OpenMP-diagonal ===
+dataset         : data/synthetic/synth_overlap/synth_overlap_p16.bin
+rows x columns  : 4000000 x 20, K = 5
+ranks x threads : 1 x 2
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 1.8830 s (not in the times)
+iterations      : 145 (converged)
+log-likelihood  : -106715675.2
+vs true labels  : ARI 0.0658, purity 0.4420
+time (s)        : total 94.0194 | read 0.9199 | init 0.0000 | E-step 75.1962 | M-step 17.8339 | comm 0.0002
+per iteration   : 641.589 ms (E-step + M-step + comm)
+log             : results/logs/diagonal/opt2/opt2-MPI-OpenMP-diagonal_pack_excl_1n1r2t.log
+---- synth_overlap_p16 K=5 rep 2/3
+=== opt2-MPI-OpenMP-diagonal ===
+dataset         : data/synthetic/synth_overlap/synth_overlap_p16.bin
+rows x columns  : 4000000 x 20, K = 5
+ranks x threads : 1 x 2
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 1.9215 s (not in the times)
+iterations      : 145 (converged)
+log-likelihood  : -106715675.2
+vs true labels  : ARI 0.0658, purity 0.4420
+time (s)        : total 93.0432 | read 0.2863 | init 0.0000 | E-step 74.1111 | M-step 18.6265 | comm 0.0003
+per iteration   : 639.571 ms (E-step + M-step + comm)
+log             : results/logs/diagonal/opt2/opt2-MPI-OpenMP-diagonal_pack_excl_1n1r2t.log
+---- synth_overlap_p16 K=5 rep 3/3
+=== opt2-MPI-OpenMP-diagonal ===
+dataset         : data/synthetic/synth_overlap/synth_overlap_p16.bin
+rows x columns  : 4000000 x 20, K = 5
+ranks x threads : 1 x 2
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 1.9016 s (not in the times)
+iterations      : 145 (converged)
+log-likelihood  : -106715675.2
+vs true labels  : ARI 0.0658, purity 0.4420
+time (s)        : total 93.1228 | read 0.2865 | init 0.0000 | E-step 75.1385 | M-step 17.6767 | comm 0.0003
+per iteration   : 640.107 ms (E-step + M-step + comm)
+log             : results/logs/diagonal/opt2/opt2-MPI-OpenMP-diagonal_pack_excl_1n1r2t.log
+---- synth_rare_p01 K=6 rep 1/3
+=== opt2-MPI-OpenMP-diagonal ===
+dataset         : data/synthetic/synth_rare/synth_rare_p01.bin
+rows x columns  : 250000 x 50, K = 6
+ranks x threads : 1 x 2
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 0.2366 s (not in the times)
+iterations      : 15 (converged)
+log-likelihood  : -16022630.76
+vs true labels  : ARI 0.9562, purity 0.9774
+time (s)        : total 1.4304 | read 0.1469 | init 0.0000 | E-step 0.9285 | M-step 0.3187 | comm 0.0000
+per iteration   : 83.146 ms (E-step + M-step + comm)
+log             : results/logs/diagonal/opt2/opt2-MPI-OpenMP-diagonal_pack_excl_1n1r2t.log
+---- synth_rare_p01 K=6 rep 2/3
+=== opt2-MPI-OpenMP-diagonal ===
+dataset         : data/synthetic/synth_rare/synth_rare_p01.bin
+rows x columns  : 250000 x 50, K = 6
+ranks x threads : 1 x 2
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 0.2211 s (not in the times)
+iterations      : 15 (converged)
+log-likelihood  : -16022630.76
+vs true labels  : ARI 0.9562, purity 0.9774
+time (s)        : total 1.2082 | read 0.0453 | init 0.0000 | E-step 0.8422 | M-step 0.3165 | comm 0.0000
+per iteration   : 77.246 ms (E-step + M-step + comm)
+log             : results/logs/diagonal/opt2/opt2-MPI-OpenMP-diagonal_pack_excl_1n1r2t.log
+---- synth_rare_p01 K=6 rep 3/3
+=== opt2-MPI-OpenMP-diagonal ===
+dataset         : data/synthetic/synth_rare/synth_rare_p01.bin
+rows x columns  : 250000 x 50, K = 6
+ranks x threads : 1 x 2
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 0.2202 s (not in the times)
+iterations      : 15 (converged)
+log-likelihood  : -16022630.76
+vs true labels  : ARI 0.9562, purity 0.9774
+time (s)        : total 1.2088 | read 0.0433 | init 0.0000 | E-step 0.8477 | M-step 0.3158 | comm 0.0000
+per iteration   : 77.569 ms (E-step + M-step + comm)
+log             : results/logs/diagonal/opt2/opt2-MPI-OpenMP-diagonal_pack_excl_1n1r2t.log
+---- synth_rare_p02 K=6 rep 1/3
+=== opt2-MPI-OpenMP-diagonal ===
+dataset         : data/synthetic/synth_rare/synth_rare_p02.bin
+rows x columns  : 500000 x 50, K = 6
+ranks x threads : 1 x 2
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 0.4661 s (not in the times)
+iterations      : 28 (converged)
+log-likelihood  : -31655825.42
+vs true labels  : ARI 0.6653, purity 0.9105
+time (s)        : total 4.6107 | read 0.0993 | init 0.0000 | E-step 3.3366 | M-step 1.1706 | comm 0.0001
+per iteration   : 160.972 ms (E-step + M-step + comm)
+log             : results/logs/diagonal/opt2/opt2-MPI-OpenMP-diagonal_pack_excl_1n1r2t.log
+---- synth_rare_p02 K=6 rep 2/3
+=== opt2-MPI-OpenMP-diagonal ===
+dataset         : data/synthetic/synth_rare/synth_rare_p02.bin
+rows x columns  : 500000 x 50, K = 6
+ranks x threads : 1 x 2
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 0.4379 s (not in the times)
+iterations      : 28 (converged)
+log-likelihood  : -31655825.42
+vs true labels  : ARI 0.6653, purity 0.9105
+time (s)        : total 4.3390 | read 0.0880 | init 0.0000 | E-step 3.0754 | M-step 1.1719 | comm 0.0000
+per iteration   : 151.692 ms (E-step + M-step + comm)
+log             : results/logs/diagonal/opt2/opt2-MPI-OpenMP-diagonal_pack_excl_1n1r2t.log
+---- synth_rare_p02 K=6 rep 3/3
+=== opt2-MPI-OpenMP-diagonal ===
+dataset         : data/synthetic/synth_rare/synth_rare_p02.bin
+rows x columns  : 500000 x 50, K = 6
+ranks x threads : 1 x 2
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 0.4635 s (not in the times)
+iterations      : 28 (converged)
+log-likelihood  : -31655825.42
+vs true labels  : ARI 0.6653, purity 0.9105
+time (s)        : total 4.5560 | read 0.0878 | init 0.0000 | E-step 3.2974 | M-step 1.1671 | comm 0.0000
+per iteration   : 159.446 ms (E-step + M-step + comm)
+log             : results/logs/diagonal/opt2/opt2-MPI-OpenMP-diagonal_pack_excl_1n1r2t.log
+---- synth_rare_p04 K=6 rep 1/3
+=== opt2-MPI-OpenMP-diagonal ===
+dataset         : data/synthetic/synth_rare/synth_rare_p04.bin
+rows x columns  : 1000000 x 50, K = 6
+ranks x threads : 1 x 2
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 0.9123 s (not in the times)
+iterations      : 29 (converged)
+log-likelihood  : -63300454.09
+vs true labels  : ARI 0.6654, purity 0.9101
+time (s)        : total 9.3015 | read 0.2273 | init 0.0000 | E-step 6.6366 | M-step 2.4311 | comm 0.0001
+per iteration   : 312.681 ms (E-step + M-step + comm)
+log             : results/logs/diagonal/opt2/opt2-MPI-OpenMP-diagonal_pack_excl_1n1r2t.log
+---- synth_rare_p04 K=6 rep 2/3
+=== opt2-MPI-OpenMP-diagonal ===
+dataset         : data/synthetic/synth_rare/synth_rare_p04.bin
+rows x columns  : 1000000 x 50, K = 6
+ranks x threads : 1 x 2
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 0.8674 s (not in the times)
+iterations      : 29 (converged)
+log-likelihood  : -63300454.09
+vs true labels  : ARI 0.6654, purity 0.9101
+time (s)        : total 8.8522 | read 0.1722 | init 0.0000 | E-step 6.2494 | M-step 2.4238 | comm 0.0001
+per iteration   : 299.079 ms (E-step + M-step + comm)
+log             : results/logs/diagonal/opt2/opt2-MPI-OpenMP-diagonal_pack_excl_1n1r2t.log
+---- synth_rare_p04 K=6 rep 3/3
+=== opt2-MPI-OpenMP-diagonal ===
+dataset         : data/synthetic/synth_rare/synth_rare_p04.bin
+rows x columns  : 1000000 x 50, K = 6
+ranks x threads : 1 x 2
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 0.9484 s (not in the times)
+iterations      : 29 (converged)
+log-likelihood  : -63300454.09
+vs true labels  : ARI 0.6654, purity 0.9101
+time (s)        : total 9.5344 | read 0.1719 | init 0.0000 | E-step 6.9383 | M-step 2.4177 | comm 0.0001
+per iteration   : 322.623 ms (E-step + M-step + comm)
+log             : results/logs/diagonal/opt2/opt2-MPI-OpenMP-diagonal_pack_excl_1n1r2t.log
+---- synth_rare_p08 K=6 rep 1/3
+=== opt2-MPI-OpenMP-diagonal ===
+dataset         : data/synthetic/synth_rare/synth_rare_p08.bin
+rows x columns  : 2000000 x 50, K = 6
+ranks x threads : 1 x 2
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 1.7746 s (not in the times)
+iterations      : 8 (converged)
+log-likelihood  : -128116914
+vs true labels  : ARI 0.9564, purity 0.9774
+time (s)        : total 5.6643 | read 0.4355 | init 0.0000 | E-step 3.7764 | M-step 1.4402 | comm 0.0000
+per iteration   : 652.089 ms (E-step + M-step + comm)
+log             : results/logs/diagonal/opt2/opt2-MPI-OpenMP-diagonal_pack_excl_1n1r2t.log
+---- synth_rare_p08 K=6 rep 2/3
+=== opt2-MPI-OpenMP-diagonal ===
+dataset         : data/synthetic/synth_rare/synth_rare_p08.bin
+rows x columns  : 2000000 x 50, K = 6
+ranks x threads : 1 x 2
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 1.7782 s (not in the times)
+iterations      : 8 (converged)
+log-likelihood  : -128116914
+vs true labels  : ARI 0.9564, purity 0.9774
+time (s)        : total 5.6433 | read 0.3581 | init 0.0000 | E-step 3.8221 | M-step 1.4466 | comm 0.0000
+per iteration   : 658.591 ms (E-step + M-step + comm)
+log             : results/logs/diagonal/opt2/opt2-MPI-OpenMP-diagonal_pack_excl_1n1r2t.log
+---- synth_rare_p08 K=6 rep 3/3
+=== opt2-MPI-OpenMP-diagonal ===
+dataset         : data/synthetic/synth_rare/synth_rare_p08.bin
+rows x columns  : 2000000 x 50, K = 6
+ranks x threads : 1 x 2
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 1.9014 s (not in the times)
+iterations      : 8 (converged)
+log-likelihood  : -128116914
+vs true labels  : ARI 0.9564, purity 0.9774
+time (s)        : total 5.9615 | read 0.3584 | init 0.0000 | E-step 4.1505 | M-step 1.4400 | comm 0.0000
+per iteration   : 698.814 ms (E-step + M-step + comm)
+log             : results/logs/diagonal/opt2/opt2-MPI-OpenMP-diagonal_pack_excl_1n1r2t.log
+---- synth_rare_p16 K=6 rep 1/3
+=== opt2-MPI-OpenMP-diagonal ===
+dataset         : data/synthetic/synth_rare/synth_rare_p16.bin
+rows x columns  : 4000000 x 50, K = 6
+ranks x threads : 1 x 2
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 3.7200 s (not in the times)
+iterations      : 27 (converged)
+log-likelihood  : -253164538.9
+vs true labels  : ARI 0.6648, purity 0.9102
+time (s)        : total 36.8555 | read 2.2615 | init 0.0000 | E-step 25.4348 | M-step 9.1358 | comm 0.0001
+per iteration   : 1280.400 ms (E-step + M-step + comm)
+log             : results/logs/diagonal/opt2/opt2-MPI-OpenMP-diagonal_pack_excl_1n1r2t.log
+---- synth_rare_p16 K=6 rep 2/3
+=== opt2-MPI-OpenMP-diagonal ===
+dataset         : data/synthetic/synth_rare/synth_rare_p16.bin
+rows x columns  : 4000000 x 50, K = 6
+ranks x threads : 1 x 2
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 3.6173 s (not in the times)
+iterations      : 27 (converged)
+log-likelihood  : -253164538.9
+vs true labels  : ARI 0.6648, purity 0.9102
+time (s)        : total 34.4757 | read 0.5431 | init 0.0000 | E-step 24.7755 | M-step 9.1345 | comm 0.0001
+per iteration   : 1255.931 ms (E-step + M-step + comm)
+log             : results/logs/diagonal/opt2/opt2-MPI-OpenMP-diagonal_pack_excl_1n1r2t.log
+---- synth_rare_p16 K=6 rep 3/3
+=== opt2-MPI-OpenMP-diagonal ===
+dataset         : data/synthetic/synth_rare/synth_rare_p16.bin
+rows x columns  : 4000000 x 50, K = 6
+ranks x threads : 1 x 2
+seed / restarts : 42 / 1
+warm-up         : 3 iterations, 3.5348 s (not in the times)
+iterations      : 27 (converged)
+log-likelihood  : -253164538.9
+vs true labels  : ARI 0.6648, purity 0.9102
+time (s)        : total 33.7160 | read 0.5441 | init 0.0000 | E-step 24.0463 | M-step 9.1020 | comm 0.0001
+per iteration   : 1227.720 ms (E-step + M-step + comm)
+log             : results/logs/diagonal/opt2/opt2-MPI-OpenMP-diagonal_pack_excl_1n1r2t.log
+done, 0 failure(s)

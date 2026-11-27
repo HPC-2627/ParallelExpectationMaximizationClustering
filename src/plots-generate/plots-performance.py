@@ -23,16 +23,18 @@ Where the data comes from
 Rules (doc/plots.md)
     - Time = t_iteration (time per iteration), median over the repetitions, error bar = min-max.
     - Speedup is always against baseline-sequential of the same model and dataset.
-    - For every number of cores the best ranks x threads split is used (P7 shows the splits).
-    - Placement: runs on 1 node with --placement (default pack), runs on 2-4 nodes with
-      --multi-placement (default scatter:excl). PBS puts every pack request on ONE node (the
-      nodes have 96 cores), so only scatter gives real multi-node runs (see best_split). P6
-      compares the four placements.
+    - For every number of cores the best ranks x threads split WITH AT LEAST 2 RANKS PER NODE is
+      used (see hybrid_splits; P7 shows all the splits of one node, 1 x 8 included).
+    - Placement: only exclusive nodes. 1-8 cores on 1 node with --placement (default pack:excl),
+      16 and 32 cores on 2 and 4 nodes with --multi-placement (default scatter:excl). PBS puts
+      every pack request on ONE node (the nodes have 96 cores), so only scatter gives real
+      multi-node runs (see best_split). P6 compares the four placements, with the same split.
     - Diagonal and full are never on the same plot: one file per model.
     - File names: <ID>-<what>-<model>.pdf
     - Clarity (same rules as plots-cluster.py): bold title in plain words + one line with model,
-      dataset and placement; ONE legend above the panels with names in plain words ("pack,
-      exclusive node", "MPI communication + waiting for the other ranks"); axes with their unit.
+      dataset and placement ("1-8 cores (1 node): pack exclusive; 16-32 cores (2-4 nodes): scatter
+      exclusive"); ONE legend above the panels with names in plain words ("pack exclusive", "MPI
+      communication + waiting for the other ranks"); axes with their unit.
     - Size: FIG_W = 7 in, HALF_W = 4.4 in for the single-panel plots P5, P6, P7, P10; the report
       includes them at width=0.82\textwidth (P5 at 0.52\textwidth).
     - Only LONG datasets (--min-run, default 1 s): a dataset is drawn only if EVERY one of its
@@ -208,14 +210,26 @@ def long_datasets(best, min_run):
     return set(g[g >= min_run].index)
 
 
-def best_split(agg, placement, multi="scatter:excl"):
-    """For every core count the best ranks x threads split (the baseline-sequential runs always kept).
-    Runs on ONE node use `placement` (default pack); runs on several nodes use `multi` (default
-    scatter:excl). The reason: PBS puts all the chunks of a pack (or pack:excl) request on ONE
+def hybrid_splits(a):
+    """Drops the splits with ONE rank per node and several threads (1 x 2, 1 x 4, 1 x 8 on one
+    node). They cannot be compared on every core count: on 2 and 4 nodes the 1-rank-per-node
+    layouts failed (Open MPI refuses the binding, see src/script/pemc-job.sh), so for the same
+    rule on every core count they are left out everywhere. 1 x 1 (one core) is kept."""
+    return a[~((a.ranks / a.nodes == 1) & (a.threads > 1))]
+
+
+def best_split(agg, placement="pack:excl", multi="scatter:excl"):
+    """For every core count the best ranks x threads split with at least 2 ranks per node (see
+    hybrid_splits; the baseline-sequential runs always kept). All the points are on exclusive
+    nodes: runs on ONE node use `placement` (default pack:excl), runs on several nodes use
+    `multi` (default scatter:excl). The reason: PBS puts all the chunks of a pack (or pack:excl) request on ONE
     node when it has enough cores (the nodes have 96), so the "2 / 4 node" pack runs are really
     16 / 32 cores of one node (checked in results/logs/pbs/*.out, "nodes assigned by PBS"). Only
     scatter places the chunks on different nodes, so it is the only real multi-node measure; the
-    exclusive variant is used because on shared nodes the spread of the repetitions is ~25%."""
+    exclusive variant is used because on shared nodes the spread of the repetitions is 22%; on ONE
+    shared node (pack) the memory-bound versions are also up to 22% slower than on an exclusive
+    one (pack:excl), which is why pack:excl is the default on one node."""
+    agg = hybrid_splits(agg)
     a = agg[((agg.nodes == 1) & (agg.placement == placement))
             | ((agg.nodes > 1) & (agg.placement == multi)) | (agg.label == "sequential")]
     # one row per (version, model, dataset, K, cores): the one with the smallest time among the
@@ -318,8 +332,8 @@ def best_version(agg):
 # ---- names in plain words, for legends and titles (the logs keep the short ones) ----
 VERSION_LABEL = {"sequential": "baseline-sequential (1 core)", "baseline": "baseline-MPI-OpenMP",
                  "opt1": "opt1 (faster computation)", "opt2": "opt2 (less communication)"}
-PLACE_LABEL = {"pack": "pack, shared node", "pack:excl": "pack, exclusive node",
-               "scatter": "scatter, shared nodes", "scatter:excl": "scatter, exclusive nodes"}
+PLACE_LABEL = {"pack": "pack shared", "pack:excl": "pack exclusive",
+               "scatter": "scatter shared", "scatter:excl": "scatter exclusive"}
 STEP_LABEL = {"E-step": "E-step (computation)", "M-step": "M-step (computation)",
               "t_comm": "MPI communication + waiting for the other ranks", "I/O": "reading the dataset"}
 MODEL_TXT = {"diagonal": "diagonal covariance", "full": "full covariance"}
@@ -330,14 +344,14 @@ FIG_W, HALF_W = 7.0, 4.4
 
 
 def place_txt(p):
-    """'placement pack, shared node' for the subtitles."""
-    return f"placement {PLACE_LABEL.get(p, p)}"
+    """'8 cores (1 node): pack exclusive' for the subtitles of the one-node plots."""
+    return f"8 cores (1 node): {PLACE_LABEL.get(p, p)}"
 
 
 def scale_txt(args):
     """Placements of the scaling curves, for the subtitles (see best_split)."""
-    return (f"1 node: {PLACE_LABEL.get(args.placement, args.placement)}; "
-            f"2-4 nodes: {PLACE_LABEL.get(args.multi_placement, args.multi_placement)}")
+    return (f"1-8 cores (1 node): {PLACE_LABEL.get(args.placement, args.placement)}\n"
+            f"16-32 cores (2-4 nodes): {PLACE_LABEL.get(args.multi_placement, args.multi_placement)}")
 
 
 def title(fig, text, sub=None):
@@ -347,7 +361,9 @@ def title(fig, text, sub=None):
     # lines wrapped to the width of the figure (about 12 bold 10 pt and 15 normal 8 pt
     # characters per inch): a long title must not make the figure wider than the page
     text = textwrap.fill(text, int(fig.get_figwidth() * 12))
-    sub = textwrap.fill(sub, int(fig.get_figwidth() * 15)) if sub else sub
+    # the subtitle keeps its line breaks (the placement goes on lines of its own: pack, then scatter)
+    if sub:
+        sub = "\n".join(textwrap.fill(s, int(fig.get_figwidth() * 15)) for s in sub.split("\n"))
     fig.canvas.draw()  # final layout: positions and sizes are known
     r = fig.canvas.get_renderer()
     top = fig.get_tightbbox(r).y1 / fig.get_figheight()  # top of the drawn content (fraction)
@@ -478,8 +494,8 @@ def p2_speedup(ctx, model):
         grid_axes(c, allc, "speedup over baseline-sequential\n(log scale)")
     legend_from(fig, [c.ax for c in cells], ncol=3)
     title(fig, "Speedup against baseline-sequential",
-          f"{MODEL_TXT[model]}, {scale_txt(ctx.args)}; for every core count the fastest "
-          f"ranks × threads split")
+          f"{MODEL_TXT[model]}; fastest split with at least 2 ranks per node"
+          f"\n{scale_txt(ctx.args)}")
     save(fig, ctx.out, f"P2-speedup-{model}", ctx.fmts)
 
 
@@ -506,8 +522,7 @@ def p3_efficiency(ctx, model):
         grid_axes(c, allc, "parallel efficiency\n(speedup / cores)")
     legend_from(fig, [c.ax for c in cells], ncol=3)
     title(fig, "Parallel efficiency against baseline-sequential",
-          f"{MODEL_TXT[model]}, {scale_txt(ctx.args)}; efficiency = speedup / cores "
-          f"(above 1: the optimization also makes the computation faster)")
+          f"{MODEL_TXT[model]}; efficiency = speedup / cores\n{scale_txt(ctx.args)}")
     save(fig, ctx.out, f"P3-efficiency-{model}", ctx.fmts)
 
 
@@ -529,7 +544,7 @@ def p4_strong(ctx, model):
         grid_axes(c, allc, "time per iteration (s)\n(log scale)")
     legend_from(fig, [c.ax for c in cells], ncol=3)
     title(fig, "Strong scaling: time per iteration with the size of the dataset fixed",
-          f"{MODEL_TXT[model]}, {scale_txt(ctx.args)}")
+          f"{MODEL_TXT[model]}\n{scale_txt(ctx.args)}")
     save(fig, ctx.out, f"P4-strong-{model}", ctx.fmts)
 
 
@@ -575,7 +590,7 @@ def p5_weak(ctx, model):
     ax.set_ylim(0, eff_max * 1.1 + 0.05)
     legend_from(fig, [ax], ncol=2)
     title(fig, "Weak scaling: the data per core is kept constant",
-          f"{MODEL_TXT[model]}, {fam}_pNN on NN cores, {scale_txt(ctx.args)}")
+          f"{MODEL_TXT[model]}, {fam}_pNN on NN cores\n{scale_txt(ctx.args)}")
     save(fig, ctx.out, f"P5-weak-{model}", ctx.fmts)
 
 
@@ -588,8 +603,9 @@ def p6_placement(ctx, model):
     need(ds, "no parallel data")
     d = a[(a.label == v) & (a.model == model) & (a.dataset == ds[0]) & (a.placement != "seq")]
     need(not d.empty, f"no data for {v}/{model}/{ds[0]}")
-    # same number of cores per node is NOT guaranteed: for each (placement, nodes) take the best split
-    d = d.loc[d.groupby(["placement", "nodes"])["t"].idxmin()]
+    # the SAME split for every placement and number of nodes: 2 ranks x 4 threads per node, the
+    # only one measured with all four placements (the best split would compare different splits)
+    d = d[(d.ranks == 2 * d.nodes) & (d.threads == 4)]
     nodes = sorted(d.nodes.unique())
     fig, ax = plt.subplots(figsize=(HALF_W, 3.1), layout="constrained")
     w = 0.2  # width of one bar: 4 bars per group of nodes
@@ -604,11 +620,11 @@ def p6_placement(ctx, model):
     ax.set_xticks(range(len(nodes)), [f"{n} node" + ("s" if n > 1 else "") for n in nodes])
     # the nodes REQUESTED: pack puts all the chunks on ONE 96-core node, only scatter really uses
     # 2 or 4 nodes (see best_split)
-    ax.set_xlabel("nodes requested (pack: always ONE node; scatter: 2 or 4 nodes)")
+    ax.set_xlabel("nodes requested (pack: always 1 node; scatter: 2 or 4)")
     ax.set_ylabel("time per iteration (s)")
     legend_from(fig, [ax], ncol=2)
     title(fig, "Effect of the PBS placement on the time per iteration",
-          f"{VERSION_LABEL[v]}, {MODEL_TXT[model]}, {ds[0]}; bars = median, whiskers = min-max")
+          f"{v}, {model} model, {ds[0]}, split 2 × 4 per node")
     save(fig, ctx.out, f"P6-placement-{model}", ctx.fmts)
 
 
@@ -622,14 +638,14 @@ def p7_heatmap(ctx, model):
     ds = pick_datasets(ctx.best, model, large_of(ctx, model), ctx.args.small)
     need(ds, "no parallel data")
     d = a[(a.label == v) & (a.model == model) & (a.dataset == ds[0]) & (a.nodes == 1)
-          & (a.placement.isin([ctx.args.placement, ctx.args.placement.split(":")[0]]))]
+          & (a.placement == ctx.args.placement)]
     need(not d.empty, "no single-node runs")
     # only the splits of ALL the cores of the node (8): the runs on 1, 2, 4 cores of one node (for
     # the speedup curves) are not splits of the same cores and must not be compared here
     d = d[d.cores == d.cores.max()]
-    # one bar per split (several placements for the same split: the fastest), from all-MPI to
-    # all-OpenMP
-    d = d.loc[d.groupby(["ranks", "threads"])["t"].idxmin()].sort_values("ranks", ascending=False)
+    # one bar per split, from all-MPI to all-OpenMP (1 x 8 is shown here, but the scaling plots
+    # do not use it, see hybrid_splits)
+    d = d.sort_values("ranks", ascending=False)
     x = np.arange(len(d))
     best_i = int(np.argmin(d.t.to_numpy()))
     fig, ax = plt.subplots(figsize=(HALF_W, 3.0), layout="constrained")
@@ -646,7 +662,7 @@ def p7_heatmap(ctx, model):
                      plt.Line2D([], [], color=TEXT, marker="_", ms=9, mew=1.2, lw=1.0)],
                ["fastest split", "min-max of the repetitions"])
     title(fig, "Ranks × threads on one node: which split is the fastest?",
-          f"{VERSION_LABEL[v]}, {MODEL_TXT[model]}, {ds[0]}")
+          f"{VERSION_LABEL[v]}, {MODEL_TXT[model]}, {ds[0]}\n{place_txt(ctx.args.placement)}")
     save(fig, ctx.out, f"P7-ranks-threads-{model}", ctx.fmts)
 
 
@@ -691,8 +707,8 @@ def p8_breakdown(ctx, model):
         ax.set_ylabel("share of the run (%)" if c.col == 0 else "")
     legend_from(fig, [c.ax for c in cells], ncol=2)
     title(fig, "Where the time goes: the whole run split by phase",
-          f"{MODEL_TXT[model]}, {scale_txt(ctx.args)}; every bar = 100% of one run, "
-          f"the number above it = its total time; seq = baseline-sequential, base = baseline-MPI-OpenMP")
+          f"{MODEL_TXT[model]}; seq = baseline-sequential, base = baseline-MPI-OpenMP; total time above"
+          f"\n{scale_txt(ctx.args)}")
     save(fig, ctx.out, f"P8-breakdown-{model}", ctx.fmts)
 
 
@@ -737,7 +753,8 @@ def p9_opt_gain(ctx, model):
     ax.set_ylabel("time / baseline-MPI-OpenMP time\n(below 1 = faster)")
     legend_from(fig, [ax])
     title(fig, "Gain of the optimizations over baseline-MPI-OpenMP, per dataset",
-          f"{MODEL_TXT[model]}, {cores} cores, {scale_txt(ctx.args)}")
+          f"{MODEL_TXT[model]}\n{cores} cores ({cores // 8} nodes): "
+          f"{PLACE_LABEL.get(ctx.args.multi_placement, ctx.args.multi_placement)}")
     save(fig, ctx.out, f"P9-opt-gain-{model}", ctx.fmts)
 
 
@@ -782,7 +799,8 @@ def p1_sweeps(ctx, model):
     panel_name(axs[1], "(b) growing D  (synth_sweep_dDDD, K = 4)")
     legend_from(fig, axs, ncol=2)
     title(fig, "Cost of one EM iteration as the number of clusters and of variables grows",
-          f"{MODEL_TXT[model]}; the dashed lines show the expected growth")
+          f"{MODEL_TXT[model]}, 1 rank × 8 threads (baseline-sequential: 1 core)"
+          f"\n8 cores (1 node): {PLACE_LABEL['pack:excl']}")
     save(fig, ctx.out, f"P1-sweep-{model}", ctx.fmts)
 
 
@@ -807,6 +825,7 @@ def p10_roofline(ctx, model):
             continue
         drawn.append(c)
         # the roofs are those of the 8 cores of one node: only the 8-core runs are compared
+        d = hybrid_splits(d)  # same split rule as the scaling plots
         d = d.loc[d.groupby("label")["t"].idxmin()]  # best split of every version
         if gf and bw:
             ax.plot(xs, np.minimum(gf, bw * xs), color=TEXT, lw=1.1, label="roofline (limit of the node)")
@@ -843,8 +862,8 @@ def p10_roofline(ctx, model):
         (x1, y1), (x2, y2) = ax.transData.transform([(0.1, bw * 0.1), (1.0, bw * 1.0)])
         lab.set_rotation(np.degrees(np.arctan2(y2 - y1, x2 - x1)))
     title(fig, "Roofline: is EM limited by memory or by computation?",
-          f"{MODEL_TXT[model]}, 8 cores of 1 node, {place_txt(ctx.args.placement)}; overlapping "
-          f"points are drawn one inside the other")
+          f"{MODEL_TXT[model]}; overlapping points are drawn one inside the other"
+          f"\n{place_txt(ctx.args.placement)}")
     save(fig, ctx.out, f"P10-roofline-{model}", ctx.fmts)
 
 
@@ -889,8 +908,8 @@ def p12_size(ctx, model):
         plt.Line2D([], [], ls="", marker="o", mfc="none", mec=TEXT, mew=1.2, ms=5)]
     top_legend(fig, hs, list(seen) + ["real dataset", "synthetic dataset"], ncol=3)
     title(fig, "Speedup against the size of the dataset (all the datasets)",
-          f"{MODEL_TXT[model]}, {scale_txt(ctx.args)}; one point per dataset and version; "
-          "filled = real, empty = synthetic")
+          f"{MODEL_TXT[model]}; filled = real dataset, empty = synthetic"
+          f"\n{scale_txt(ctx.args)}")
     save(fig, ctx.out, f"P12-size-{model}", ctx.fmts)
 
 
@@ -928,7 +947,7 @@ def p11_imbalance(ctx, model):
     top_legend(fig, h, ["mean over the ranks", "fastest to slowest rank",
                         "+% = extra time of the slowest rank (the others wait)"], ncol=3)
     title(fig, "Load imbalance between MPI ranks",
-          f"{VERSION_LABEL[v]}, {MODEL_TXT[model]}, {ds[0]}, {scale_txt(ctx.args)}")
+          f"{VERSION_LABEL[v]}, {MODEL_TXT[model]}, {ds[0]}\n{scale_txt(ctx.args)}")
     save(fig, ctx.out, f"P11-imbalance-{model}", ctx.fmts)
 
 
@@ -948,8 +967,8 @@ def main():
     ap.add_argument("--plots", nargs="+", default=["P2", "P3", "P4", "P5", "P8", "P9", "P10", "P11"],
                     help="IDs to draw (all: P1 ... P12)")
     ap.add_argument("--models", nargs="+", default=MODELS, choices=MODELS)
-    ap.add_argument("--placement", default="pack", choices=PLACE_ORDER,
-                    help="placement of the runs on ONE node (every plot except P6) [pack]")
+    ap.add_argument("--placement", default="pack:excl", choices=PLACE_ORDER,
+                    help="placement of the runs on ONE node (every plot except P6) [pack:excl]")
     ap.add_argument("--multi-placement", default="scatter:excl", choices=PLACE_ORDER,
                     help="placement of the runs on 2-4 nodes (pack would put them on ONE node) "
                          "[scatter:excl]")

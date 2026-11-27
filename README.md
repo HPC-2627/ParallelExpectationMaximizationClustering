@@ -189,7 +189,7 @@ A small local web page shows how EM works step by step on any dataset of `data/`
 
 ## Plots
 
-Everything is regenerable from the logs. The performance plots P1-P12 (sweeps, speedup, efficiency, strong and weak scaling, placement, ranks vs threads, time breakdown, optimization gain, roofline, load imbalance, speedup vs dataset size) come from the cluster runs; the clustering plots C1-C6 (convergence, choice of K with BIC/AIC, PCA, centroids, cluster sizes, full vs diagonal) come from the `baseline-sequential` runs on a range of K.
+Everything is regenerable from the logs. The performance plots P1-P12 (sweeps, speedup, efficiency, strong and weak scaling, placement, ranks vs threads, time breakdown, optimization gain, roofline, load imbalance, speedup vs dataset size) come from the cluster runs, on exclusive nodes only (1-8 cores on 1 node with `pack:excl`, 16 and 32 cores on 2 and 4 nodes with `scatter:excl`) and with the fastest ranks x threads split with at least 2 ranks per node for every core count; the clustering plots C1-C6 (convergence, choice of K with BIC/AIC, PCA, centroids, cluster sizes, full vs diagonal) come from the `baseline-sequential` runs on a range of K.
 
 - **Code:** [`src/plots-generate/`](src/plots-generate/) (performance P1-P12, clustering C1-C6)
 - **How to run:** [exec-cluster.md, Phase 5: Plots](doc/exec-cluster.md#phase-5-plots)
@@ -198,19 +198,20 @@ Everything is regenerable from the logs. The performance plots P1-P12 (sweeps, s
 
 ## Results
 
-Up to 4 nodes (32 cores) of HPC3; only the datasets whose runs all last at least 1 s are used (shorter runs are mostly noise). Full analysis in the [report](doc/latex/Group6-Report.pdf), Sections IV-VI.
+Up to 4 nodes (32 cores) of HPC3, exclusive nodes only, fastest split with at least 2 ranks per node for every core count; only the datasets whose runs all last at least 1 s are used (shorter runs are mostly noise). Full analysis in the [report](doc/latex/Group6-Report.pdf), Sections IV-VI.
 
-- **Correct:** all the parallel versions reach the same iterations and log-likelihood as `baseline-sequential` (relative difference < 1e-8 over 9 849 runs).
-- **Opt1 (computation) wins:** speedup over `baseline-sequential` on 32 cores 27-29x (diagonal) and about 50x (full); faster than `baseline-MPI-OpenMP` 1.5-2.1x (diagonal) and up to 8x (full) on 32 cores, 2.3-2.5x (full) on one node of 8 cores; its ranks stay balanced. The one-node gain of the blocked full model agrees with Kwedlo 2023 (1.75-2.75x on 24 cores).
-- **Opt2 (communication) works but barely matters:** the cost of the collectives drops from 0.6 to 0.08 ms (diagonal) and from 6.5 to 0.5 ms (full) per iteration, at most 2% of an iteration.
-- **The bottleneck is the computation and its balance:** in `baseline-MPI-OpenMP` and opt2 almost all the MPI time is waiting for the slowest rank (up to 19% imbalance); it depends on the code, not on the memory of the nodes ([results/tables/node-memory.md](results/tables/node-memory.md)).
+- **Correct:** all the parallel versions reach the same iterations and log-likelihood as `baseline-sequential` (relative difference < 1e-8 over 14 259 runs).
+- **All versions scale:** speedup over `baseline-sequential` on 32 cores 27-29x for all three parallel versions (diagonal), 24-25x for `baseline-MPI-OpenMP` and opt2 and about 50x for opt1 (full).
+- **Opt1 (computation) wins in the full model:** the blocks of rows make it about 2x faster than `baseline-MPI-OpenMP` at every core count (1.95-2.1x), in line with Kwedlo 2023 (1.75-2.75x on 24 cores); in the diagonal model there is nothing to block and the versions are within 8%.
+- **Opt2 (communication) works but barely matters:** with 2 ranks x 4 threads per node the cost of the collectives drops from 0.6 to 0.08 ms (diagonal) and from 6.5 to 0.5 ms (full) per iteration, but the collectives are at most 4% of an iteration.
+- **The split matters for the threads:** `baseline-MPI-OpenMP` and opt2 are fastest with 1 thread per rank; with 4 threads per rank they are up to 1.9x slower on one node and their ranks become imbalanced (up to 19% median), because of the false sharing of their per-thread buffers. Opt1 is as fast with every split. The imbalance depends on the code, not on the memory of the nodes ([results/tables/node-memory.md](results/tables/node-memory.md)).
 - **Size decides:** the public medical tables are too small (runs of milliseconds, `baseline-sequential` is enough); the parallel versions pay off from 0.5 million rows (full) and 2 million rows (diagonal) (synthetic data, `brainweb` MRI).
 - **Figures:** speedup [diagonal](results/plots/performance/P2-speedup-diagonal.pdf) / [full](results/plots/performance/P2-speedup-full.pdf), gain over `baseline-MPI-OpenMP` [diagonal](results/plots/performance/P9-opt-gain-diagonal.pdf) / [full](results/plots/performance/P9-opt-gain-full.pdf); all the others in [`results/plots/`](results/plots/).
 
 ### Future work
 
 - Combine opt1 and opt2 in one program.
-- Find the cause of the imbalance of the computation of `baseline-MPI-OpenMP` (aligned per-thread buffers, fixed CPU frequency) and try other ranks x threads splits on several nodes.
+- Run one rank per node on several nodes (it fails with the current binding; `--map-by ppr:1:node:PE=8` should fix it) and find the cause of the imbalance of `baseline-MPI-OpenMP` with threads (aligned per-thread buffers, fixed CPU frequency).
 - A script that reads a dataset (size, correlations, memory needed) and picks diagonal or full covariance (confirmed with the BIC on a sample) and the right version and layout.
 - Lift the memory limit of the full model for large D (shared sums, covariances split among the ranks); distribute the rows by the measured speed of every rank.
 - Move the blocked full-model computation to GPUs; scale to more nodes and larger real data (full MRI volumes).

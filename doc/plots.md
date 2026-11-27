@@ -13,8 +13,8 @@ Which plots go in the report and how they are drawn.
 | Model | diagonal, full | Separate panels / files |
 | Version | `baseline-sequential`, `baseline-MPI-OpenMP`, `opt1`, `opt2` | Lines or bars. `baseline-sequential` is only the reference (1 core) |
 | Dataset | 10 real, 3 synthetic families + D sweep (`synth_sweep_dDDD`, P1 only) | Real: clustering quality (and `brainweb` in the scaling plots). Synthetic: scaling, K, D. Only the long ones (2.1) |
-| Placement | pack, scatter, pack:excl, scatter:excl | Own plot (P6), otherwise fixed: `pack` on 1 node, `scatter:excl` on 2-4 nodes (`--placement`, `--multi-placement`). PBS puts every `pack` request on ONE 96-core node (see `results/logs/pbs/*.out`), so only `scatter` gives real multi-node runs |
-| Ranks x threads | 1x8 ... 8x1 (the 8 cores of one node) | Own plot (P7), then the fastest split for every core count |
+| Placement | pack, scatter, pack:excl, scatter:excl | Own plot (P6, all with 2 ranks x 4 threads per node). Every other plot uses **exclusive nodes only**: 1-8 cores (1 node) `pack:excl`, 16 and 32 cores (2 and 4 nodes) `scatter:excl` (`--placement`, `--multi-placement`); the subtitle of every plot says it. PBS puts every `pack` request on ONE 96-core node (see `results/logs/pbs/*.out`), so only `scatter` gives real multi-node runs; on one shared node (`pack`) the memory-bound versions are up to 22% slower than on an exclusive one |
+| Ranks x threads | 1x8 ... 8x1 per node | Own plot (P7, all the splits of one node). Every other plot: the fastest split **with at least 2 ranks per node**, for every version and core count (`hybrid_splits`): 1x2, 1x4, 1x8 are left out everywhere, because the 1-rank-per-node layouts failed on 2 and 4 nodes (Open MPI binding) |
 | Cores / nodes | 1 ... max | x axis of the scaling plots |
 
 ## 2. Performance plots
@@ -28,12 +28,12 @@ Unless the Type says otherwise, there is one line per version.
 | `P3-efficiency-<model>` | How much of each added core is actually used | lines + ideal (= 1) | cores | efficiency | as P2 |
 | `P4-strong-<model>` | How the time per iteration drops with more cores, same problem | lines + ideal | cores | time / iteration | N fixed, as P2 |
 | `P5-weak-<model>` | Whether time stays flat when data grows with the cores | lines + ideal (= 1) | cores | weak-scaling efficiency (same version: time on 1 core / time on p cores) | `synth_overlap_pNN` on NN cores (`--family`) |
-| `P6-placement-<model>` | Whether the PBS placement changes the time | grouped bars, one bar per placement | nodes (1, 2, 4) | time / iteration | most optimized version (opt2, `--version`), 1 large dataset (`--large`) |
-| `P7-ranks-threads-<model>` | Which ranks x threads split is fastest on one node | bars, fastest framed in red | split | time / iteration | 1 node, opt2 (`--version`), as P6 |
+| `P6-placement-<model>` | Whether the PBS placement changes the time | grouped bars, one bar per placement | nodes (1, 2, 4) | time / iteration | most optimized version (opt2, `--version`), 1 large dataset (`--large`), same split for every placement: 2 ranks x 4 threads per node |
+| `P7-ranks-threads-<model>` | Which ranks x threads split is fastest on one node | bars, fastest framed in red | split | time / iteration | 1 node `pack:excl`, 8 cores, all 4 splits (1x8 included), opt2 (`--version`), dataset as P6 |
 | `P8-breakdown-<model>` | Where the time goes (E-step, M-step, communication, I/O) | stacked bars (100%), total time above | 1, 8, 32 cores x version | share (%) | as P2 |
 | `P9-opt-gain-<model>` | How much opt1 and opt2 gain over `baseline-MPI-OpenMP` | bars opt1, opt2, `baseline-MPI-OpenMP` = 1, ratio above | dataset | time / `baseline-MPI-OpenMP` | largest core count shared by the versions (32), all long datasets (real first, dotted separator) |
 | `P10-roofline-<model>` | Whether the code is compute or memory bound | roofline, one point per version | FLOP/byte | GFLOP/s (over E + M time) | as P2, 8 cores of 1 node. Analytic `flops`, `bytes` (`include/perfmodel.h`); roofs from `--peak-gflops`, `--peak-bw` (STREAM, `results/logs/stream/`), dashed roof = peak as compiled (`--peak-gflops-compiled`, SSE2) |
-| `P11-imbalance-<model>` | How unevenly the work is split between ranks | bars mean + min-max, % = max/mean - 1 | nodes / split | compute time per rank | opt2 (`--version`), as P6, key `rank_compute` (E + M per rank) |
+| `P11-imbalance-<model>` | How unevenly the work is split between ranks | bars mean + min-max, % = max/mean - 1 | nodes / split | compute time per rank | opt2 (`--version`), dataset as P6, every split with at least 2 ranks (`pack:excl` on 1 node, `scatter:excl` on 2-4), key `rank_compute` (E + M per rank) |
 | `P12-size-<model>` | Whether bigger datasets get more speedup | scatter, filled = real, empty = synthetic | N (log) | speedup | all long datasets (`--min-run 0`: all), panels 8 and 32 cores |
 
 ### 2.1 What goes in the report
