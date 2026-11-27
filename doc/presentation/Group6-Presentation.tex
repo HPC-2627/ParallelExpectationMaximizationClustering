@@ -29,14 +29,89 @@
 
 \title{Parallel Expectation--Maximization Clustering}
 \subtitle{Hybrid MPI + OpenMP EM for Gaussian mixtures, diagonal and full covariance}
-\author{Michael Bernasconi \and Gabriele Fronzoni}
-\institute{High Performance Computing --- University of Trento\\[2pt]
+\author{%
+\textbf{Group 6}\\[4pt]
+\begin{tabular}[t]{@{}l@{}}
+Michael Bernasconi\\
+{\scriptsize Student ID: 267681}\\
+{\scriptsize\texttt{michael.bernasconi@studenti.unitn.it}}
+\end{tabular}\hspace{3em}%
+\begin{tabular}[t]{@{}l@{}}
+Gabriele Fronzoni\\
+{\scriptsize Student ID: 267336}\\
+{\scriptsize\texttt{gabriele.fronzoni@studenti.unitn.it}}
+\end{tabular}}
+\institute{High Performance Computing --- Department of Information Engineering and Computer Science, University of Trento\\[2pt]
 \scriptsize\url{https://github.com/HPC-2627/ParallelExpectationMaximizationClustering}}
 \date{}
 
 \begin{document}
 
-\maketitle
+% Title slide: custom layout, right panel drawn as a Gaussian mixture (ellipses = 1 and 2 sigma contours, dots = points)
+\begin{frame}[plain]
+\begin{tikzpicture}[remember picture,overlay]
+\begin{scope}[shift={(current page.south west)}]
+  % --- right panel: slanted orange shapes
+  \fill[accent!35] (9.55,9) -- (10.15,9) -- (11.55,0) -- (10.95,0) -- cycle;
+  \fill[accent] (10.4,9) -- (16,9) -- (16,0) -- (11.8,0) -- cycle;
+  \fill[accentdark] (13.4,0) -- (16,0) -- (16,3.6) -- cycle;
+  \fill[accentdark!80!black,opacity=0.35] (16,9) -- (16,6.3) -- (13.9,9) -- cycle;
+  \begin{scope}
+    \clip (10.4,9) -- (16,9) -- (16,0) -- (11.8,0) -- cycle;
+    \pgfmathsetseed{42}
+    % cluster: centre x, centre y, rotation, sigma a, sigma b, dot colour
+    \foreach \cx/\cy/\r/\a/\b/\col in {
+        12.55/6.75/30/0.55/0.28/white,
+        14.75/7.35/-25/0.42/0.30/accent!15,
+        14.05/4.45/62/0.72/0.32/white,
+        12.65/2.55/-35/0.50/0.30/accent!15,
+        15.05/1.55/12/0.38/0.26/white} {
+      \draw[white,line width=0.9pt,rotate around={\r:(\cx,\cy)}] (\cx,\cy) ellipse [x radius={2*\a}, y radius={2*\b}];
+      \draw[white,opacity=0.55,line width=0.6pt,dashed,rotate around={\r:(\cx,\cy)}] (\cx,\cy) ellipse [x radius=\a, y radius=\b];
+      \foreach \i in {1,...,34} {
+        \pgfmathsetmacro{\u}{0.75*\a*(rand+rand)}
+        \pgfmathsetmacro{\v}{0.75*\b*(rand+rand)}
+        \fill[\col,opacity=0.9] ({\cx+\u*cos(\r)-\v*sin(\r)},{\cy+\u*sin(\r)+\v*cos(\r)}) circle (0.95pt);
+      }
+      \draw[white,line width=1.4pt] (\cx-0.09,\cy-0.09) -- (\cx+0.09,\cy+0.09) (\cx-0.09,\cy+0.09) -- (\cx+0.09,\cy-0.09);
+    }
+    % background noise points
+    \foreach \i in {1,...,40} {
+      \fill[white,opacity=0.35] ({10.6+5.4*(rand+1)/2},{9*(rand+1)/2}) circle (0.7pt);
+    }
+  \end{scope}
+  % --- left side: small geometric accents
+  \fill[accent] (0.75,7.95) rectangle (0.86,6.35);
+  \foreach \k in {0,...,5} \fill[accent,opacity={1-0.15*\k}] ({1.05+0.3*\k},0.35) -- ({1.25+0.3*\k},0.35) -- ({1.15+0.3*\k},0.53) -- cycle;
+  % --- text
+  \node[anchor=north west,text width=8.4cm,inner sep=0pt] at (1.05,7.95) {%
+    {\usebeamercolor[fg]{title}\fontsize{15}{18}\selectfont\bfseries Parallel Expectation--Maximization\\ Clustering\par}
+    \vspace{5pt}
+    {\color{accentdark}\small Hybrid MPI + OpenMP EM for Gaussian mixtures,\\ diagonal and full covariance\par}
+    \vspace{7pt}
+    {\color{accent}\rule{5cm}{1.2pt}\par}
+    \vspace{9pt}
+    {\color{accent}\footnotesize\bfseries GROUP 6\par}\vspace{4pt}
+    {\footnotesize
+    \begin{tabular}[t]{@{}l@{}}
+    \textbf{Michael Bernasconi}\\[-1pt]
+    {\tiny Student ID: 267681}\\[-2pt]
+    {\tiny\texttt{michael.bernasconi@studenti.unitn.it}}
+    \end{tabular}\hspace{1.2em}%
+    \begin{tabular}[t]{@{}l@{}}
+    \textbf{Gabriele Fronzoni}\\[-1pt]
+    {\tiny Student ID: 267336}\\[-2pt]
+    {\tiny\texttt{gabriele.fronzoni@studenti.unitn.it}}
+    \end{tabular}\par}
+    \vspace{12pt}
+    {\scriptsize High Performance Computing\\
+    Department of Information Engineering and Computer Science\\
+    University of Trento\\[3pt]
+    {\tiny\color{accentdark}\url{https://github.com/HPC-2627/ParallelExpectationMaximizationClustering}}\par}
+  };
+\end{scope}
+\end{tikzpicture}
+\end{frame}
 
 \begin{frame}{Outline}
 \tableofcontents
