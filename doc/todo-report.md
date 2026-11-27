@@ -1,10 +1,10 @@
 # TODO report: final reading
 ## Mike
 ### Report
-- [ ] Read AI Statement, 
-- [ ] Read Abstract 
-- [ ] Read Index Terms
-- [ ] Read Contents (table of contents)
+- [X] Read AI Statement, 
+- [] Read Abstract 
+- [X] Read Index Terms
+- [X] Read Contents (table of contents)
 - [ ] Read I. Introduction
 - [ ] Read II. Parallel Design Methodology
 - [ ] Read III. Experimental Setup & Dataset

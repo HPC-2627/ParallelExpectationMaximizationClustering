@@ -192,7 +192,7 @@ A small local web page shows how EM works step by step on any dataset of `data/`
 Everything is regenerable from the logs. The performance plots P1-P12 (sweeps, speedup, efficiency, strong and weak scaling, placement, ranks vs threads, time breakdown, optimization gain, roofline, load imbalance, speedup vs dataset size) come from the cluster runs, on exclusive nodes only (1-8 cores on 1 node with `pack:excl`, 16 and 32 cores on 2 and 4 nodes with `scatter:excl`) and with the fastest ranks x threads split with at least 2 ranks per node for every core count; the clustering plots C1-C6 (convergence, choice of K with BIC/AIC, PCA, centroids, cluster sizes, full vs diagonal) come from the `baseline-sequential` runs on a range of K.
 
 - **Code:** [`src/plots-generate/`](src/plots-generate/) (performance P1-P12, clustering C1-C6)
-- **How to run:** [exec-cluster.md, Phase 5: Plots](doc/exec-cluster.md#phase-5-plots)
+- **How to run:** [exec-cluster.md, Phase 5: Performance Plots](doc/exec-cluster.md#phase-5-performance-plots)
 - **Docs:** [doc/plots.md](doc/plots.md) (plot catalog)
 - **Figures:** [`results/plots/`](results/plots/) (generated PDFs: `performance/` P1-P12, `cluster/` C1-C6)
 
