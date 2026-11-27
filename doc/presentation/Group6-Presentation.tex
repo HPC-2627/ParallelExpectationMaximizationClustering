@@ -96,7 +96,6 @@ Gabriele Fronzoni\\
   \node[white,font=\fontsize{64}{64}\selectfont\bfseries] at (2.55,4.5) {\ifbackup B\else 0\arabic{section}\fi};
   % title on the right
   \node[anchor=south west,text width=8.4cm,inner sep=0pt] at (7.1,4.75) {%
-    {\color{accent}\footnotesize\bfseries \ifbackup APPENDIX\else SECTION 0\arabic{section}\fi\par}\vspace{4pt}
     {\usebeamercolor[fg]{normal text}\fontsize{22}{26}\selectfont\bfseries\raggedright\hyphenpenalty=10000 \insertsectionhead\par}};
   \draw[accent,line width=1.2pt] (7.1,4.45) -- (11.1,4.45);
   % progress bar: one block per main section
@@ -150,7 +149,7 @@ Gabriele Fronzoni\\
   \end{scope}
   % --- left side: small geometric accents
   \fill[accent] (0.75,7.95) rectangle (0.86,6.35);
-  \foreach \k in {0,...,5} \fill[accent,opacity={1-0.15*\k}] ({1.05+0.3*\k},0.35) -- ({1.25+0.3*\k},0.35) -- ({1.15+0.3*\k},0.53) -- cycle;
+  \foreach \k in {0,...,5} \fill[accent,opacity={1-0.15*\k}] ({1.05+0.3*\k},0.22) -- ({1.25+0.3*\k},0.22) -- ({1.15+0.3*\k},0.40) -- cycle;
   % --- text
   \node[anchor=north west,text width=9.2cm,inner sep=0pt] at (1.05,7.95) {%
     {\usebeamercolor[fg]{title}\fontsize{14}{17}\selectfont\bfseries\mbox{Parallel Expectation--Maximization}\\ Clustering\par}
@@ -158,7 +157,7 @@ Gabriele Fronzoni\\
     {\color{accentdark}\small Hybrid MPI + OpenMP EM for Gaussian mixtures,\\ diagonal and full covariance\par}
     \vspace{7pt}
     {\color{accent}\rule{5cm}{1.2pt}\par}
-    \vspace{9pt}
+    \vspace{7pt}
     {\color{accent}\small\bfseries GROUP 6\par}\vspace{5pt}
     {\small\mbox{%
     \begin{tabular}[t]{@{}l@{}}
@@ -171,11 +170,14 @@ Gabriele Fronzoni\\
     {\scriptsize Student ID: 267336}\\[-1pt]
     {\scriptsize gabriele.fronzoni@studenti.unitn.it}
     \end{tabular}}\par}
-    \vspace{12pt}
+    \vspace{7pt}
     {\scriptsize High Performance Computing\\
     Department of Information Engineering and Computer Science\\
-    University of Trento\\[3pt]
-    {\scriptsize\color{accentdark}\mbox{\url{https://github.com/HPC-2627/ParallelExpectationMaximizationClustering}}}\par}
+    University of Trento\\[4pt]
+    {\scriptsize\begin{tabular}{@{}l@{\hspace{0.8em}}l@{}}
+    \textbf{GitHub} & \color{accentdark}\href{https://github.com/HPC-2627/ParallelExpectationMaximizationClustering}{\texttt{HPC-2627/ParallelExpectationMaximizationClustering}}\\
+    \textbf{Report} & \color{accentdark}\href{https://github.com/HPC-2627/ParallelExpectationMaximizationClustering/blob/main/doc/latex/Group6-Report.pdf}{\texttt{doc/latex/Group6-Report.pdf}}
+    \end{tabular}\par}}
   };
 \end{scope}
 \end{tikzpicture}
@@ -842,7 +844,7 @@ $>$ 1 s & 1.7\% (1.0\% one exclusive node, 2.4\% reserved multi-node) \\
 \item R. Thakur, R. Rabenseifner, W. Gropp, Optimization of collective communication in MPICH, IJHPCA 2005.
 \item R. Chandra et al., \emph{Parallel Programming in OpenMP}, Morgan Kaufmann, 2001.
 \end{itemize}
-Full list, report and code: \url{https://github.com/HPC-2627/ParallelExpectationMaximizationClustering}
+Full list of references: report, \href{https://github.com/HPC-2627/ParallelExpectationMaximizationClustering/blob/main/doc/latex/Group6-Report.pdf}{\texttt{doc/latex/Group6-Report.pdf}}. Code: \url{https://github.com/HPC-2627/ParallelExpectationMaximizationClustering}
 \end{frame}
 
 \end{document}
