@@ -2,7 +2,7 @@
 ## Mike
 ### Report
 - [X] Read AI Statement, 
-- [] Read Abstract 
+- [X] Read Abstract 
 - [X] Read Index Terms
 - [X] Read Contents (table of contents)
 - [ ] Read I. Introduction

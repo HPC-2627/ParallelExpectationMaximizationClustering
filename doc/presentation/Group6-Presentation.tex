@@ -196,10 +196,10 @@ Gabriele Fronzoni\\
 \begin{itemize}
 \item \textbf{Clustering} with a \textbf{Gaussian mixture model} (GMM): every point comes from one of $K$ Gaussians, the label is hidden.
 \item Parameters estimated with the \textbf{Expectation--Maximization} (EM) algorithm: iterative, every iteration scans the \emph{whole} dataset $\Rightarrow$ cost grows with $N$.
-\item \textbf{Goal}: implement EM in C with a \textbf{hybrid MPI + OpenMP} design, evaluate one optimization of the \emph{computation} and one of the \emph{communication}, measure \textbf{strong and weak scaling} on the HPC3 cluster (up to 4 nodes, 32 cores).
+\item \textbf{Goal}: implement EM in C with a \textbf{hybrid MPI + OpenMP} design, evaluate one optimization of the \emph{computation} and one of the \emph{communication}, measure \textbf{strong and weak scaling} on the HPC3 cluster (strong up to 4 nodes, 32 cores; weak up to 2 nodes, 16 cores).
 \item Two covariance models, \textbf{same importance}, never compared with each other:
   \begin{itemize}
-  \item \textbf{diagonal}: one variance per variable, $O(NKD)$ per iteration (memory-bound);
+  \item \textbf{diagonal}: one variance per variable, $O(NKD)$ per iteration (low arithmetic intensity);
   \item \textbf{full}: complete $D\times D$ matrix (Cholesky), $O(NKD^2)$ (compute-bound for large $D$).
   \end{itemize}
 \end{itemize}
@@ -294,7 +294,7 @@ Bottleneck & memory & computation (large $D$) \\
 \bigskip
 \begin{itemize}
 \item Each optimization starts from \vbase{} of its own model and changes \textbf{one aspect only} $\Rightarrow$ its effect is isolated.
-\item All versions of a model reach the \textbf{same iterations and the same $\mathcal{L}$} (relative difference $<10^{-8}$ over 14\,259 runs).
+\item In all 14\,259 runs the parallel versions reach the \textbf{same iterations and the same $\mathcal{L}$} as \vseq{} (relative difference $<10^{-8}$).
 \end{itemize}
 \end{frame}
 
@@ -524,7 +524,7 @@ Weak scaling: $N=250\,000\cdot p$, $p\in\{1,2,4,8,16\}$. Strong: \texttt{\_p08} 
 \perfplot{P2-speedup-full}
 \begin{itemize}
 \item \vbase{}, \opttwo{}: \textbf{24--25.5$\times$} (eff.\ 0.75--0.80); on 1 core 0.85--0.88 (cost of the parallel structure, no gain).
-\item \optone{}: \textbf{$\approx$50$\times$} (49.1--52.5, eff.\ 1.54--1.64). Not superlinear scaling: a $\approx$2$\times$ faster kernel $\times$ near-ideal scaling.
+\item \optone{}: \textbf{$\approx$50$\times$} on the synthetic files (49.1--52.5, eff.\ 1.54--1.64). Not superlinear scaling: a $\approx$2$\times$ faster kernel $\times$ near-ideal scaling. On \texttt{brainweb} ($D=1$, nothing to block): 27.3$\times$.
 \end{itemize}
 \end{frame}
 
@@ -645,7 +645,7 @@ Split per node & Model & \vbase{} & \optone{} & \opttwo{} \\
 \begin{column}{0.44\textwidth}
 \small
 \begin{itemize}
-\item \vbase{}, \opttwo{}: fastest with \textbf{1 thread per rank}; with 2 r $\times$ 4 t up to \textbf{1.9$\times$ slower} on one node, ranks imbalanced (6--19\% median), others wait 8--111 ms/iteration.
+\item \vbase{}, \opttwo{}: fastest with \textbf{1 thread per rank}; with 2 r $\times$ 4 t up to \textbf{1.9$\times$ slower} on one node (4.0$\times$ on 4 nodes), ranks imbalanced (6--19\% median), others wait 8--111 ms/iteration.
 \item Cause: \textbf{false sharing} of per-thread buffers + (full) Cholesky on the master thread only.
 \item \optone{} removed both: \textbf{within 7\%} across splits, balanced within 2.5\%.
 \item Not the hardware: ranks on 4- and 6-channel nodes within 1\% of each other.
@@ -660,9 +660,9 @@ Split per node & Model & \vbase{} & \optone{} & \opttwo{} \\
 \begin{frame}{Discussion}
 \small
 \begin{description}
-\item[Size decides] On the real medical tables \vseq{} is enough (runs of milliseconds). The parallel versions pay off from $\approx$0.5 M rows (full) and $\approx$2 M rows (diagonal).
+\item[Size decides] On the real medical tables (all but \texttt{brainweb}) \vseq{} is enough (runs of milliseconds). The parallel versions pay off from $\approx$0.5 M rows (full) and $\approx$2 M rows (diagonal).
 \item[Computation is the bottleneck] \optone{} full is 2$\times$ faster at every core count because every core does more useful work. In the diagonal model there is nothing to block.
-\item[Communication is not] \opttwo{} works as designed and removes most of the collective cost, but collectives are $\le$4\% of an iteration on these datasets and this network. Its regime (short iterations on many nodes) is exactly the noisy one we excluded.
+\item[Communication is not] \opttwo{} works as designed and removes most of the collective cost, but collectives are $\le$4\% of an iteration: up to 32 cores the time of an iteration is dominated by the local computation, not by the communication. Its regime (short iterations on many nodes) is exactly the noisy one we excluded.
 \item[Threads need care] False sharing, not the memory of the nodes, explains the slow and imbalanced thread-heavy splits.
 \end{description}
 \textbf{Related work}: \vbase{} with 8 threads has efficiency 0.39--0.53, like Sanderson \& Curtin ($\approx$0.63 on 16 threads); \optone{} without false sharing 0.91--0.94. Kwedlo's blocked variant 1.75--2.75$\times$ vs our 2.0--2.1$\times$.
@@ -674,8 +674,8 @@ Split per node & Model & \vbase{} & \optone{} & \opttwo{} \\
 \small
 \textbf{Results}
 \begin{itemize}
-\item Hybrid MPI + OpenMP EM, 2 models $\times$ 4 versions, \textbf{correct} in all 14\,259 runs ($\Delta\mathcal{L}<10^{-8}$).
-\item Speedup on 32 cores: \textbf{27--29$\times$} diagonal, \textbf{24--25$\times$} full, \textbf{$\approx$50$\times$} full with \optone{}.
+\item Hybrid MPI + OpenMP EM, 2 models $\times$ 4 versions, \textbf{correct} in all 14\,259 runs (relative $\Delta\mathcal{L}<10^{-8}$).
+\item Speedup on 32 cores: \textbf{27--29$\times$} diagonal, \textbf{24--25$\times$} full, \textbf{$\approx$50$\times$} full with \optone{} (synthetic files).
 \item Weak scaling efficiency $\ge$ 0.87 up to 16 cores.
 \item Optimizing the computation pays; optimizing communication is correct but marginal here.
 \end{itemize}
