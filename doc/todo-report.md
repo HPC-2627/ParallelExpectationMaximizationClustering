@@ -12,6 +12,7 @@
 - [ ] Read V. Discussion
 - [ ] Read VI. Conclusion
 - [ ] Read References
+- [ ] Presentation
 
 ### Markdown files
 - [X] Read [`README.md`](../README.md)
@@ -40,6 +41,7 @@
 - [ ] Read V. Discussion
 - [ ] Read VI. Conclusion
 - [ ] Read References
+- [ ] Presentation
 
 ### Markdown files
 - [ ] Read [`README.md`](../README.md)
