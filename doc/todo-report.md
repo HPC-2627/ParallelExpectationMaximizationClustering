@@ -5,7 +5,7 @@
 - [X] Read Abstract 
 - [X] Read Index Terms
 - [X] Read Contents (table of contents)
-- [ ] Read I. Introduction
+- [X] Read I. Introduction
 - [ ] Read II. Parallel Design Methodology
 - [ ] Read III. Experimental Setup & Dataset
 - [ ] Read IV. Performance Evaluation
